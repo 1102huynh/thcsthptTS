@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: school-management-system
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/school_management?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+    show-sql: false
+    open-in-view: false
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+logging:
+  level:
+    root: INFO
+    com.schoolmanagement: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# JWT Configuration
+app:
+  jwt:
+    secret: "your-secret-key-change-this-in-production-make-it-at-least-256-bits-long-for-HS256-algorithm"
+    expiration: 86400000  # 24 hours in milliseconds
+    refresh-expiration: 604800000  # 7 days in milliseconds
+
+# Swagger/API Documentation
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+  api-docs:
+    path: /v3/api-docs
+  show-actuator: false
+

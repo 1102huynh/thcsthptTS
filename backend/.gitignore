@@ -1,0 +1,144 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+mvnw
+mvnw.cmd
+
+# IDE - Eclipse
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+*.ids
+*.orig
+out/
+
+# IDE - VS Code
+.vscode/
+*.code-workspace
+
+# IDE - Netbeans
+.nb-gradle/
+nbproject/
+
+# IDE - JetBrains
+.jpb/
+
+# Mac
+.DS_Store
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Build outputs
+build/
+dist/
+
+# Database
+*.db
+*.sqlite
+
+# Environment
+.env
+.env.local
+*.properties.local
+
+# OS
+Thumbs.db
+.trash/
+
+# Application
+application-dev.yml
+application-prod.yml
+application-test.yml
+config.properties
+
+# Security
+*.jks
+*.p12
+*.pem
+*.key
+
+# Temp
+temp/
+tmp/
+*.temp
+
+# Gradle (if used)
+.gradle/
+gradle/
+
+# Node modules (if applicable)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python (if applicable)
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Git
+.git
+.gitignore
+
+# Package files
+*.jar
+*.war
+*.rar
+*.zip
+*.tar
+*.tar.gz
+
+# Backup
+*.bak
+*.backup
+*~
+
+# System
+.~*
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Misc
+.classpath
+.project
+.pydevproject
+.settings
+*.swp
+*.swo
+*~.nib
+local.properties
+
