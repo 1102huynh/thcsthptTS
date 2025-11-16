@@ -4,6 +4,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
 // Pages
+import PrincipalHomePage from './pages/PrincipalHomePage';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import StaffManagement from './pages/StaffManagement';
@@ -60,27 +61,31 @@ function App() {
   return (
     <Router>
       {user ? (
+        // Authenticated user view with dashboard
         <div className="app-container">
           <Navbar user={user} onLogout={handleLogout} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
           <div className="app-body">
             <Sidebar isOpen={isSidebarOpen} userRole={user.role} />
             <div className="main-content">
               <Routes>
-                <Route path="/" element={<Dashboard user={user} />} />
+                <Route path="/dashboard" element={<Dashboard user={user} />} />
                 <Route path="/staff" element={<StaffManagement />} />
                 <Route path="/students" element={<StudentManagement />} />
                 <Route path="/library" element={<LibraryManagement />} />
                 <Route path="/attendance" element={<AttendanceManagement />} />
                 <Route path="/grades" element={<GradeManagement />} />
                 <Route path="/fees" element={<FeeManagement />} />
-                <Route path="*" element={<Navigate to="/" />} />
+                <Route path="/" element={<Navigate to="/dashboard" />} />
+                <Route path="*" element={<Navigate to="/dashboard" />} />
               </Routes>
             </div>
           </div>
         </div>
       ) : (
+        // Public view with principal's home page and login
         <Routes>
-          <Route path="/" element={<LoginPage onLogin={handleLogin} />} />
+          <Route path="/" element={<PrincipalHomePage />} />
+          <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       )}

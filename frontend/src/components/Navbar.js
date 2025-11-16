@@ -26,7 +26,7 @@ function NavbarComponent({ user, onLogout, toggleSidebar }) {
           </button>
           <Navbar.Brand as={Link} to="/" className="brand-logo">
             <span className="logo-icon">📚</span>
-            <span className="brand-text">School Management</span>
+            <span className="brand-text">Tay Son Secondary & High School</span>
           </Navbar.Brand>
         </div>
 
