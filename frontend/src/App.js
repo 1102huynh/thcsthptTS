@@ -7,6 +7,7 @@ import './App.css';
 import PrincipalHomePage from './pages/PrincipalHomePage';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
+import StudentPortal from './pages/StudentPortal';
 import StaffManagement from './pages/StaffManagement';
 import StudentManagement from './pages/StudentManagement';
 import {
@@ -68,15 +69,26 @@ function App() {
             <Sidebar isOpen={isSidebarOpen} userRole={user.role} />
             <div className="main-content">
               <Routes>
-                <Route path="/dashboard" element={<Dashboard user={user} />} />
-                <Route path="/staff" element={<StaffManagement />} />
-                <Route path="/students" element={<StudentManagement />} />
-                <Route path="/library" element={<LibraryManagement />} />
-                <Route path="/attendance" element={<AttendanceManagement />} />
-                <Route path="/grades" element={<GradeManagement />} />
-                <Route path="/fees" element={<FeeManagement />} />
-                <Route path="/" element={<Navigate to="/dashboard" />} />
-                <Route path="*" element={<Navigate to="/dashboard" />} />
+                {/* Student Portal */}
+                {user.role === 'STUDENT' ? (
+                  <>
+                    <Route path="/student-portal" element={<StudentPortal user={user} />} />
+                    <Route path="/" element={<Navigate to="/student-portal" />} />
+                    <Route path="/dashboard" element={<Navigate to="/student-portal" />} />
+                  </>
+                ) : (
+                  <>
+                    <Route path="/dashboard" element={<Dashboard user={user} />} />
+                    <Route path="/staff" element={<StaffManagement />} />
+                    <Route path="/students" element={<StudentManagement />} />
+                    <Route path="/library" element={<LibraryManagement />} />
+                    <Route path="/attendance" element={<AttendanceManagement />} />
+                    <Route path="/grades" element={<GradeManagement />} />
+                    <Route path="/fees" element={<FeeManagement />} />
+                    <Route path="/" element={<Navigate to="/dashboard" />} />
+                  </>
+                )}
+                <Route path="*" element={<Navigate to={user.role === 'STUDENT' ? '/student-portal' : '/dashboard'} />} />
               </Routes>
             </div>
           </div>

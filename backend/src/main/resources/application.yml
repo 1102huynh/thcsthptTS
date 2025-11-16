@@ -23,7 +23,7 @@ spring:
   datasource:
     url: jdbc:postgresql://school-clinicbooking.c.aivencloud.com:14143/defaultdb?sslmode=require
     username: avnadmin
-    password: your_password_here
+    password: <your_password_here>
     driver-class-name: org.postgresql.Driver
     hikari:
       ssl: true

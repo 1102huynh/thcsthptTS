@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Tab, Tabs, Badge, Pagination } from 'react-bootstrap';
+import React, { useState } from 'react';
+import { Container, Row, Col, Card, Tab, Tabs, Badge, Pagination } from 'react-bootstrap';
 import { FiFileText, FiUsers, FiCalendar, FiArrowRight, FiPhone, FiMail, FiMapPin } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import '../styles/PrincipalHomePage.css';
 
 function PrincipalHomePage() {
-  const [news, setNews] = useState([
+  const [news] = useState([
     {
       id: 1,
       title: 'Annual Sports Day 2025',
