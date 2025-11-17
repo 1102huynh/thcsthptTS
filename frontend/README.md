@@ -1,6 +1,145 @@
-# 🚀 School Management System - React Frontend
+# 🚀 School Management System - Frontend
+
+Modern React application for school management with Material-UI components.
+
+## 🚀 Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm start
+
+# Access application
+http://localhost:3000
+```
+
+## 🔧 Technology Stack
+
+- **React 18** - UI framework
+- **TypeScript** - Type safety
+- **Material-UI** - Component library
+- **React Router** - Navigation
+- **Axios** - HTTP client
+- **CSS Modules** - Styling
 
 ## 📁 Project Structure
+
+```
+frontend/
+├── public/          # Static assets
+├── src/
+│   ├── components/  # Reusable UI components
+│   │   ├── Navbar.js
+│   │   └── Sidebar.js
+│   ├── pages/       # Page components
+│   │   ├── LoginPage.js
+│   │   ├── Dashboard.js
+│   │   ├── StaffManagement.js
+│   │   └── StudentManagement.js
+│   ├── services/    # API services
+│   │   ├── api.js
+│   │   ├── authService.js
+│   │   └── dataService.js
+│   ├── utils/       # Utilities
+│   ├── styles/      # Global styles
+│   └── App.js       # Main app component
+├── package.json
+└── README.md
+```
+
+## 🔑 Authentication
+
+**Test Credentials:**
+- **Admin:** admin / Test@123
+- **Principal:** principal / Test@123
+- **Teacher:** teacher1 / Test@123
+- **Student:** student1 / Test@123
+
+## 🎯 Features
+
+- 🔐 **Login System** - JWT-based authentication
+- 📊 **Dashboard** - Role-based dashboard views
+- 👥 **User Management** - Admin user controls
+- 🏛️ **Staff Management** - Employee management
+- 🎓 **Student Management** - Student records
+- 📚 **Library System** - Book management
+- 📈 **Reports** - Various management reports
+
+## 🌐 API Integration
+
+**Backend API:** http://localhost:8080/api
+
+**Key Services:**
+- `authService.js` - Authentication logic
+- `dataService.js` - CRUD operations
+- `api.js` - Axios configuration
+
+## 🎨 UI Components
+
+**Navigation:**
+- Responsive navbar
+- Collapsible sidebar
+- Role-based menu items
+
+**Pages:**
+- Login with validation
+- Dashboard with cards and charts
+- Management pages with data tables
+- Modal forms for CRUD operations
+
+## 🔧 Development
+
+### Available Scripts
+
+```bash
+npm start      # Development server (port 3000)
+npm build      # Production build
+npm test       # Run tests
+npm run eject  # Eject from Create React App
+```
+
+### Environment Variables
+
+Create `.env` file:
+```env
+REACT_APP_API_URL=http://localhost:8080/api
+REACT_APP_API_TIMEOUT=5000
+```
+
+### Code Style
+
+- **ESLint** - Code linting
+- **Prettier** - Code formatting
+- **TypeScript** - Type checking
+
+## 📱 Responsive Design
+
+- **Desktop:** Full sidebar navigation
+- **Tablet:** Collapsible sidebar
+- **Mobile:** Hamburger menu
+
+## 🚦 Status
+
+✅ **Authentication:** Login/logout working  
+✅ **Routing:** React Router configured  
+✅ **API Integration:** Backend connected  
+✅ **UI Components:** Material-UI implemented  
+✅ **Responsive:** Mobile-friendly design  
+
+## 🔗 Related Documentation
+
+- **Backend API:** [../backend/README.md](../backend/README.md)
+- **Quick Start:** [QUICKSTART.md](./QUICKSTART.md)
+- **Project Index:** [../PROJECT_INDEX.md](../PROJECT_INDEX.md)
+
+---
+
+**Port:** 3000  
+**Build Tool:** Create React App  
+**Version:** 1.0.0  
+**Last Updated:** November 17, 2025
 
 ```
 frontend/

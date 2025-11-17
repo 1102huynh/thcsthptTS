@@ -1,6 +1,147 @@
 # School Management System - Backend API
 
-A comprehensive backend API for a school management system built with Spring Boot, Spring Security, and MySQL.
+A comprehensive REST API for school management built with Spring Boot, Spring Security, and PostgreSQL.
+
+## 🚀 Quick Start
+
+```bash
+# Start the backend
+mvn spring-boot:run
+
+# Access Swagger UI
+http://localhost:8080/api/swagger-ui.html
+```
+
+## 🔧 Technology Stack
+
+- **Java 17** - Programming language
+- **Spring Boot 3.1.5** - Framework
+- **Spring Security 6** - Authentication & authorization
+- **Spring Data JPA** - Database operations
+- **PostgreSQL** - Database (Aiven Cloud)
+- **JWT** - Token-based authentication
+- **Lombok** - Boilerplate code reduction
+- **Swagger/OpenAPI 3.0** - API documentation
+
+## 📋 Features
+
+- 🔐 **JWT Authentication** - Secure token-based auth
+- 👥 **User Management** - Multi-role user system
+- 🏛️ **Staff Management** - Employee records and roles
+- 🎓 **Student Management** - Student profiles and academics
+- 📚 **Library Management** - Books and borrowing system
+- 📊 **Attendance System** - Daily attendance tracking
+- 🎯 **Grade Management** - Student assessments
+- 💰 **Fee Management** - Payment and billing
+- 📈 **Reports** - Academic and administrative reports
+
+## 🗄️ Database
+
+**Current:** PostgreSQL (Aiven Cloud)
+- Host: school-clinicbooking.c.aivencloud.com
+- Port: 14143
+- Database: defaultdb
+
+**Configuration:** `src/main/resources/application.yml`
+
+## 📊 Test Data
+
+Import sample data:
+```bash
+psql -U avnadmin -h school-clinicbooking.c.aivencloud.com -p 14143 -d defaultdb -f TEST_DATA_CORRECTED.sql
+```
+
+**Test Credentials:**
+- Admin: `admin` / `Test@123`
+- Principal: `principal` / `Test@123`
+- Teacher: `teacher1` / `Test@123`
+- Student: `student1` / `Test@123`
+
+## 🛡️ Security
+
+### Roles & Permissions
+- **ADMIN** - Full system access
+- **PRINCIPAL** - Management oversight
+- **TEACHER** - Grade and attendance management
+- **STUDENT** - Limited read access
+- **LIBRARIAN** - Book management
+- **ACCOUNTANT** - Fee management
+
+### Authentication Flow
+1. **Login** → `POST /api/v1/auth/login`
+2. **Get JWT Token** → Include in Authorization header
+3. **Access Protected APIs** → `Bearer <token>`
+
+## 🌐 API Endpoints
+
+| Endpoint | Description | Auth Required |
+|----------|-------------|---------------|
+| `POST /api/v1/auth/login` | User login | No |
+| `GET /api/v1/users` | List users | Yes |
+| `GET /api/v1/staff` | List staff | Yes |
+| `GET /api/v1/students` | List students | Yes |
+| `GET /api/v1/classes` | List classes | Yes |
+| `GET /api/v1/library/books` | List books | Yes |
+
+## 📖 Documentation
+
+- **API Docs:** http://localhost:8080/api/swagger-ui.html
+- **Database Setup:** [DATABASE_SETUP_INDEX.md](./DATABASE_SETUP_INDEX.md)
+- **API Testing:** [API_TESTING_GUIDE.md](./API_TESTING_GUIDE.md)
+- **Architecture:** [ARCHITECTURE.md](./ARCHITECTURE.md)
+- **Development:** [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md)
+
+## 🔧 Development
+
+### Prerequisites
+- Java 17+
+- Maven 3.6+
+- PostgreSQL access
+- IDE (IntelliJ IDEA recommended)
+
+### Setup
+1. **Clone repository**
+2. **Configure database** in application.yml
+3. **Install dependencies:** `mvn clean install`
+4. **Run application:** `mvn spring-boot:run`
+5. **Import test data** (optional)
+6. **Access Swagger UI** for testing
+
+### Build
+```bash
+# Development
+mvn spring-boot:run
+
+# Production build
+mvn clean package
+java -jar target/school-management-system-1.0.0.jar
+```
+
+## 📦 Dependencies
+
+Key dependencies managed by Maven:
+- Spring Boot Starter Web
+- Spring Boot Starter Security
+- Spring Boot Starter Data JPA
+- PostgreSQL JDBC Driver
+- JWT Support (jjwt)
+- Lombok
+- SpringDoc OpenAPI (Swagger)
+
+## 🚦 Status
+
+✅ **Authentication:** JWT-based security working  
+✅ **Database:** PostgreSQL configured and connected  
+✅ **APIs:** All endpoints functional  
+✅ **Documentation:** Swagger UI available  
+✅ **Test Data:** Sample data ready for import
+
+---
+
+**Port:** 8080  
+**Context Path:** /api  
+**Version:** 1.0.0  
+**Last Updated:** November 17, 2025
 
 ## Features
 

@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="SqlDialectMappings">
-    <file url="file://$PROJECT_DIR$/backend/CHECK_ADMIN_USER.sql" dialect="MySQL" />
-    <file url="file://$PROJECT_DIR$/backend/FIX_ADMIN_PASSWORD.sql" dialect="MySQL" />
-    <file url="file://$PROJECT_DIR$/backend/FIX_PASSWORD_NOW.sql" dialect="MySQL" />
-    <file url="file://$PROJECT_DIR$/backend/FIX_PERMISSIONS.sql" dialect="MySQL" />
-    <file url="file://$PROJECT_DIR$/backend/QUICK_FIX_DELETE_PERMISSIONS.sql" dialect="MySQL" />
-    <file url="file://$PROJECT_DIR$/backend/TEST_DATA.sql" dialect="MySQL" />
-    <file url="file://$PROJECT_DIR$/backend/TEST_DATA_CORRECTED.sql" dialect="MySQL" />
-    <file url="file://$PROJECT_DIR$/backend/TEST_DATA_SAFE.sql" dialect="MySQL" />
-    <file url="file://$PROJECT_DIR$/backend/USE_FRESH_HASH.sql" dialect="MySQL" />
+    <file url="file://$PROJECT_DIR$/backend/TEST_DATA_CORRECTED.sql" dialect="PostgreSQL" />
   </component>
 </project>

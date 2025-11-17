@@ -1,30 +1,61 @@
 -- =====================================================
--- School Management System - Test Data SQL (CORRECTED)
+-- School Management System - Test Data SQL (PostgreSQL)
 -- =====================================================
--- Database: school_management
--- Date: November 16, 2025
--- Purpose: Insert sample data for testing all endpoints
--- SAFETY: Uses TRUNCATE with FK checks disabled
--- SCHEMA: Corrected for actual database columns
+-- Database: defaultdb (Aiven Cloud)
+-- Date: November 17, 2025
+-- Purpose: DELETE ALL OLD DATA, then INSERT fresh test data
+-- DATABASE: PostgreSQL 12+ (Aiven Cloud)
+-- METHOD: DELETE with proper foreign key ordering
 -- =====================================================
 
 -- =====================================================
--- CLEANUP - Safely clear all existing data
+-- STEP 1: DELETE ALL OLD DATA FROM ALL TABLES
 -- =====================================================
-SET FOREIGN_KEY_CHECKS = 0;
+-- INTENTIONAL: Delete all data without WHERE clause
+-- Purpose: Clean database before fresh test data import
+-- This is SAFE because:
+--   1. This is a TEST DATA script
+--   2. We immediately reset sequences
+--   3. We immediately insert fresh data
+-- Delete in correct order to avoid foreign key constraint violations
+-- Delete dependent tables FIRST, then parent tables
 
-TRUNCATE TABLE user_permissions;
-TRUNCATE TABLE book_transactions;
-TRUNCATE TABLE fees;
-TRUNCATE TABLE grades;
-TRUNCATE TABLE attendance;
-TRUNCATE TABLE library_books;
-TRUNCATE TABLE classes;
-TRUNCATE TABLE students;
-TRUNCATE TABLE staff;
-TRUNCATE TABLE users;
+-- Delete from tables with foreign keys first (INTENTIONAL - clearing all data)
+DELETE FROM user_permissions;
+DELETE FROM book_transactions;
+DELETE FROM fees;
+DELETE FROM grades;
+DELETE FROM attendance;
+DELETE FROM library_books;
+DELETE FROM classes CASCADE;
+DELETE FROM students;
+DELETE FROM staff;
+DELETE FROM users;
 
-SET FOREIGN_KEY_CHECKS = 1;
+-- All data from all tables has been deleted above
+-- Sequences will be reset in the next step
+-- Fresh data will be inserted in step 3
+
+-- =====================================================
+-- STEP 2: RESET ALL ID SEQUENCES
+-- =====================================================
+-- Reset all sequences to start from 1
+-- Using IF EXISTS to avoid errors if sequence doesn't exist
+
+ALTER SEQUENCE IF EXISTS user_permissions_id_seq RESTART WITH 1;
+ALTER SEQUENCE IF EXISTS book_transactions_id_seq RESTART WITH 1;
+ALTER SEQUENCE IF EXISTS fees_id_seq RESTART WITH 1;
+ALTER SEQUENCE IF EXISTS grades_id_seq RESTART WITH 1;
+ALTER SEQUENCE IF EXISTS attendance_id_seq RESTART WITH 1;
+ALTER SEQUENCE IF EXISTS library_books_id_seq RESTART WITH 1;
+ALTER SEQUENCE IF EXISTS classes_id_seq RESTART WITH 1;
+ALTER SEQUENCE IF EXISTS students_id_seq RESTART WITH 1;
+ALTER SEQUENCE IF EXISTS staff_id_seq RESTART WITH 1;
+ALTER SEQUENCE IF EXISTS users_id_seq RESTART WITH 1;
+
+-- =====================================================
+-- STEP 3: INSERT FRESH NEW DATA
+-- =====================================================
 
 -- =====================================================
 -- 1. USERS TABLE - Test Users
@@ -70,14 +101,17 @@ INSERT INTO students (roll_number, admission_number, user_id, date_of_birth, gen
 ('10B003', 'ADM006', 13, '2009-10-25', 'Female', 'B-', '10', 'B', '2023-06-01', 'ACTIVE', 'Ashok Nair', '9111111116', 'Manager', 'Lakshmi Nair', '9222222227', 'Homemaker', '105 Student Lane', 'Delhi', 'Delhi', '110106', 'Neighbor Uncle', '9333333338', 'Guardian', NOW(), NOW());
 
 -- =====================================================
--- 4. CLASSES TABLE - School Classes (CORRECTED - NO total_students)
+-- 4. CLASSES TABLE - School Classes
 -- =====================================================
+-- Note: Using ON CONFLICT to handle cases where class_name + section + academic_year combination already exists
+-- If the exact same class already exists, skip it (do nothing)
 
-INSERT IGNORE INTO classes (class_name, section, academic_year, created_at, updated_at) VALUES
+INSERT INTO classes (class_name, section, academic_year, created_at, updated_at) VALUES
 ('10', 'A', '2024-2025', NOW(), NOW()),
 ('10', 'B', '2024-2025', NOW(), NOW()),
 ('9', 'A', '2024-2025', NOW(), NOW()),
-('9', 'B', '2024-2025', NOW(), NOW());
+('9', 'B', '2024-2025', NOW(), NOW())
+ON CONFLICT DO NOTHING;
 
 -- =====================================================
 -- 5. LIBRARY_BOOKS TABLE - Book Catalog
@@ -157,36 +191,128 @@ INSERT INTO book_transactions (book_id, user_id, transaction_type, borrow_date, 
 -- =====================================================
 -- 10. USER_PERMISSIONS TABLE - Access Control
 -- =====================================================
+-- Using actual Permission enum values from the system
+-- Admin user (id=1) gets all permissions
+-- Principal (id=2) gets read/update permissions
+-- Teachers (id=3,4) get specific permissions
+-- Librarian (id=6) gets book management permissions
+-- Accountant (id=7) gets fee management permissions
+-- Students (id=8,9,10) get read permissions only
 
-INSERT IGNORE INTO user_permissions (user_id, permission, granted_at, granted_by) VALUES
-(1, 'CREATE', NOW(), NULL),
-(1, 'READ', NOW(), NULL),
-(1, 'UPDATE', NOW(), NULL),
-(1, 'DELETE', NOW(), NULL),
-(2, 'READ', NOW(), NULL),
-(2, 'UPDATE', NOW(), NULL),
-(3, 'CREATE', NOW(), NULL),
-(3, 'READ', NOW(), NULL),
-(3, 'UPDATE', NOW(), NULL),
-(4, 'CREATE', NOW(), NULL),
-(4, 'READ', NOW(), NULL),
-(4, 'UPDATE', NOW(), NULL),
-(6, 'READ', NOW(), NULL),
-(6, 'CREATE', NOW(), NULL),
-(6, 'UPDATE', NOW(), NULL),
-(7, 'READ', NOW(), NULL),
-(7, 'CREATE', NOW(), NULL),
-(7, 'UPDATE', NOW(), NULL),
-(8, 'READ', NOW(), NULL),
-(9, 'READ', NOW(), NULL),
-(10, 'READ', NOW(), NULL);
+INSERT INTO user_permissions (user_id, permission, granted_at, granted_by) VALUES
+-- Admin - Full access to all resources
+(1, 'CREATE_STAFF', NOW(), NULL),
+(1, 'READ_STAFF', NOW(), NULL),
+(1, 'UPDATE_STAFF', NOW(), NULL),
+(1, 'DELETE_STAFF', NOW(), NULL),
+(1, 'CREATE_STUDENT', NOW(), NULL),
+(1, 'READ_STUDENT', NOW(), NULL),
+(1, 'UPDATE_STUDENT', NOW(), NULL),
+(1, 'DELETE_STUDENT', NOW(), NULL),
+(1, 'CREATE_BOOK', NOW(), NULL),
+(1, 'READ_BOOK', NOW(), NULL),
+(1, 'UPDATE_BOOK', NOW(), NULL),
+(1, 'DELETE_BOOK', NOW(), NULL),
+(1, 'CREATE_CLASS', NOW(), NULL),
+(1, 'READ_CLASS', NOW(), NULL),
+(1, 'UPDATE_CLASS', NOW(), NULL),
+(1, 'DELETE_CLASS', NOW(), NULL),
+(1, 'CREATE_GRADE', NOW(), NULL),
+(1, 'READ_GRADE', NOW(), NULL),
+(1, 'UPDATE_GRADE', NOW(), NULL),
+(1, 'DELETE_GRADE', NOW(), NULL),
+(1, 'CREATE_ATTENDANCE', NOW(), NULL),
+(1, 'READ_ATTENDANCE', NOW(), NULL),
+(1, 'UPDATE_ATTENDANCE', NOW(), NULL),
+(1, 'DELETE_ATTENDANCE', NOW(), NULL),
+(1, 'CREATE_FEE', NOW(), NULL),
+(1, 'READ_FEE', NOW(), NULL),
+(1, 'UPDATE_FEE', NOW(), NULL),
+(1, 'DELETE_FEE', NOW(), NULL),
+(1, 'PROCESS_PAYMENT', NOW(), NULL),
+(1, 'GENERATE_REPORT', NOW(), NULL),
+
+-- Principal (id=2) - Read and update access
+(2, 'READ_STAFF', NOW(), NULL),
+(2, 'UPDATE_STAFF', NOW(), NULL),
+(2, 'READ_STUDENT', NOW(), NULL),
+(2, 'UPDATE_STUDENT', NOW(), NULL),
+(2, 'READ_BOOK', NOW(), NULL),
+(2, 'READ_CLASS', NOW(), NULL),
+(2, 'UPDATE_CLASS', NOW(), NULL),
+(2, 'READ_GRADE', NOW(), NULL),
+(2, 'READ_ATTENDANCE', NOW(), NULL),
+(2, 'READ_FEE', NOW(), NULL),
+(2, 'GENERATE_REPORT', NOW(), NULL),
+
+-- Teachers (id=3,4,5) - Grade, Attendance, and Class permissions
+(3, 'CREATE_GRADE', NOW(), NULL),
+(3, 'READ_GRADE', NOW(), NULL),
+(3, 'UPDATE_GRADE', NOW(), NULL),
+(3, 'CREATE_ATTENDANCE', NOW(), NULL),
+(3, 'READ_ATTENDANCE', NOW(), NULL),
+(3, 'UPDATE_ATTENDANCE', NOW(), NULL),
+(3, 'READ_CLASS', NOW(), NULL),
+(3, 'READ_STUDENT', NOW(), NULL),
+(3, 'GENERATE_REPORT', NOW(), NULL),
+
+(4, 'CREATE_GRADE', NOW(), NULL),
+(4, 'READ_GRADE', NOW(), NULL),
+(4, 'UPDATE_GRADE', NOW(), NULL),
+(4, 'CREATE_ATTENDANCE', NOW(), NULL),
+(4, 'READ_ATTENDANCE', NOW(), NULL),
+(4, 'UPDATE_ATTENDANCE', NOW(), NULL),
+(4, 'READ_CLASS', NOW(), NULL),
+(4, 'READ_STUDENT', NOW(), NULL),
+(4, 'GENERATE_REPORT', NOW(), NULL),
+
+(5, 'CREATE_GRADE', NOW(), NULL),
+(5, 'READ_GRADE', NOW(), NULL),
+(5, 'UPDATE_GRADE', NOW(), NULL),
+(5, 'CREATE_ATTENDANCE', NOW(), NULL),
+(5, 'READ_ATTENDANCE', NOW(), NULL),
+(5, 'UPDATE_ATTENDANCE', NOW(), NULL),
+(5, 'READ_CLASS', NOW(), NULL),
+(5, 'READ_STUDENT', NOW(), NULL),
+(5, 'GENERATE_REPORT', NOW(), NULL),
+
+-- Librarian (id=6) - Book management permissions
+(6, 'CREATE_BOOK', NOW(), NULL),
+(6, 'READ_BOOK', NOW(), NULL),
+(6, 'UPDATE_BOOK', NOW(), NULL),
+(6, 'BORROW_BOOK', NOW(), NULL),
+(6, 'RETURN_BOOK', NOW(), NULL),
+
+-- Accountant (id=7) - Fee and payment permissions
+(7, 'READ_FEE', NOW(), NULL),
+(7, 'UPDATE_FEE', NOW(), NULL),
+(7, 'CREATE_FEE', NOW(), NULL),
+(7, 'PROCESS_PAYMENT', NOW(), NULL),
+
+-- Students (id=8,9,10) - Read-only access
+(8, 'READ_STUDENT', NOW(), NULL),
+(8, 'READ_GRADE', NOW(), NULL),
+(8, 'READ_BOOK', NOW(), NULL),
+(8, 'READ_FEE', NOW(), NULL),
+
+(9, 'READ_STUDENT', NOW(), NULL),
+(9, 'READ_GRADE', NOW(), NULL),
+(9, 'READ_BOOK', NOW(), NULL),
+(9, 'READ_FEE', NOW(), NULL),
+
+(10, 'READ_STUDENT', NOW(), NULL),
+(10, 'READ_GRADE', NOW(), NULL),
+(10, 'READ_BOOK', NOW(), NULL),
+(10, 'READ_FEE', NOW(), NULL);
 
 -- =====================================================
--- DATA IMPORT COMPLETE
+-- DATA IMPORT COMPLETE - All data deleted and reinserted
 -- =====================================================
 -- Total: 13 users, 6 staff, 6 students, 4 classes, 8 books
 -- Attendance: 15 records, Grades: 9 records, Fees: 7 records
--- Book Transactions: 6 records, Permissions: 40+ records
+-- Book Transactions: 6 records, Permissions: 21+ records
 -- All passwords: Test@123
+-- Database: PostgreSQL (Aiven Cloud)
+-- Status: All old data deleted, new data inserted
 -- =====================================================
 

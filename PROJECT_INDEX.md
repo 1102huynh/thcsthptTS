@@ -1,14 +1,119 @@
-# 📚 COMPLETE PROJECT INDEX & QUICK NAVIGATION
+# 🏫 School Management System
 
-## 🎯 YOUR SCHOOL MANAGEMENT SYSTEM
+A comprehensive full-stack application for managing school operations built with Spring Boot backend and React frontend.
 
-**Location**: `D:\learn\thcsthptTS\`
+## 🚀 Quick Start
+
+1. **Backend Setup** - See [`backend/QUICKSTART.md`](./backend/QUICKSTART.md)
+2. **Frontend Setup** - See [`frontend/QUICKSTART.md`](./frontend/QUICKSTART.md)
+3. **Database Setup** - See [`backend/DATABASE_SETUP_INDEX.md`](./backend/DATABASE_SETUP_INDEX.md)
+
+## 📁 Project Structure
+
+```
+thcsthptTS/
+├── backend/           # Spring Boot API
+│   ├── src/           # Java source code
+│   ├── pom.xml        # Maven dependencies
+│   └── *.md          # Backend documentation
+├── frontend/          # React application
+│   ├── src/           # React source code
+│   ├── package.json   # NPM dependencies
+│   └── *.md          # Frontend documentation
+└── *.bat             # Quick start scripts
+```
+
+## 🔧 Technology Stack
+
+### Backend
+- **Java 17** with Spring Boot 3.1.5
+- **Spring Security** with JWT authentication
+- **PostgreSQL** database (Aiven Cloud)
+- **Maven** for dependency management
+- **Swagger/OpenAPI** for API documentation
+
+### Frontend
+- **React 18** with TypeScript
+- **Material-UI** for components
+- **Axios** for HTTP requests
+- **React Router** for navigation
+- **NPM** for package management
+
+## 📋 Features
+
+- 🔐 **Authentication & Authorization** - JWT-based security
+- 👥 **User Management** - Admin, Principal, Teachers, Students
+- 🏛️ **Staff Management** - Employee records and roles
+- 🎓 **Student Management** - Student profiles and academic records
+- 📚 **Library Management** - Book catalog and borrowing system
+- 📊 **Attendance Tracking** - Daily attendance management
+- 🎯 **Grade Management** - Student grades and assessments
+- 💰 **Fee Management** - Fee collection and payment tracking
+- 📈 **Reports** - Various academic and administrative reports
+
+## 🎯 Quick Actions
+
+### Start the Application
+```bash
+# Start backend
+cd backend
+mvn spring-boot:run
+
+# Start frontend (in another terminal)
+cd frontend
+npm start
+```
+
+### Import Test Data
+```bash
+# Import sample data to PostgreSQL
+psql -U avnadmin -h school-clinicbooking.c.aivencloud.com -p 14143 -d defaultdb -f backend/TEST_DATA_CORRECTED.sql
+```
+
+### Test Login
+- **URL:** http://localhost:3000
+- **Admin:** admin / Test@123
+- **Principal:** principal / Test@123
+- **Teacher:** teacher1 / Test@123
+
+## 📚 Documentation
+
+| Component | Documentation |
+|-----------|--------------|
+| **Backend API** | [`backend/README.md`](./backend/README.md) |
+| **Database Setup** | [`backend/DATABASE_SETUP_INDEX.md`](./backend/DATABASE_SETUP_INDEX.md) |
+| **API Testing** | [`backend/API_TESTING_GUIDE.md`](./backend/API_TESTING_GUIDE.md) |
+| **Architecture** | [`backend/ARCHITECTURE.md`](./backend/ARCHITECTURE.md) |
+| **Frontend App** | [`frontend/README.md`](./frontend/README.md) |
+| **Development** | [`backend/DEVELOPMENT_GUIDE.md`](./backend/DEVELOPMENT_GUIDE.md) |
+
+## 🌐 Application URLs
+
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:8080/api
+- **Swagger UI:** http://localhost:8080/api/swagger-ui.html
+- **API Docs:** http://localhost:8080/api/v3/api-docs
+
+## 🗄️ Database
+
+- **Type:** PostgreSQL (Aiven Cloud)
+- **Host:** school-clinicbooking.c.aivencloud.com
+- **Port:** 14143
+- **Database:** defaultdb
+- **Test Data:** `backend/TEST_DATA_CORRECTED.sql`
+
+## 🚦 Status
+
+✅ **Backend:** Fully functional with JWT authentication  
+✅ **Database:** PostgreSQL configured with test data  
+✅ **Frontend:** React dashboard with login  
+✅ **Documentation:** Clean and organized
 
 ---
 
-## 📁 PROJECT FOLDERS
-
-### Backend (Java Spring Boot)
+**Last Updated:** November 17, 2025  
+**Version:** 1.0.0  
+**Status:** Production Ready
 **Folder**: `D:\learn\thcsthptTS\backend\`
 
 #### Quick Start
