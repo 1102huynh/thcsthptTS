@@ -30,7 +30,7 @@ public class StudentController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('PRINCIPAL')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('PRINCIPAL') or (hasRole('STUDENT') and @studentService.isStudentOwnRecord(#id, authentication.principal.username))")
     @Operation(summary = "Update student")
     public ResponseEntity<StudentDTO> updateStudent(@PathVariable Long id, @RequestBody Student studentDetails) {
         StudentDTO updatedStudent = studentService.updateStudent(id, studentDetails);
@@ -42,6 +42,14 @@ public class StudentController {
     @Operation(summary = "Get student by ID")
     public ResponseEntity<StudentDTO> getStudentById(@PathVariable Long id) {
         StudentDTO student = studentService.getStudentById(id);
+        return new ResponseEntity<>(student, HttpStatus.OK);
+    }
+
+    @GetMapping("/user/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT')")
+    @Operation(summary = "Get student by user ID")
+    public ResponseEntity<StudentDTO> getStudentByUserId(@PathVariable Long userId) {
+        StudentDTO student = studentService.getStudentByUserId(userId);
         return new ResponseEntity<>(student, HttpStatus.OK);
     }
 

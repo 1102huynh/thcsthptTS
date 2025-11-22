@@ -5,6 +5,7 @@ import {
   FiMessageSquare, FiHelpCircle, FiCalendar, FiClipboard, FiTrendingUp,
   FiClock, FiDownload, FiUpload, FiSearch, FiFlag
 } from 'react-icons/fi';
+import { studentService } from '../services/dataService';
 import '../styles/StudentPortal.css';
 
 // Dashboard Tab
@@ -134,53 +135,260 @@ function DashboardTab({ user }) {
 
 // Profile Tab
 function ProfileTab({ user }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [studentId, setStudentId] = useState(null);
+  const [profileData, setProfileData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
+    dateOfBirth: '',
+    gender: '',
+    fatherName: '',
+    fatherPhone: '',
+    motherName: '',
+    motherPhone: ''
+  });
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [showErrorAlert, setShowErrorAlert] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Load student data on component mount
+  React.useEffect(() => {
+    const loadStudentData = async () => {
+      try {
+        if (user?.userId) {
+          const response = await studentService.getByUserId(user.userId);
+          const student = response.data;
+          setStudentId(student.id);
+
+          // Map student data to profile data - NO HARDCODED DEFAULTS
+          setProfileData({
+            firstName: student.user?.firstName || '',
+            lastName: student.user?.lastName || '',
+            email: student.user?.email || '',
+            phone: student.user?.phoneNumber || '',
+            address: student.address || '',
+            dateOfBirth: student.dateOfBirth || '',
+            gender: student.gender || '',
+            fatherName: student.fatherName || '',
+            fatherPhone: student.fatherPhone || '',
+            motherName: student.motherName || '',
+            motherPhone: student.motherPhone || ''
+          });
+        }
+      } catch (error) {
+        console.error('Error loading student data:', error);
+        setErrorMessage('Failed to load student profile');
+        setShowErrorAlert(true);
+      }
+    };
+
+    loadStudentData();
+  }, [user]);
+
+  const handleInputChange = (field, value) => {
+    setProfileData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSave = async () => {
+    try {
+      if (!studentId) {
+        setErrorMessage('Student ID not found');
+        setShowErrorAlert(true);
+        return;
+      }
+
+      // Prepare the data to send to backend
+      const updateData = {
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        dateOfBirth: profileData.dateOfBirth,
+        gender: profileData.gender,
+        address: profileData.address,
+        fatherName: profileData.fatherName,
+        fatherPhone: profileData.fatherPhone,
+        motherName: profileData.motherName,
+        motherPhone: profileData.motherPhone,
+        user: {
+          firstName: profileData.firstName,
+          lastName: profileData.lastName
+        }
+      };
+
+      console.log("=== FRONTEND SAVE DEBUG ===");
+      console.log("Student ID:", studentId);
+      console.log("Data being sent to backend:");
+      console.log(updateData);
+      console.log("Calling API: PUT /api/v1/students/" + studentId);
+
+      const response = await studentService.update(studentId, updateData);
+
+      console.log("API response received:");
+      console.log(response.data);
+
+      // Reload the profile data from server to ensure sync
+      const reloadResponse = await studentService.getByUserId(user.userId);
+      const student = reloadResponse.data;
+
+      console.log("Reloaded student data from server:");
+      console.log(student);
+
+      // Update the form with fresh data from server - NO HARDCODED DEFAULTS
+      setProfileData({
+        firstName: student.user?.firstName || '',
+        lastName: student.user?.lastName || '',
+        email: student.user?.email || '',
+        phone: student.user?.phoneNumber || '',
+        address: student.address || '',
+        dateOfBirth: student.dateOfBirth || '',
+        gender: student.gender || '',
+        fatherName: student.fatherName || '',
+        fatherPhone: student.fatherPhone || '',
+        motherName: student.motherName || '',
+        motherPhone: student.motherPhone || ''
+      });
+
+      console.log("=== END SAVE DEBUG ===\n");
+
+      setIsEditing(false);
+      setShowSuccessAlert(true);
+      setTimeout(() => setShowSuccessAlert(false), 3000);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      setErrorMessage(error.response?.data?.message || 'Failed to save profile. Please try again.');
+      setShowErrorAlert(true);
+      setTimeout(() => setShowErrorAlert(false), 3000);
+    }
+  };
+
+  const handleCancel = () => {
+    // Reset form data - you may want to reload from server
+    setIsEditing(false);
+  };
+
   return (
     <div className="tab-content py-4">
+      {showSuccessAlert && (
+        <Alert variant="success" className="mb-3">
+          <FiCheckCircle className="me-2" />
+          Profile updated successfully!
+        </Alert>
+      )}
+      {showErrorAlert && (
+        <Alert variant="danger" className="mb-3" onClose={() => setShowErrorAlert(false)} dismissible>
+          <strong>Error:</strong> {errorMessage}
+        </Alert>
+      )}
+
       <Row>
         <Col lg={8}>
           <Card className="content-card">
-            <Card.Header className="bg-light">
+            <Card.Header className="bg-light d-flex justify-content-between align-items-center">
               <Card.Title className="mb-0">Personal Information</Card.Title>
+              <div>
+                {isEditing ? (
+                  <>
+                    <Button variant="success" size="sm" className="me-2" onClick={handleSave}>
+                      <FiCheckCircle className="me-1" /> Save
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={handleCancel}>
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="primary" size="sm" onClick={() => setIsEditing(true)}>
+                    <FiUser className="me-1" /> Edit Profile
+                  </Button>
+                )}
+              </div>
             </Card.Header>
             <Card.Body>
               <Row>
                 <Col md={6} className="mb-3">
-                  <label className="text-muted small">First Name</label>
-                  <p className="fw-bold">{user?.firstName || 'Student'}</p>
+                  <label className="text-secondary small fw-semibold">First Name</label>
+                  {isEditing ? (
+                    <Form.Control
+                      type="text"
+                      value={profileData.firstName}
+                      onChange={(e) => handleInputChange('firstName', e.target.value)}
+                    />
+                  ) : (
+                    <p className="fw-bold text-dark">{profileData.firstName}</p>
+                  )}
                 </Col>
                 <Col md={6} className="mb-3">
-                  <label className="text-muted small">Last Name</label>
-                  <p className="fw-bold">{user?.lastName || 'Name'}</p>
-                </Col>
-              </Row>
-              <Row>
-                <Col md={6} className="mb-3">
-                  <label className="text-muted small">Student ID</label>
-                  <p className="fw-bold">STU001</p>
-                </Col>
-                <Col md={6} className="mb-3">
-                  <label className="text-muted small">Email</label>
-                  <p className="fw-bold">{user?.email || 'student@school.com'}</p>
-                </Col>
-              </Row>
-              <Row>
-                <Col md={6} className="mb-3">
-                  <label className="text-muted small">Class</label>
-                  <p className="fw-bold">10A</p>
-                </Col>
-                <Col md={6} className="mb-3">
-                  <label className="text-muted small">Roll Number</label>
-                  <p className="fw-bold">025</p>
+                  <label className="text-secondary small fw-semibold">Last Name</label>
+                  {isEditing ? (
+                    <Form.Control
+                      type="text"
+                      value={profileData.lastName}
+                      onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    />
+                  ) : (
+                    <p className="fw-bold text-dark">{profileData.lastName}</p>
+                  )}
                 </Col>
               </Row>
               <Row>
                 <Col md={6} className="mb-3">
-                  <label className="text-muted small">Date of Birth</label>
-                  <p className="fw-bold">January 15, 2009</p>
+                  <label className="text-secondary small fw-semibold">Student ID</label>
+                  <p className="fw-bold text-dark">STU001 <small className="text-muted">(Cannot be changed)</small></p>
                 </Col>
                 <Col md={6} className="mb-3">
-                  <label className="text-muted small">Gender</label>
-                  <p className="fw-bold">Male</p>
+                  <label className="text-secondary small fw-semibold">Email</label>
+                  {isEditing ? (
+                    <Form.Control
+                      type="email"
+                      value={profileData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                    />
+                  ) : (
+                    <p className="fw-bold text-dark">{profileData.email}</p>
+                  )}
+                </Col>
+              </Row>
+              <Row>
+                <Col md={6} className="mb-3">
+                  <label className="text-secondary small fw-semibold">Class</label>
+                  <p className="fw-bold text-dark">10A <small className="text-muted">(Cannot be changed)</small></p>
+                </Col>
+                <Col md={6} className="mb-3">
+                  <label className="text-secondary small fw-semibold">Roll Number</label>
+                  <p className="fw-bold text-dark">025 <small className="text-muted">(Cannot be changed)</small></p>
+                </Col>
+              </Row>
+              <Row>
+                <Col md={6} className="mb-3">
+                  <label className="text-secondary small fw-semibold">Date of Birth</label>
+                  {isEditing ? (
+                    <Form.Control
+                      type="date"
+                      value={profileData.dateOfBirth}
+                      onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                    />
+                  ) : (
+                    <p className="fw-bold text-dark">{new Date(profileData.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  )}
+                </Col>
+                <Col md={6} className="mb-3">
+                  <label className="text-secondary small fw-semibold">Gender</label>
+                  {isEditing ? (
+                    <Form.Select
+                      value={profileData.gender}
+                      onChange={(e) => handleInputChange('gender', e.target.value)}
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </Form.Select>
+                  ) : (
+                    <p className="fw-bold text-dark">{profileData.gender}</p>
+                  )}
                 </Col>
               </Row>
             </Card.Body>
@@ -193,13 +401,31 @@ function ProfileTab({ user }) {
               <Card.Title className="mb-0">Contact Information</Card.Title>
             </Card.Header>
             <Card.Body>
-              <div className="mb-2">
-                <small className="text-muted">Phone</small>
-                <p className="fw-bold">+84 900 123 456</p>
+              <div className="mb-3">
+                <small className="text-secondary fw-semibold">Phone</small>
+                {isEditing ? (
+                  <Form.Control
+                    type="tel"
+                    value={profileData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    placeholder="+84 900 123 456"
+                  />
+                ) : (
+                  <p className="fw-bold text-dark">{profileData.phone}</p>
+                )}
               </div>
               <div className="mb-2">
-                <small className="text-muted">Address</small>
-                <p className="fw-bold">123 Main Street, City</p>
+                <small className="text-secondary fw-semibold">Address</small>
+                {isEditing ? (
+                  <Form.Control
+                    as="textarea"
+                    rows={2}
+                    value={profileData.address}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
+                  />
+                ) : (
+                  <p className="fw-bold text-dark">{profileData.address}</p>
+                )}
               </div>
             </Card.Body>
           </Card>
@@ -209,13 +435,53 @@ function ProfileTab({ user }) {
               <Card.Title className="mb-0">Parent Information</Card.Title>
             </Card.Header>
             <Card.Body>
-              <div className="mb-2">
-                <small className="text-muted">Father's Name</small>
-                <p className="fw-bold">Mr. Parent Name</p>
+              <div className="mb-3">
+                <small className="text-secondary fw-semibold">Father's Name</small>
+                {isEditing ? (
+                  <Form.Control
+                    type="text"
+                    value={profileData.fatherName}
+                    onChange={(e) => handleInputChange('fatherName', e.target.value)}
+                  />
+                ) : (
+                  <p className="fw-bold text-dark">{profileData.fatherName}</p>
+                )}
+              </div>
+              <div className="mb-3">
+                <small className="text-secondary fw-semibold">Father's Phone</small>
+                {isEditing ? (
+                  <Form.Control
+                    type="tel"
+                    value={profileData.fatherPhone}
+                    onChange={(e) => handleInputChange('fatherPhone', e.target.value)}
+                  />
+                ) : (
+                  <p className="fw-bold text-dark">{profileData.fatherPhone}</p>
+                )}
+              </div>
+              <div className="mb-3">
+                <small className="text-secondary fw-semibold">Mother's Name</small>
+                {isEditing ? (
+                  <Form.Control
+                    type="text"
+                    value={profileData.motherName}
+                    onChange={(e) => handleInputChange('motherName', e.target.value)}
+                  />
+                ) : (
+                  <p className="fw-bold text-dark">{profileData.motherName}</p>
+                )}
               </div>
               <div>
-                <small className="text-muted">Father's Phone</small>
-                <p className="fw-bold">+84 900 000 001</p>
+                <small className="text-secondary fw-semibold">Mother's Phone</small>
+                {isEditing ? (
+                  <Form.Control
+                    type="tel"
+                    value={profileData.motherPhone}
+                    onChange={(e) => handleInputChange('motherPhone', e.target.value)}
+                  />
+                ) : (
+                  <p className="fw-bold text-dark">{profileData.motherPhone}</p>
+                )}
               </div>
             </Card.Body>
           </Card>

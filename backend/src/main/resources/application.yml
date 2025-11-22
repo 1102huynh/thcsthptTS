@@ -2,42 +2,42 @@ spring:
   application:
     name: school-management-system
 
-  # MySQL Configuration (commented out - using PostgreSQL instead)
-  # datasource:
-  #   url: jdbc:mysql://localhost:3306/school_management?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-  #   username: root
-  #   password: root
-  #   driver-class-name: com.mysql.cj.jdbc.Driver
-  #
-  # jpa:
-  #   hibernate:
-  #     ddl-auto: update
-  #   properties:
-  #     hibernate:
-  #       dialect: org.hibernate.dialect.MySQL8Dialect
-  #       format_sql: true
-  #   show-sql: false
-  #   open-in-view: false
-
-  # PostgreSQL Configuration (Aiven Cloud)
+  # MySQL Configuration (active)
   datasource:
-    url: jdbc:postgresql://school-clinicbooking.c.aivencloud.com:14143/defaultdb?sslmode=require
-    username: avnadmin
-    password: <your_password_here>
-    driver-class-name: org.postgresql.Driver
-    hikari:
-      ssl: true
-      ssl-mode: require
+    url: jdbc:mysql://localhost:3306/school_management?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
     show-sql: false
     open-in-view: false
+
+  # PostgreSQL Configuration (Aiven Cloud) - commented out
+#  datasource:
+#    url: jdbc:postgresql://school-clinicbooking.c.aivencloud.com:14143/defaultdb?sslmode=require
+#    username: avnadmin
+#    password:
+#    driver-class-name: org.postgresql.Driver
+#    hikari:
+#      ssl: true
+#      ssl-mode: require
+#
+#  jpa:
+#    hibernate:
+#      ddl-auto: update
+#    properties:
+#      hibernate:
+#        dialect: org.hibernate.dialect.PostgreSQLDialect
+#        format_sql: true
+#    show-sql: false
+#    open-in-view: false
 
   jackson:
     serialization:

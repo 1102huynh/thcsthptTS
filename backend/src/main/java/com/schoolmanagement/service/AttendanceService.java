@@ -86,7 +86,7 @@ public class AttendanceService {
 
     public long getAbsenceDays(Long studentId, LocalDate startDate, LocalDate endDate) {
         List<Attendance> attendances = getStudentAttendanceBetweenDates(studentId, startDate, endDate);
-        return attendances.stream(
+        return attendances.stream()
                 .filter(a -> a.getStatus() == AttendanceStatus.ABSENT)
                 .count();
     }
