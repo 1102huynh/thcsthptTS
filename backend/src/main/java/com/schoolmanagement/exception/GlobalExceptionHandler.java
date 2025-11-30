@@ -43,6 +43,20 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ApiError> handleUnauthorizedException(
+            UnauthorizedException ex,
+            HttpServletRequest request) {
+        ApiError error = ApiError.builder()
+                .status("FORBIDDEN")
+                .message(ex.getMessage())
+                .code(403)
+                .path(request.getRequestURI())
+                .timestamp(LocalDateTime.now())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiError> handleBadCredentialsException(
             BadCredentialsException ex,

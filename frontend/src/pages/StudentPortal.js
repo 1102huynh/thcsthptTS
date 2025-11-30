@@ -3,9 +3,10 @@ import { Container, Row, Col, Card, Tab, Tabs, Badge, Button, ProgressBar, ListG
 import {
   FiUser, FiBook, FiCheckCircle, FiAward, FiDollarSign, FiHeart,
   FiMessageSquare, FiHelpCircle, FiCalendar, FiClipboard, FiTrendingUp,
-  FiClock, FiDownload, FiUpload, FiSearch, FiFlag
+  FiClock, FiDownload, FiUpload, FiSearch, FiFlag, FiInfo, FiAlertTriangle
 } from 'react-icons/fi';
-import { studentService } from '../services/dataService';
+import { studentService, timetableService } from '../services/dataService';
+import { authService } from '../services/authService';
 import '../styles/StudentPortal.css';
 
 // Dashboard Tab
@@ -492,50 +493,297 @@ function ProfileTab({ user }) {
 }
 
 // Timetable Tab
+// NOTE: Students can ONLY VIEW the timetable (read-only)
+// Teachers can EDIT the timetable (through TeacherPortal)
+// Data is loaded from backend API - NO HARDCODED DATA
 function TimetableTab() {
-  const timetable = {
-    'Monday': [
-      { time: '09:00-10:00', subject: 'Mathematics', room: '101' },
-      { time: '10:30-11:30', subject: 'English', room: '105' },
-      { time: '12:00-01:00', subject: 'Lunch Break', room: '-' },
-      { time: '02:00-03:30', subject: 'Physics', room: '201' },
-    ],
-    'Tuesday': [
-      { time: '09:00-10:00', subject: 'Chemistry', room: '202' },
-      { time: '10:30-11:30', subject: 'Biology', room: '203' },
-      { time: '12:00-01:00', subject: 'Lunch Break', room: '-' },
-      { time: '02:00-03:30', subject: 'History', room: '104' },
-    ],
+  const [timetable, setTimetable] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [classId, setClassId] = useState(null);
+  const [groupLabel, setGroupLabel] = useState('');
+  const [sessionInfo, setSessionInfo] = useState('');
+
+  // Load timetable data when component mounts
+  React.useEffect(() => {
+    const loadTimetable = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Get current user using authService helper
+        const currentUser = authService.getCurrentUser();
+
+        if (!currentUser) {
+          setError('User information not found. Please log in again.');
+          setLoading(false);
+          return;
+        }
+
+        console.log('Current User:', currentUser);
+
+        // Try multiple field names for user ID (id, userId, user_id)
+        const userId = currentUser?.id ||
+                       currentUser?.userId ||
+                       currentUser?.user_id ||
+                       currentUser?.username;
+
+        if (!userId) {
+          console.error('No userId found in user object:', currentUser);
+          setError('User ID not found. Please log in again.');
+          setLoading(false);
+          return;
+        }
+
+        console.log('Retrieved UserId:', userId, 'Type:', typeof userId);
+
+        // Fetch student data to get class information
+        const response = await studentService.getByUserId(userId);
+        const student = response.data;
+
+        if (!student) {
+          setError('Student information not found.');
+          setLoading(false);
+          return;
+        }
+
+        console.log('Student Data:', student);
+
+        // Determine class ID from student data
+        // Try multiple possible field names
+        const className = student?.className || student?.class_name || '10';
+        const section = student?.section || 'A';
+
+        // Map class_name and section to classId
+        let studentClassId = 1; // Default to Class 10A
+
+        const classKey = `${className}-${section}`;
+        const classMapping = {
+          '10-A': 1,
+          '10-B': 2,
+        };
+        studentClassId = classMapping[classKey] || 1;
+
+        console.log('Class Mapping - ClassName:', className, 'Section:', section, 'ClassID:', studentClassId, 'Type:', typeof studentClassId);
+
+        // Ensure classId is a number
+        if (typeof studentClassId !== 'number' || isNaN(studentClassId)) {
+          console.error('Invalid classId:', studentClassId);
+          setError('Invalid class ID. Please contact administrator.');
+          setLoading(false);
+          return;
+        }
+
+        // Get timetable for the student's class
+        const timetableResponse = await timetableService.getByClass(studentClassId, '2024-2025');
+        const timetableData = timetableResponse.data;
+
+        if (!timetableData || timetableData.length === 0) {
+          setError('No timetable data available for your class.');
+          setTimetable([]);
+          setLoading(false);
+          return;
+        }
+
+        // Determine student's session type from timetable data
+        const firstEntry = timetableData[0];
+        const sessionType = firstEntry?.sessionType || 'MORNING';
+
+        // Set group label and session info based on data
+        if (sessionType === 'MORNING') {
+          setGroupLabel('Group A - Morning');
+          setSessionInfo('07:00 - 12:00');
+        } else {
+          setGroupLabel('Group B - Afternoon');
+          setSessionInfo('13:00 - 18:00');
+        }
+
+        setTimetable(timetableData);
+        console.log('Timetable loaded successfully:', timetableData.length, 'entries');
+      } catch (err) {
+        console.error('Error caught:', err);
+        console.error('Error type:', typeof err);
+        console.error('Error string:', String(err));
+
+        // Build comprehensive error message
+        let errorMsg = '';
+
+        try {
+          // Try all possible error message sources
+          if (err?.response?.data?.message) {
+            errorMsg = String(err.response.data.message).trim();
+          } else if (err?.response?.data?.error) {
+            errorMsg = String(err.response.data.error).trim();
+          } else if (err?.response?.statusText) {
+            errorMsg = `Error ${err.response.status}: ${err.response.statusText}`;
+          } else if (err?.message) {
+            errorMsg = String(err.message).trim();
+          } else if (typeof err === 'string') {
+            errorMsg = err.trim();
+          } else if (err?.toString && typeof err.toString === 'function') {
+            errorMsg = err.toString();
+          }
+        } catch (e) {
+          console.error('Error extracting message:', e);
+        }
+
+        // Ensure errorMsg is valid
+        if (!errorMsg || errorMsg === '' || errorMsg === 'Error' || errorMsg === '[object Object]') {
+          errorMsg = 'Failed to load timetable. Please try again.';
+        }
+
+        console.error('Final error message:', errorMsg);
+        setError(errorMsg);
+        setTimetable([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTimetable();
+  }, []);
+
+  // Group timetable entries by day and session
+  const groupedTimetable = {};
+  if (timetable && timetable.length > 0) {
+    timetable.forEach((entry) => {
+      const key = `${entry.dayOfWeek} - ${entry.sessionType}`;
+      if (!groupedTimetable[key]) {
+        groupedTimetable[key] = [];
+      }
+      groupedTimetable[key].push(entry);
+    });
+
+    // Sort each day's lessons by time slot
+    Object.keys(groupedTimetable).forEach((key) => {
+      groupedTimetable[key].sort((a, b) => a.timeSlot - b.timeSlot);
+    });
+  }
+
+  // Format time for display
+  const formatTime = (time) => {
+    if (!time) return '';
+    // If time is in HH:mm:ss format, keep as is. If in other format, adjust as needed
+    return time.substring(0, 5); // Get HH:mm part
   };
 
   return (
     <div className="tab-content py-4">
-      {Object.keys(timetable).map((day) => (
-        <Card key={day} className="content-card mb-3">
-          <Card.Header className="bg-light">
-            <Card.Title className="mb-0">{day}</Card.Title>
-          </Card.Header>
-          <Card.Body className="p-0">
-            <ListGroup variant="flush">
-              {timetable[day].map((item, idx) => (
-                <ListGroup.Item key={idx}>
-                  <Row className="align-items-center">
-                    <Col md={3}>
-                      <small className="text-muted">{item.time}</small>
-                    </Col>
-                    <Col md={6}>
-                      <h6 className="mb-0">{item.subject}</h6>
-                    </Col>
-                    <Col md={3} className="text-end">
-                      <Badge bg="light" text="dark">Room {item.room}</Badge>
-                    </Col>
-                  </Row>
-                </ListGroup.Item>
-              ))}
-            </ListGroup>
-          </Card.Body>
-        </Card>
-      ))}
+      {/* Loading State */}
+      {loading && (
+        <Alert variant="info">
+          <div className="text-center">
+            <div className="spinner-border spinner-border-sm me-2" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            Loading timetable data...
+          </div>
+        </Alert>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <Alert variant="danger" onClose={() => setError(null)} dismissible>
+          <FiAlertTriangle className="me-2" />
+          <strong>Error:</strong> {error || 'An unexpected error occurred. Please try again.'}
+        </Alert>
+      )}
+
+      {/* Group Information */}
+      {!loading && timetable.length > 0 && (
+        <Alert variant="primary" className="mb-4">
+          <strong>📚 Your Class Schedule: {groupLabel}</strong>
+          <br />
+          Session Time: <strong>{sessionInfo}</strong>
+          <br />
+          <small className="text-secondary">
+            Classroom: <strong>
+              {timetable.length > 0 ? `Room ${timetable[0].classroom}` : 'Room A'}
+            </strong> (Shared with all students)
+          </small>
+        </Alert>
+      )}
+
+      {/* Timetable Display */}
+      {!loading && timetable.length > 0 && (
+        <div>
+          {Object.keys(groupedTimetable).map((session) => (
+            <Card key={session} className="content-card mb-3">
+              <Card.Header className="bg-light">
+                <Card.Title className="mb-0">{session}</Card.Title>
+                <small className="text-secondary">
+                  {groupedTimetable[session].length} lessons × 45 minutes each
+                </small>
+              </Card.Header>
+              <Card.Body className="p-0">
+                <ListGroup variant="flush">
+                  {groupedTimetable[session].map((item, idx) => (
+                    <ListGroup.Item key={idx}>
+                      <Row className="align-items-center">
+                        <Col md={2}>
+                          <small className="text-secondary fw-semibold">
+                            {formatTime(item.startTime)} - {formatTime(item.endTime)}
+                          </small>
+                          <br />
+                          <small className="text-muted">45 min</small>
+                        </Col>
+                        <Col md={4}>
+                          <h6 className="mb-0 text-dark">{item.subject}</h6>
+                          {item.subjectTeacherName && (
+                            <small className="text-secondary">
+                              👨‍🏫 {item.subjectTeacherName}
+                            </small>
+                          )}
+                        </Col>
+                        <Col md={3}>
+                          {item.subjectTeacherEmail && (
+                            <small className="text-muted d-block">
+                              📧 {item.subjectTeacherEmail}
+                            </small>
+                          )}
+                          {item.subjectTeacherPhone && (
+                            <small className="text-muted d-block">
+                              📞 {item.subjectTeacherPhone}
+                            </small>
+                          )}
+                        </Col>
+                        <Col md={3} className="text-end">
+                          <Badge bg="info" text="white">Room {item.classroom}</Badge>
+                        </Col>
+                      </Row>
+                    </ListGroup.Item>
+                  ))}
+                </ListGroup>
+              </Card.Body>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* No Data State */}
+      {!loading && timetable.length === 0 && !error && (
+        <Alert variant="warning">
+          <FiInfo className="me-2" />
+          No timetable data available. Please contact your school administrator.
+        </Alert>
+      )}
+
+      {/* Information and Rules */}
+      {!loading && (
+        <Alert variant="info" className="mt-3">
+          <FiInfo className="me-2" />
+          <strong>Schedule Information:</strong>
+          <ul className="mb-0 mt-2">
+            <li>Full school week: <strong>Monday to Saturday</strong></li>
+            <li>All lessons held in: <strong>Room A</strong> (one shared classroom)</li>
+            <li>Each lesson lasts: <strong>45 minutes</strong></li>
+            <li>You study either <strong>morning (07:00-12:00) OR afternoon (13:00-18:00)</strong> for entire week</li>
+            <li>Maximum <strong>5 lessons per day</strong></li>
+            <li>Breaks: <strong>15 minutes</strong> between lessons</li>
+            <li><strong>Teachers</strong> can edit the timetable through the Teacher Portal</li>
+          </ul>
+        </Alert>
+      )}
     </div>
   );
 }

@@ -60,6 +60,53 @@ export const feeService = {
   getTotalDues: (studentId) => api.get(`/v1/fees/student/${studentId}/total-dues`),
 };
 
+// Timetable Service
+export const timetableService = {
+  getByClass: (classId, academicYear = '2024-2025') => {
+    // Ensure classId is a number
+    const numericClassId = Number(classId);
+    if (isNaN(numericClassId)) {
+      throw new Error('Invalid classId provided');
+    }
+    return api.get(`/v1/timetables/class/${numericClassId}?academicYear=${academicYear}`);
+  },
+  getByDay: (classId, dayOfWeek, academicYear = '2024-2025') => {
+    const numericClassId = Number(classId);
+    if (isNaN(numericClassId)) {
+      throw new Error('Invalid classId provided');
+    }
+    return api.get(`/v1/timetables/class/${numericClassId}/day/${dayOfWeek}?academicYear=${academicYear}`);
+  },
+  getBySession: (classId, dayOfWeek, sessionType, academicYear = '2024-2025') => {
+    const numericClassId = Number(classId);
+    if (isNaN(numericClassId)) {
+      throw new Error('Invalid classId provided');
+    }
+    return api.get(`/v1/timetables/class/${numericClassId}/day/${dayOfWeek}/session/${sessionType}?academicYear=${academicYear}`);
+  },
+  create: (classId, data) => {
+    const numericClassId = Number(classId);
+    if (isNaN(numericClassId)) {
+      throw new Error('Invalid classId provided');
+    }
+    return api.post(`/v1/timetables/class/${numericClassId}`, data);
+  },
+  update: (timetableId, data) => {
+    const numericId = Number(timetableId);
+    if (isNaN(numericId)) {
+      throw new Error('Invalid timetableId provided');
+    }
+    return api.put(`/v1/timetables/${numericId}`, data);
+  },
+  delete: (timetableId) => {
+    const numericId = Number(timetableId);
+    if (isNaN(numericId)) {
+      throw new Error('Invalid timetableId provided');
+    }
+    return api.delete(`/v1/timetables/${numericId}`);
+  },
+};
+
 export default {
   staffService,
   studentService,
@@ -67,5 +114,6 @@ export default {
   attendanceService,
   gradeService,
   feeService,
+  timetableService,
 };
 

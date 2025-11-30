@@ -14,23 +14,93 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
+
+    console.log('API Request:', {
+      method: config.method,
+      url: config.url,
+      hasToken: !!token,
+      tokenLength: token ? token.length : 0,
+      tokenPrefix: token ? token.substring(0, 20) + '...' : 'NO TOKEN',
+    });
+
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      // Ensure token has Bearer prefix
+      const bearerToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      config.headers.Authorization = bearerToken;
+      console.log('Authorization header set:', bearerToken.substring(0, 30) + '...');
+    } else {
+      console.warn('NO TOKEN FOUND IN LOCALSTORAGE - Request will be unauthorized!');
+      console.log('Available localStorage keys:', Object.keys(localStorage));
     }
+
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error('Request interceptor error:', error);
+    return Promise.reject(error);
+  }
 );
 
 // Handle responses
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('API Response Success:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: response.config.url,
+      dataLength: JSON.stringify(response.data).length,
+    });
+    return response;
+  },
   (error) => {
+    // Log full error for debugging
+    console.error('API Error Response:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      method: error.config?.method,
+      authHeader: error.config?.headers?.Authorization ? 'Present' : 'MISSING',
+      data: error.response?.data,
+      message: error.message,
+      errorString: String(error),
+    });
+
+    // If 401 and no auth header was sent, the problem is token not being sent
     if (error.response?.status === 401) {
+      const hadAuthHeader = error.config?.headers?.Authorization ? 'Yes' : 'No';
+      console.error(`⚠️  401 Unauthorized - Auth header was ${hadAuthHeader} sent`);
+      console.error('Authorization header value:', error.config?.headers?.Authorization || 'NONE');
+      console.error('Clearing credentials and redirecting to login');
       localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
       window.location.href = '/';
+      return Promise.reject(new Error('Session expired. Please log in again.'));
     }
+
+    // Handle 403 Forbidden
+    if (error.response?.status === 403) {
+      return Promise.reject(new Error('You do not have permission to access this resource.'));
+    }
+
+    // Handle HTML error responses (error page)
+    if (error.response?.data && typeof error.response.data === 'string' && error.response.data.includes('<html')) {
+      console.error('Received HTML error page instead of JSON');
+      const statusCode = error.response?.status || 'Unknown';
+      return Promise.reject(new Error(`Server error (${statusCode}). Please try again.`));
+    }
+
+    // Ensure error has a meaningful message
+    if (error.response?.data?.message) {
+      error.message = error.response.data.message;
+    } else if (error.response?.data?.error) {
+      error.message = error.response.data.error;
+    } else if (error.response?.statusText) {
+      error.message = `Error ${error.response.status}: ${error.response.statusText}`;
+    } else if (error.message === 'Network Error' || !error.message) {
+      error.message = 'Unable to connect to server. Please check your connection and try again.';
+    }
+
     return Promise.reject(error);
   }
 );
