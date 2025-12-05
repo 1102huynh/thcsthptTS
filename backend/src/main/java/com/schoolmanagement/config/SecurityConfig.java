@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -78,17 +79,27 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
-                // Auth endpoints
+                // Auth endpoints (no context-path, so /v1/auth is the actual path)
                 .requestMatchers("/v1/auth/**").permitAll()
-                .requestMatchers("/api/v1/auth/**").permitAll()
-                .requestMatchers("/api/v1/public/**").permitAll()
+                // Error endpoint must be public to avoid redirect loops
+                .requestMatchers("/error").permitAll()
+                .requestMatchers("/error/**").permitAll()
+                // Public news endpoints (no authentication required - GET requests only)
+                .requestMatchers(HttpMethod.GET, "/api/news").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/news/category/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/news/featured").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/news/recent").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/news/search").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/news/*").permitAll()
+                // Public admission endpoints (no authentication required - GET requests only)
+                .requestMatchers(HttpMethod.GET, "/api/admissions").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/admissions/*").permitAll()
                 // Swagger UI - note: swagger-ui is outside /api context path
                 .requestMatchers("/swagger-ui/**").permitAll()
                 .requestMatchers("/swagger-ui.html").permitAll()
                 .requestMatchers("/v3/api-docs/**").permitAll()
                 .requestMatchers("/v3/api-docs.yaml").permitAll()
                 // Static resources
-                .requestMatchers("/error").permitAll()
                 .requestMatchers("/webjars/**").permitAll()
                 .requestMatchers("/favicon.ico").permitAll()
                 // All other requests require authentication

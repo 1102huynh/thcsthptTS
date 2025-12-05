@@ -10,6 +10,7 @@ import {
   FiAward,
   FiDollarSign,
   FiChevronRight,
+  FiFileText,
 } from 'react-icons/fi';
 import './Sidebar.css';
 
@@ -20,10 +21,11 @@ function Sidebar({ isOpen, userRole }) {
     { id: 1, label: 'Dashboard', href: '/', icon: FiHome, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'LIBRARIAN', 'ACCOUNTANT'] },
     { id: 2, label: 'Staff Management', href: '/staff', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL'] },
     { id: 3, label: 'Student Management', href: '/students', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
-    { id: 4, label: 'Library', href: '/library', icon: FiBook, roles: ['ADMIN', 'LIBRARIAN', 'STUDENT', 'TEACHER'] },
-    { id: 5, label: 'Attendance', href: '/attendance', icon: FiClipboard, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
-    { id: 6, label: 'Grades', href: '/grades', icon: FiAward, roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-    { id: 7, label: 'Fees', href: '/fees', icon: FiDollarSign, roles: ['ADMIN', 'ACCOUNTANT', 'STUDENT'] },
+    { id: 4, label: 'News Management', href: '/news', icon: FiFileText, roles: ['ADMIN', 'PRINCIPAL'] },
+    { id: 5, label: 'Library', href: '/library', icon: FiBook, roles: ['ADMIN', 'LIBRARIAN', 'STUDENT', 'TEACHER'] },
+    { id: 6, label: 'Attendance', href: '/attendance', icon: FiClipboard, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+    { id: 7, label: 'Grades', href: '/grades', icon: FiAward, roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+    { id: 8, label: 'Fees', href: '/fees', icon: FiDollarSign, roles: ['ADMIN', 'ACCOUNTANT', 'STUDENT'] },
   ];
 
   const visibleMenuItems = menuItems.filter(item => item.roles.includes(userRole));

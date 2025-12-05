@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+// Backend no longer uses context-path, so base URL is just localhost:8080
+const API_BASE_URL = 'http://localhost:8080';
 
 // Create axios instance
 const api = axios.create({
@@ -70,6 +71,18 @@ api.interceptors.response.use(
       const hadAuthHeader = error.config?.headers?.Authorization ? 'Yes' : 'No';
       console.error(`⚠️  401 Unauthorized - Auth header was ${hadAuthHeader} sent`);
       console.error('Authorization header value:', error.config?.headers?.Authorization || 'NONE');
+
+      // Check if this is a public endpoint that shouldn't require auth
+      const publicEndpoints = ['/news', '/news/category', '/news/featured', '/news/recent', '/news/search'];
+      const isPublicEndpoint = publicEndpoints.some(endpoint => error.config?.url?.includes(endpoint));
+
+      if (isPublicEndpoint) {
+        console.error('⚠️  Public news endpoint returned 401 - Backend security config may be incorrect');
+        console.error('This endpoint should be public but backend is requiring authentication');
+        return Promise.reject(new Error('News endpoint requires authentication (backend config issue)'));
+      }
+
+      // Only redirect if this is not a public endpoint
       console.error('Clearing credentials and redirecting to login');
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');

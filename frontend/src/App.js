@@ -5,11 +5,13 @@ import './App.css';
 
 // Pages
 import PrincipalHomePage from './pages/PrincipalHomePage';
+import NewsDetailPage from './pages/NewsDetailPage';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import StudentPortal from './pages/StudentPortal';
 import StaffManagement from './pages/StaffManagement';
 import StudentManagement from './pages/StudentManagement';
+import AdminNewsPage from './pages/AdminNewsPage';
 import {
   LibraryManagement,
   AttendanceManagement,
@@ -85,6 +87,9 @@ function App() {
                     <Route path="/attendance" element={<AttendanceManagement />} />
                     <Route path="/grades" element={<GradeManagement />} />
                     <Route path="/fees" element={<FeeManagement />} />
+                    {(user.role === 'ADMIN' || user.role === 'PRINCIPAL') && (
+                      <Route path="/news" element={<AdminNewsPage />} />
+                    )}
                     <Route path="/" element={<Navigate to="/dashboard" />} />
                   </>
                 )}
@@ -97,6 +102,7 @@ function App() {
         // Public view with principal's home page and login
         <Routes>
           <Route path="/" element={<PrincipalHomePage />} />
+          <Route path="/news/:id" element={<NewsDetailPage />} />
           <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
