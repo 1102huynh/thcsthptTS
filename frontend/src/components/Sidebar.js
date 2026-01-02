@@ -18,16 +18,18 @@ function Sidebar({ isOpen, userRole }) {
   const location = useLocation();
 
   const menuItems = [
+    // Dashboard always first (home page)
     { id: 1, label: 'Dashboard', href: '/', icon: FiHome, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'LIBRARIAN', 'ACCOUNTANT'] },
-    { id: 2, label: 'Staff Management', href: '/staff', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL'] },
-    { id: 3, label: 'Student Management', href: '/students', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
-    { id: 4, label: 'News Management', href: '/news', icon: FiFileText, roles: ['ADMIN', 'PRINCIPAL'] },
-    { id: 5, label: 'Library', href: '/library', icon: FiBook, roles: ['ADMIN', 'LIBRARIAN', 'STUDENT', 'TEACHER'] },
-    { id: 6, label: 'Attendance', href: '/attendance', icon: FiClipboard, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
-    { id: 7, label: 'Grades', href: '/grades', icon: FiAward, roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-    { id: 8, label: 'Fees', href: '/fees', icon: FiDollarSign, roles: ['ADMIN', 'ACCOUNTANT', 'STUDENT'] },
-    // Vietnamese Education System (NEW)
-    { id: 9, label: 'Class Management', href: '/classes', icon: FiBook, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+
+    // Alphabetical order
+    { id: 2, label: 'Attendance', href: '/attendance', icon: FiClipboard, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+    { id: 3, label: 'Class Management', href: '/classes', icon: FiBook, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+    { id: 4, label: 'Fees', href: '/fees', icon: FiDollarSign, roles: ['ADMIN', 'ACCOUNTANT', 'STUDENT'] },
+    { id: 5, label: 'Grades', href: '/grades', icon: FiAward, roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+    { id: 6, label: 'Library', href: '/library', icon: FiBook, roles: ['ADMIN', 'LIBRARIAN', 'STUDENT', 'TEACHER'] },
+    { id: 7, label: 'News Management', href: '/news', icon: FiFileText, roles: ['ADMIN', 'PRINCIPAL'] },
+    { id: 8, label: 'Staff Management', href: '/staff', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL'] },
+    { id: 9, label: 'Student Management', href: '/students', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
     { id: 10, label: 'Subject Management', href: '/subjects', icon: FiAward, roles: ['ADMIN', 'PRINCIPAL'] },
     { id: 11, label: 'Teacher Assignments', href: '/assignments', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL'] },
   ];
