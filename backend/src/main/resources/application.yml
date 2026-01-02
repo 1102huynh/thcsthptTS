@@ -11,7 +11,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate  # Changed from 'update' - use manual SQL migrations instead
+      ddl-auto: update  # Temporarily set to 'update' to create new tables (academic_years)
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect

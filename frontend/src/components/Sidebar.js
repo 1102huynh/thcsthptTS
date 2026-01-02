@@ -11,6 +11,8 @@ import {
   FiDollarSign,
   FiChevronRight,
   FiFileText,
+  FiCalendar,
+  FiBarChart2,
 } from 'react-icons/fi';
 import './Sidebar.css';
 
@@ -22,16 +24,19 @@ function Sidebar({ isOpen, userRole }) {
     { id: 1, label: 'Dashboard', href: '/', icon: FiHome, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'LIBRARIAN', 'ACCOUNTANT'] },
 
     // Alphabetical order
-    { id: 2, label: 'Attendance', href: '/attendance', icon: FiClipboard, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
-    { id: 3, label: 'Class Management', href: '/classes', icon: FiBook, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
-    { id: 4, label: 'Fees', href: '/fees', icon: FiDollarSign, roles: ['ADMIN', 'ACCOUNTANT', 'STUDENT'] },
-    { id: 5, label: 'Grades', href: '/grades', icon: FiAward, roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
-    { id: 6, label: 'Library', href: '/library', icon: FiBook, roles: ['ADMIN', 'LIBRARIAN', 'STUDENT', 'TEACHER'] },
-    { id: 7, label: 'News Management', href: '/news', icon: FiFileText, roles: ['ADMIN', 'PRINCIPAL'] },
-    { id: 8, label: 'Staff Management', href: '/staff', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL'] },
-    { id: 9, label: 'Student Management', href: '/students', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
-    { id: 10, label: 'Subject Management', href: '/subjects', icon: FiAward, roles: ['ADMIN', 'PRINCIPAL'] },
-    { id: 11, label: 'Teacher Assignments', href: '/assignments', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL'] },
+    { id: 2, label: 'Academic Year', href: '/academic-year', icon: FiCalendar, roles: ['ADMIN', 'PRINCIPAL'] },
+    { id: 3, label: 'Attendance', href: '/attendance', icon: FiClipboard, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+    { id: 4, label: 'Class Management', href: '/classes', icon: FiBook, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+    { id: 5, label: 'Fees', href: '/fees', icon: FiDollarSign, roles: ['ADMIN', 'ACCOUNTANT', 'STUDENT'] },
+    { id: 6, label: 'Grades', href: '/grades', icon: FiAward, roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+    { id: 7, label: 'Library', href: '/library', icon: FiBook, roles: ['ADMIN', 'LIBRARIAN', 'STUDENT', 'TEACHER'] },
+    { id: 8, label: 'News Management', href: '/news', icon: FiFileText, roles: ['ADMIN', 'PRINCIPAL'] },
+    { id: 9, label: 'Reports', href: '/reports', icon: FiBarChart2, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+    { id: 10, label: 'Staff Management', href: '/staff', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL'] },
+    { id: 11, label: 'Student Management', href: '/students', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+    { id: 12, label: 'Subject Management', href: '/subjects', icon: FiAward, roles: ['ADMIN', 'PRINCIPAL'] },
+    { id: 13, label: 'Teacher Assignments', href: '/assignments', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL'] },
+    { id: 14, label: 'Timetable', href: '/timetable', icon: FiCalendar, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
   ];
 
   const visibleMenuItems = menuItems.filter(item => item.roles.includes(userRole));

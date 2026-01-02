@@ -23,6 +23,9 @@ import {
 import ClassManagement from './pages/ClassManagement';
 import SubjectManagement from './pages/SubjectManagement';
 import TeacherAssignmentPage from './pages/TeacherAssignmentPage';
+import TimetableManagement from './pages/TimetableManagement';
+import ReportsPage from './pages/ReportsPage';
+import AcademicYearPage from './pages/AcademicYearPage';
 import BackendHealthCheck from './pages/BackendHealthCheck';
 
 // Layout
@@ -94,9 +97,12 @@ function App() {
                     <Route path="/grades" element={<GradeManagement />} />
                     <Route path="/fees" element={<FeeManagement />} />
                     {/* Vietnamese Education System Routes (NEW) */}
+                    <Route path="/academic-year" element={<AcademicYearPage />} />
                     <Route path="/classes" element={<ClassManagement />} />
                     <Route path="/subjects" element={<SubjectManagement />} />
                     <Route path="/assignments" element={<TeacherAssignmentPage />} />
+                    <Route path="/timetable" element={<TimetableManagement />} />
+                    <Route path="/reports" element={<ReportsPage />} />
                     <Route path="/health" element={<BackendHealthCheck />} />
                     {(user.role === 'ADMIN' || user.role === 'PRINCIPAL') && (
                       <Route path="/news" element={<AdminNewsPage />} />
