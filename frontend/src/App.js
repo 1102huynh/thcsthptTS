@@ -26,6 +26,8 @@ import TeacherAssignmentPage from './pages/TeacherAssignmentPage';
 import TimetableManagement from './pages/TimetableManagement';
 import ReportsPage from './pages/ReportsPage';
 import AcademicYearPage from './pages/AcademicYearPage';
+import ExamManagement from './pages/ExamManagement';
+import ExamResultsPage from './pages/ExamResultsPage';
 import BackendHealthCheck from './pages/BackendHealthCheck';
 
 // Layout
@@ -99,6 +101,8 @@ function App() {
                     {/* Vietnamese Education System Routes (NEW) */}
                     <Route path="/academic-year" element={<AcademicYearPage />} />
                     <Route path="/classes" element={<ClassManagement />} />
+                    <Route path="/exams" element={<ExamManagement />} />
+                    <Route path="/exam-results" element={<ExamResultsPage />} />
                     <Route path="/subjects" element={<SubjectManagement />} />
                     <Route path="/assignments" element={<TeacherAssignmentPage />} />
                     <Route path="/timetable" element={<TimetableManagement />} />
