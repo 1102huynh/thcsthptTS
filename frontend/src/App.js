@@ -19,6 +19,12 @@ import {
   FeeManagement,
 } from './pages/ManagementPages';
 
+// Vietnamese Education System Pages (NEW)
+import ClassManagement from './pages/ClassManagement';
+import SubjectManagement from './pages/SubjectManagement';
+import TeacherAssignmentPage from './pages/TeacherAssignmentPage';
+import BackendHealthCheck from './pages/BackendHealthCheck';
+
 // Layout
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
@@ -87,6 +93,11 @@ function App() {
                     <Route path="/attendance" element={<AttendanceManagement />} />
                     <Route path="/grades" element={<GradeManagement />} />
                     <Route path="/fees" element={<FeeManagement />} />
+                    {/* Vietnamese Education System Routes (NEW) */}
+                    <Route path="/classes" element={<ClassManagement />} />
+                    <Route path="/subjects" element={<SubjectManagement />} />
+                    <Route path="/assignments" element={<TeacherAssignmentPage />} />
+                    <Route path="/health" element={<BackendHealthCheck />} />
                     {(user.role === 'ADMIN' || user.role === 'PRINCIPAL') && (
                       <Route path="/news" element={<AdminNewsPage />} />
                     )}

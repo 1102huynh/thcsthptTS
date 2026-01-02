@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Backend no longer uses context-path, so base URL is just localhost:8080
+// Backend has mixed patterns: /v1/* (old) and /api/* (new), so no prefix in base URL
 const API_BASE_URL = 'http://localhost:8080';
 
 // Create axios instance
@@ -83,11 +83,12 @@ api.interceptors.response.use(
       }
 
       // Only redirect if this is not a public endpoint
-      console.error('Clearing credentials and redirecting to login');
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      window.location.href = '/';
+      // TEMPORARILY DISABLED TO PREVENT INFINITE LOOP
+      // console.error('Clearing credentials and redirecting to login');
+      // localStorage.removeItem('accessToken');
+      // localStorage.removeItem('refreshToken');
+      // localStorage.removeItem('user');
+      // window.location.href = '/';
       return Promise.reject(new Error('Session expired. Please log in again.'));
     }
 

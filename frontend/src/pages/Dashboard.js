@@ -1,341 +1,338 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Alert, Badge } from 'react-bootstrap';
-import {
-  FiUsers, FiBook, FiClipboard, FiTrendingUp,
-  FiArrowRight, FiCheckCircle, FiClock, FiAward, FiDollarSign,
-  FiCalendar, FiPercent
-} from 'react-icons/fi';
 import { Link } from 'react-router-dom';
+import {
+    Users,
+    BookOpen,
+    ClipboardCheck,
+    TrendingUp,
+    TrendingDown,
+    Award,
+    DollarSign,
+    Calendar,
+    Clock,
+    CheckCircle,
+    Activity,
+    BarChart3,
+    ArrowRight,
+    Percent,
+    UserCheck
+} from 'lucide-react';
 import { staffService, studentService, libraryService } from '../services/dataService';
-import './Dashboard.css';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
 
 function Dashboard({ user }) {
-  const [stats, setStats] = useState({
-    staffCount: 0,
-    studentCount: 0,
-    bookCount: 0,
-    attendanceRate: 85,
-    totalRevenue: 0,
-    loading: true,
-    error: null,
-  });
-
-  const [recentActivity] = useState([
-    { id: 1, type: 'student', message: 'New student registered', time: '2 hours ago', icon: '👤' },
-    { id: 2, type: 'book', message: 'Book borrowed from library', time: '4 hours ago', icon: '📚' },
-    { id: 3, type: 'attendance', message: 'Attendance marked for class 10A', time: '6 hours ago', icon: '✓' },
-    { id: 4, type: 'fee', message: 'Fee payment received', time: '1 day ago', icon: '💰' },
-  ]);
-
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
-    try {
-      setStats(prev => ({ ...prev, loading: true }));
-
-      const staffRes = await staffService.getAll();
-      const studentRes = await studentService.getAll();
-      const bookRes = await libraryService.getBooks();
-
-      setStats({
-        staffCount: staffRes.data.length || 0,
-        studentCount: studentRes.data.length || 0,
-        bookCount: bookRes.data.length || 0,
+    const [stats, setStats] = useState({
+        staffCount: 0,
+        studentCount: 0,
+        bookCount: 0,
         attendanceRate: 85,
-        totalRevenue: 125000,
-        loading: false,
+        totalRevenue: 0,
+        loading: true,
         error: null,
-      });
-    } catch (err) {
-      setStats(prev => ({
-        ...prev,
-        loading: false,
-        error: 'Failed to load statistics',
-      }));
-    }
-  };
+    });
 
-  const StatCard = ({ icon: Icon, title, count, color, trend = null, trendLabel = null }) => (
-    <Card className="stat-card professional">
-      <Card.Body>
-        <div className="stat-card-header">
-          <div className={`stat-icon ${color}`}>
-            <Icon size={24} />
-          </div>
-          {trend && (
-            <Badge className={`trend-badge ${trend > 0 ? 'positive' : 'negative'}`}>
-              <FiTrendingUp size={14} /> {Math.abs(trend)}%
-            </Badge>
-          )}
-        </div>
-        <div className="stat-card-body">
-          <h6 className="text-muted mb-1">{title}</h6>
-          <h2 className="mb-0">{count}</h2>
-          {trendLabel && <p className="trend-label">{trendLabel}</p>}
-        </div>
-      </Card.Body>
-    </Card>
-  );
+    const [recentActivity] = useState([
+        { id: 1, type: 'student', message: 'New student registered', time: '2 hours ago', icon: Users, color: 'text-blue-600' },
+        { id: 2, type: 'book', message: 'Book borrowed from library', time: '4 hours ago', icon: BookOpen, color: 'text-purple-600' },
+        { id: 3, type: 'attendance', message: 'Attendance marked for class 10A', time: '6 hours ago', icon: CheckCircle, color: 'text-green-600' },
+        { id: 4, type: 'fee', message: 'Fee payment received', time: '1 day ago', icon: DollarSign, color: 'text-amber-600' },
+    ]);
 
-  const QuickActionButton = ({ icon: Icon, label, color, to }) => (
-    <Link to={to} className={`quick-action-btn ${color}`}>
-      <Icon size={20} />
-      <span>{label}</span>
-      <FiArrowRight size={16} />
-    </Link>
-  );
+    useEffect(() => {
+        fetchStats();
+    }, []);
 
-  return (
-    <div className="dashboard-container">
-      {/* Header Section */}
-      <div className="dashboard-header">
-        <div className="header-content">
-          <div>
-            <h1 className="header-title">Welcome back, <span className="highlight">{user?.firstName}!</span></h1>
-            <p className="header-subtitle">Here's what's happening in your school today</p>
-          </div>
-          <div className="header-badge">
-            <Badge bg="primary" className="role-badge">{user?.role}</Badge>
-            <span className="user-email">{user?.email}</span>
-          </div>
-        </div>
-      </div>
+    const fetchStats = async () => {
+        try {
+            setStats(prev => ({ ...prev, loading: true }));
 
-      {stats.error && <Alert variant="danger" className="mt-3">{stats.error}</Alert>}
+            const staffRes = await staffService.getAll();
+            const studentRes = await studentService.getAll();
+            const bookRes = await libraryService.getBooks();
 
-      {stats.loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Stats Row */}
-          <Row className="stats-row">
-            <Col lg={3} md={6} className="mb-3">
-              <StatCard
-                icon={FiUsers}
-                title="Total Staff"
-                count={stats.staffCount}
-                color="primary"
-                trend={12}
-                trendLabel="vs last month"
-              />
-            </Col>
-            <Col lg={3} md={6} className="mb-3">
-              <StatCard
-                icon={FiUsers}
-                title="Total Students"
-                count={stats.studentCount}
-                color="success"
-                trend={5}
-                trendLabel="vs last month"
-              />
-            </Col>
-            <Col lg={3} md={6} className="mb-3">
-              <StatCard
-                icon={FiBook}
-                title="Library Books"
-                count={stats.bookCount}
-                color="info"
-                trend={-2}
-                trendLabel="vs last month"
-              />
-            </Col>
-            <Col lg={3} md={6} className="mb-3">
-              <StatCard
-                icon={FiPercent}
-                title="Attendance Rate"
-                count={`${stats.attendanceRate}%`}
-                color="warning"
-                trend={3}
-                trendLabel="vs last month"
-              />
-            </Col>
-          </Row>
+            setStats({
+                staffCount: staffRes.data.length || 0,
+                studentCount: studentRes.data.length || 0,
+                bookCount: bookRes.data.length || 0,
+                attendanceRate: 85,
+                totalRevenue: 125000,
+                loading: false,
+                error: null,
+            });
+        } catch (err) {
+            setStats(prev => ({
+                ...prev,
+                loading: false,
+                error: 'Failed to load statistics',
+            }));
+        }
+    };
 
-          {/* Main Content Row */}
-          <Row className="mt-4">
-            {/* Quick Actions */}
-            <Col lg={7} className="mb-4">
-              <Card className="professional-card">
-                <Card.Header className="card-header-professional">
-                  <div>
-                    <Card.Title className="mb-0">Quick Actions</Card.Title>
-                    <p className="mb-0 text-muted small">Frequently used features</p>
-                  </div>
-                </Card.Header>
-                <Card.Body>
-                  <div className="quick-actions-grid">
-                    <QuickActionButton
-                      icon={FiUsers}
-                      label="Manage Staff"
-                      color="primary"
-                      to="/staff"
-                    />
-                    <QuickActionButton
-                      icon={FiUsers}
-                      label="Manage Students"
-                      color="success"
-                      to="/students"
-                    />
-                    <QuickActionButton
-                      icon={FiClipboard}
-                      label="Attendance"
-                      color="info"
-                      to="/attendance"
-                    />
-                    <QuickActionButton
-                      icon={FiAward}
-                      label="Manage Grades"
-                      color="warning"
-                      to="/grades"
-                    />
-                    <QuickActionButton
-                      icon={FiBook}
-                      label="Library"
-                      color="secondary"
-                      to="/library"
-                    />
-                    <QuickActionButton
-                      icon={FiDollarSign}
-                      label="Manage Fees"
-                      color="danger"
-                      to="/fees"
-                    />
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
+    const statCards = [
+        {
+            title: 'Total Staff',
+            value: stats.staffCount,
+            icon: Users,
+            trend: '+12%',
+            trendUp: true,
+            color: 'from-blue-500 to-blue-600',
+            bgColor: 'bg-blue-50',
+            iconColor: 'text-blue-600',
+        },
+        {
+            title: 'Total Students',
+            value: stats.studentCount,
+            icon: UserCheck,
+            trend: '+5%',
+            trendUp: true,
+            color: 'from-green-500 to-emerald-600',
+            bgColor: 'bg-green-50',
+            iconColor: 'text-green-600',
+        },
+        {
+            title: 'Library Books',
+            value: stats.bookCount,
+            icon: BookOpen,
+            trend: '-2%',
+            trendUp: false,
+            color: 'from-purple-500 to-purple-600',
+            bgColor: 'bg-purple-50',
+            iconColor: 'text-purple-600',
+        },
+        {
+            title: 'Attendance Rate',
+            value: `${stats.attendanceRate}%`,
+            icon: Percent,
+            trend: '+3%',
+            trendUp: true,
+            color: 'from-amber-500 to-orange-600',
+            bgColor: 'bg-amber-50',
+            iconColor: 'text-amber-600',
+        },
+    ];
 
-            {/* System Stats */}
-            <Col lg={5} className="mb-4">
-              <Card className="professional-card">
-                <Card.Header className="card-header-professional">
-                  <Card.Title className="mb-0">System Overview</Card.Title>
-                </Card.Header>
-                <Card.Body>
-                  <div className="system-stats">
-                    <div className="stat-row">
-                      <div className="stat-label">
-                        <FiCalendar size={18} />
-                        <span>Current Academic Year</span>
-                      </div>
-                      <span className="stat-value">2024-2025</span>
+    const quickActions = [
+        { icon: Users, label: 'Manage Staff', to: '/staff', color: 'from-blue-600 to-blue-700' },
+        { icon: UserCheck, label: 'Manage Students', to: '/students', color: 'from-green-600 to-green-700' },
+        { icon: ClipboardCheck, label: 'Attendance', to: '/attendance', color: 'from-purple-600 to-purple-700' },
+        { icon: Award, label: 'Manage Grades', to: '/grades', color: 'from-amber-600 to-amber-700' },
+        { icon: BookOpen, label: 'Library', to: '/library', color: 'from-pink-600 to-pink-700' },
+        { icon: DollarSign, label: 'Manage Fees', to: '/fees', color: 'from-rose-600 to-rose-700' },
+        // Vietnamese Education System (NEW)
+        { icon: BookOpen, label: 'Manage Classes', to: '/classes', color: 'from-indigo-600 to-indigo-700' },
+        { icon: Award, label: 'Manage Subjects', to: '/subjects', color: 'from-violet-600 to-violet-700' },
+        { icon: Users, label: 'Teacher Assignments', to: '/assignments', color: 'from-emerald-600 to-emerald-700' },
+    ];
+
+    const metrics = [
+        { label: 'Student Enrollment', value: stats.studentCount, percentage: 75, trend: '+15%', color: 'bg-green-500' },
+        { label: 'Attendance', value: '85%', percentage: 85, trend: '+3%', color: 'bg-blue-500' },
+        { label: 'Fee Collection', value: '60%', percentage: 60, trend: '-5%', color: 'bg-amber-500' },
+    ];
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 p-6">
+            {/* Header */}
+            <div className="mb-8">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                            Welcome back, <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{user?.firstName}!</span>
+                        </h1>
+                        <p className="text-gray-600">Here's what's happening in your school today</p>
                     </div>
-                    <div className="stat-row">
-                      <div className="stat-label">
-                        <FiCheckCircle size={18} />
-                        <span>System Status</span>
-                      </div>
-                      <Badge bg="success">Operational</Badge>
-                    </div>
-                    <div className="stat-row">
-                      <div className="stat-label">
-                        <FiClock size={18} />
-                        <span>Last Backup</span>
-                      </div>
-                      <span className="stat-value">Today 3:00 PM</span>
-                    </div>
-                    <div className="stat-row">
-                      <div className="stat-label">
-                        <FiUsers size={18} />
-                        <span>Active Users</span>
-                      </div>
-                      <Badge bg="primary">24</Badge>
-                    </div>
-                    <div className="stat-row">
-                      <div className="stat-label">
-                        <FiDollarSign size={18} />
-                        <span>Total Revenue</span>
-                      </div>
-                      <span className="stat-value">₹{stats.totalRevenue.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-
-          {/* Recent Activity & Performance */}
-          <Row className="mt-4">
-            <Col lg={6} className="mb-4">
-              <Card className="professional-card">
-                <Card.Header className="card-header-professional">
-                  <div>
-                    <Card.Title className="mb-0">Recent Activity</Card.Title>
-                    <p className="mb-0 text-muted small">Latest updates from your system</p>
-                  </div>
-                </Card.Header>
-                <Card.Body className="p-0">
-                  <div className="activity-list">
-                    {recentActivity.map((activity) => (
-                      <div key={activity.id} className="activity-item">
-                        <div className="activity-icon">{activity.icon}</div>
-                        <div className="activity-content">
-                          <p className="mb-0">{activity.message}</p>
-                          <small className="text-muted">{activity.time}</small>
+                    <div className="mt-4 md:mt-0 flex items-center gap-3">
+                        <div className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-lg">
+                            <span className="text-sm font-semibold">{user?.role}</span>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
+                        <span className="text-sm text-gray-600">{user?.email}</span>
+                    </div>
+                </div>
+            </div>
 
-            <Col lg={6} className="mb-4">
-              <Card className="professional-card">
-                <Card.Header className="card-header-professional">
-                  <div>
-                    <Card.Title className="mb-0">Performance Metrics</Card.Title>
-                    <p className="mb-0 text-muted small">This month overview</p>
-                  </div>
-                </Card.Header>
-                <Card.Body>
-                  <div className="metrics-container">
-                    <div className="metric-item">
-                      <div className="metric-header">
-                        <span>Student Enrollment</span>
-                        <span className="badge-sm success">+15%</span>
-                      </div>
-                      <div className="progress-bar">
-                        <div className="progress-fill" style={{ width: '75%', backgroundColor: '#52c41a' }}></div>
-                      </div>
-                      <small className="text-muted">{stats.studentCount} students</small>
+            {stats.error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                    <Activity className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-red-800">{stats.error}</p>
+                </div>
+            )}
+
+            {stats.loading ? (
+                <div className="flex justify-center items-center py-20">
+                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            ) : (
+                <>
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        {statCards.map((stat, index) => {
+                            const Icon = stat.icon;
+                            const TrendIcon = stat.trendUp ? TrendingUp : TrendingDown;
+                            return (
+                                <Card key={index} className="border-0 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 bg-white/80 backdrop-blur-sm">
+                                    <CardContent className="p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className={`w-14 h-14 ${stat.bgColor} rounded-xl flex items-center justify-center`}>
+                                                <Icon className={`w-7 h-7 ${stat.iconColor}`} />
+                                            </div>
+                                            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${stat.trendUp ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                                                }`}>
+                                                <TrendIcon className="w-3 h-3" />
+                                                {stat.trend}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
+                                            <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                                            <p className="text-xs text-gray-500 mt-1">vs last month</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
                     </div>
-                    <div className="metric-item">
-                      <div className="metric-header">
-                        <span>Attendance</span>
-                        <span className="badge-sm success">+3%</span>
-                      </div>
-                      <div className="progress-bar">
-                        <div className="progress-fill" style={{ width: '85%', backgroundColor: '#1890ff' }}></div>
-                      </div>
-                      <small className="text-muted">85% average</small>
+
+                    {/* Main Content Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                        {/* Quick Actions */}
+                        <div className="lg:col-span-2">
+                            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                                <CardHeader>
+                                    <CardTitle className="text-xl">Quick Actions</CardTitle>
+                                    <CardDescription>Frequently used features</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                        {quickActions.map((action, index) => {
+                                            const Icon = action.icon;
+                                            return (
+                                                <Link key={index} to={action.to}>
+                                                    <Button
+                                                        variant="outline"
+                                                        className={`w-full h-24 flex flex-col items-center justify-center gap-2 border-2 hover:border-transparent bg-gradient-to-br ${action.color} text-white hover:shadow-xl transition-all duration-300 hover:scale-105`}
+                                                    >
+                                                        <Icon className="w-6 h-6" />
+                                                        <span className="font-semibold text-sm">{action.label}</span>
+                                                    </Button>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* System Overview */}
+                        <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+                            <CardHeader>
+                                <CardTitle className="text-white">System Overview</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex items-center justify-between py-3 border-b border-white/20">
+                                    <div className="flex items-center gap-2">
+                                        <Calendar className="w-5 h-5" />
+                                        <span className="text-sm">Academic Year</span>
+                                    </div>
+                                    <span className="font-semibold">2024-2025</span>
+                                </div>
+                                <div className="flex items-center justify-between py-3 border-b border-white/20">
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle className="w-5 h-5" />
+                                        <span className="text-sm">System Status</span>
+                                    </div>
+                                    <span className="px-3 py-1 bg-green-500 rounded-full text-xs font-semibold">Operational</span>
+                                </div>
+                                <div className="flex items-center justify-between py-3 border-b border-white/20">
+                                    <div className="flex items-center gap-2">
+                                        <Clock className="w-5 h-5" />
+                                        <span className="text-sm">Last Backup</span>
+                                    </div>
+                                    <span className="font-semibold text-sm">Today 3:00 PM</span>
+                                </div>
+                                <div className="flex items-center justify-between py-3 border-b border-white/20">
+                                    <div className="flex items-center gap-2">
+                                        <Users className="w-5 h-5" />
+                                        <span className="text-sm">Active Users</span>
+                                    </div>
+                                    <span className="px-3 py-1 bg-blue-500 rounded-full text-sm font-semibold">24</span>
+                                </div>
+                                <div className="flex items-center justify-between py-3">
+                                    <div className="flex items-center gap-2">
+                                        <DollarSign className="w-5 h-5" />
+                                        <span className="text-sm">Total Revenue</span>
+                                    </div>
+                                    <span className="font-bold">₹{stats.totalRevenue.toLocaleString()}</span>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
-                    <div className="metric-item">
-                      <div className="metric-header">
-                        <span>Fee Collection</span>
-                        <span className="badge-sm danger">-5%</span>
-                      </div>
-                      <div className="progress-bar">
-                        <div className="progress-fill" style={{ width: '60%', backgroundColor: '#faad14' }}></div>
-                      </div>
-                      <small className="text-muted">60% collected</small>
+
+                    {/* Bottom Row */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Recent Activity */}
+                        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                            <CardHeader>
+                                <CardTitle className="text-xl">Recent Activity</CardTitle>
+                                <CardDescription>Latest updates from your system</CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <div className="divide-y divide-gray-100">
+                                    {recentActivity.map((activity) => {
+                                        const Icon = activity.icon;
+                                        return (
+                                            <div key={activity.id} className="flex items-start gap-4 p-6 hover:bg-gray-50 transition-colors">
+                                                <div className={`w-10 h-10 rounded-lg ${activity.color.replace('text-', 'bg-').replace('600', '100')} flex items-center justify-center flex-shrink-0`}>
+                                                    <Icon className={`w-5 h-5 ${activity.color}`} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-gray-900">{activity.message}</p>
+                                                    <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+                                                </div>
+                                                <ArrowRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Performance Metrics */}
+                        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                            <CardHeader>
+                                <CardTitle className="text-xl">Performance Metrics</CardTitle>
+                                <CardDescription>This month overview</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                {metrics.map((metric, index) => (
+                                    <div key={index}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm font-medium text-gray-700">{metric.label}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-semibold text-green-600">{metric.trend}</span>
+                                                <span className="text-sm font-semibold text-gray-900">{metric.value}</span>
+                                            </div>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                            <div
+                                                className={`h-full ${metric.color} rounded-full transition-all duration-500`}
+                                                style={{ width: `${metric.percentage}%` }}
+                                            ></div>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {metric.label === 'Student Enrollment' && `${stats.studentCount} students`}
+                                            {metric.label === 'Attendance' && '85% average'}
+                                            {metric.label === 'Fee Collection' && '60% collected'}
+                                        </p>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
                     </div>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-        </>
-      )}
-    </div>
-  );
+                </>
+            )}
+        </div>
+    );
 }
 
 export default Dashboard;
-

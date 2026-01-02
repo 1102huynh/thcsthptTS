@@ -1,651 +1,490 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Tab, Tabs, Badge, Pagination, Spinner, Alert } from 'react-bootstrap';
-import { FiFileText, FiUsers, FiCalendar, FiArrowRight, FiPhone, FiMail, FiMapPin, FiAward, FiTrendingUp } from 'react-icons/fi';
-import { FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import {
+    GraduationCap,
+    Users,
+    Award,
+    TrendingUp,
+    Calendar,
+    ArrowRight,
+    Phone,
+    Mail,
+    MapPin,
+    Loader2,
+    AlertCircle,
+    Facebook,
+    Twitter,
+    Instagram,
+    Linkedin
+} from 'lucide-react';
 import newsService from '../services/newsService';
 import admissionService from '../services/admissionService';
-import '../styles/PrincipalHomePage.css';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
 
 function PrincipalHomePage() {
-  const [isVisible, setIsVisible] = useState(false);
-  const [news, setNews] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [totalPages, setTotalPages] = useState(0);
-  const [currentNewsPage, setCurrentNewsPage] = useState(1);
-  const [admissions, setAdmissions] = useState([]);
-  const [admissionsLoading, setAdmissionsLoading] = useState(true);
-  const [admissionsError, setAdmissionsError] = useState(null);
+    const [news, setNews] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [admissions, setAdmissions] = useState([]);
+    const [admissionsLoading, setAdmissionsLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('news');
+    const [showBackToTop, setShowBackToTop] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
 
-  const fetchNews = async (page) => {
-    console.log('Fetching news for page:', page);
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await newsService.getPublishedNews(page, 3);
-      console.log('News API response:', response);
-      setNews(response.content || []);
-      setTotalPages(response.totalPages || 0);
-      setCurrentNewsPage(page + 1); // Convert to 1-based for display
-      console.log('News loaded successfully:', response.content?.length || 0, 'items');
-    } catch (err) {
-      console.error('Error fetching news:', err);
-      console.error('Error details:', err.response?.data || err.message);
-      setError('Failed to load news from server. Showing sample news instead.');
-      // Fallback to static data if API fails
-      setNews([
-        {
-          id: 1,
-          title: 'Annual Sports Day 2025',
-          content: 'Join us for the exciting Annual Sports Day on December 15, 2025. Various sports competitions and cultural programs will be held.',
-          publishedDate: '2025-11-16',
-          category: 'Event',
-          image: '🏆'
-        },
-        {
-          id: 2,
-          title: 'New Computer Lab Inauguration',
-          content: 'Our state-of-the-art computer lab with 50 high-end computers is now operational. Students can now use the latest technology for learning.',
-          publishedDate: '2025-11-15',
-          category: 'Infrastructure',
-          image: '💻'
-        },
-        {
-          id: 3,
-          title: 'Excellence Awards Ceremony',
-          content: 'Annual Excellence Awards ceremony will be held on November 30, 2025 to recognize and honor outstanding students and staff members.',
-          publishedDate: '2025-11-14',
-          category: 'Achievement',
-          image: '🎖️'
-        },
-      ]);
-      setTotalPages(1);
-      console.log('Fallback news data loaded');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchNews = async (page = 0) => {
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await newsService.getPublishedNews(page, 3);
+            setNews(response.content || []);
+        } catch (err) {
+            console.error('Error fetching news:', err);
+            setError('Unable to load news');
+            // Fallback data
+            setNews([
+                {
+                    id: 1,
+                    title: 'Annual Sports Day 2025',
+                    content: 'Join us for the exciting Annual Sports Day on December 15, 2025. Various sports competitions and cultural programs will be held.',
+                    publishedDate: '2025-11-16',
+                    category: 'Event',
+                },
+                {
+                    id: 2,
+                    title: 'New Computer Lab Inauguration',
+                    content: 'Our state-of-the-art computer lab with 50 high-end computers is now operational.',
+                    publishedDate: '2025-11-15',
+                    category: 'Infrastructure',
+                },
+                {
+                    id: 3,
+                    title: 'Excellence Awards Ceremony',
+                    content: 'Annual Excellence Awards ceremony will be held on November 30, 2025.',
+                    publishedDate: '2025-11-14',
+                    category: 'Achievement',
+                },
+            ]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  useEffect(() => {
-    console.log('PrincipalHomePage mounted, loading initial data...');
-    setIsVisible(true);
-    fetchNews(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+    const fetchAdmissions = async () => {
+        try {
+            setAdmissionsLoading(true);
+            const response = await admissionService.getOpenAdmissions(0, 10);
+            setAdmissions(response.content || []);
+        } catch (err) {
+            console.error('Error fetching admissions:', err);
+            setAdmissions([]);
+        } finally {
+            setAdmissionsLoading(false);
+        }
+    };
 
-  const fetchAdmissions = async () => {
-    console.log('Fetching admissions...');
-    try {
-      setAdmissionsLoading(true);
-      setAdmissionsError(null);
-      const response = await admissionService.getOpenAdmissions(0, 10);
-      console.log('Admissions API response:', response);
-      setAdmissions(response.content || []);
-      console.log('Admissions loaded successfully:', response.content?.length || 0, 'items');
-    } catch (err) {
-      console.error('Error fetching admissions:', err);
-      console.error('Error details:', err.response?.data || err.message);
-      setAdmissionsError('Failed to load admissions from server.');
-      setAdmissions([]);
-    } finally {
-      setAdmissionsLoading(false);
-    }
-  };
+    useEffect(() => {
+        fetchNews(0);
+        fetchAdmissions();
 
-  useEffect(() => {
-    console.log('PrincipalHomePage mounted, loading admissions data...');
-    fetchAdmissions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+        // Scroll event listener
+        const handleScroll = () => {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            setShowBackToTop(scrollTop > 300);
+            setScrolled(scrollTop > 50);
+        };
 
-  const handlePageChange = (pageNumber) => {
-    fetchNews(pageNumber - 1); // Convert to 0-based for API
-  };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
-  const statistics = [
-    { icon: FiUsers, value: '5000+', label: 'Students Enrolled', color: 'primary', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-    { icon: FiAward, value: '150+', label: 'Expert Faculty', color: 'success', gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
-    { icon: FiCalendar, value: '25+', label: 'Years Excellence', color: 'info', gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
-    { icon: FiTrendingUp, value: '100%', label: 'Success Rate', color: 'warning', gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' },
-  ];
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
-  return (
-    <div className="principal-home-page">
-      {/* Hero Header Section */}
-      <div className="principal-hero-header">
-        <Container fluid className="h-100">
-          <div className={`hero-content ${isVisible ? 'fade-in' : ''}`}>
-            <div className="hero-overlay"></div>
-            <Container className="position-relative">
-              <Row className="align-items-center min-vh-70">
-                <Col lg={8} className="text-white">
-                  <div className="hero-badge mb-3">
-                    <Badge bg="light" text="dark" className="px-3 py-2">
-                      🏆 Ranked #1 School in the Region
-                    </Badge>
-                  </div>
-                  <h1 className="display-3 fw-bold mb-4 hero-title">
-                    Tay Son Secondary<br />& High School
-                  </h1>
-                  <p className="lead mb-4 hero-subtitle">
-                    Empowering minds, shaping futures. Quality education for a brighter tomorrow.
-                  </p>
-                  <div className="hero-actions">
-                    <Link to="/login" className="btn btn-light btn-lg px-4 me-3 btn-hover-lift">
-                      <FiArrowRight className="me-2" /> Access Portal
-                    </Link>
-                    <button className="btn btn-outline-light btn-lg px-4 btn-hover-lift">
-                      <FiPhone className="me-2" /> Contact Us
-                    </button>
-                  </div>
-                </Col>
-              </Row>
-            </Container>
-          </div>
-        </Container>
-      </div>
+    const statistics = [
+        { icon: Users, value: '5000+', label: 'Students Enrolled', gradient: 'from-blue-500 to-purple-600' },
+        { icon: Award, value: '150+', label: 'Expert Faculty', gradient: 'from-pink-500 to-rose-600' },
+        { icon: Calendar, value: '25+', label: 'Years Excellence', gradient: 'from-cyan-500 to-blue-600' },
+        { icon: TrendingUp, value: '100%', label: 'Success Rate', gradient: 'from-orange-500 to-pink-600' },
+    ];
 
-      {/* Statistics Section */}
-      <Container className="statistics-section">
-        <Row className="g-4">
-          {statistics.map((stat, index) => (
-            <Col md={6} lg={3} key={index}>
-              <Card className={`stat-card stat-card-${index} hover-lift`}>
-                <div className="stat-gradient" style={{ background: stat.gradient }}></div>
-                <Card.Body className="text-center position-relative">
-                  <div className="stat-icon-wrapper mb-3">
-                    <stat.icon size={48} className="stat-icon" />
-                  </div>
-                  <h2 className="stat-value mb-2">{stat.value}</h2>
-                  <p className="stat-label mb-0">{stat.label}</p>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      </Container>
-
-      {/* Main Content Section */}
-      <Container className="content-section py-5">
-        <Tabs defaultActiveKey="news" id="principal-tabs" className="modern-tabs mb-5">
-          {/* News Tab */}
-          <Tab eventKey="news" title={
-            <span className="tab-title">
-              <FiFileText className="me-2" />
-              <span>News & Updates</span>
-            </span>
-          }>
-            <div className="news-section">
-              <div className="section-header mb-5 text-center">
-                <h2 className="section-title">Latest News & Announcements</h2>
-                <p className="section-subtitle text-muted">Stay updated with our school activities and achievements</p>
-              </div>
-
-              {loading && (
-                <div className="text-center py-5">
-                  <Spinner animation="border" variant="primary" />
-                  <p className="mt-3">Loading news...</p>
-                </div>
-              )}
-
-              {error && (
-                <Alert variant="warning" className="mb-4">
-                  {error}
-                </Alert>
-              )}
-
-              {!loading && !error && (
-                <>
-                  <Row className="g-4">
-                    {news.map((item, index) => (
-                  <Col lg={12} key={item.id}>
-                    <Card className={`modern-news-card hover-lift fade-in-up delay-${index}`}>
-                      <Card.Body>
-                        <Row className="align-items-center">
-                          <Col md={2} className="text-center">
-                            <div className="news-icon-large">
-                              {item.image}
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
+            {/* Navbar */}
+            <nav className={`bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50 transition-shadow duration-300 ${scrolled ? 'shadow-lg' : 'shadow-sm'
+                }`}>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center h-16">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                                <GraduationCap className="w-6 h-6 text-white" />
                             </div>
-                          </Col>
-                          <Col md={10}>
-                            <div className="news-content">
-                              <div className="d-flex align-items-center mb-2">
-                                <Badge bg="primary" className="me-2 modern-badge">
-                                  {item.category}
-                                </Badge>
-                                <small className="text-muted d-flex align-items-center">
-                                  <FiCalendar size={14} className="me-1" />
-                                  {new Date(item.publishedDate).toLocaleDateString('en-US', {
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
-                                  })}
-                                </small>
-                              </div>
-                              <h4 className="news-title mb-2">{item.title}</h4>
-                              <p className="news-description text-muted mb-3">
-                                {item.content.length > 200
-                                  ? `${item.content.substring(0, 200)}...`
-                                  : item.content}
-                              </p>
-                              <Link
-                                to={`/news/${item.id}`}
-                                className="btn btn-outline-primary btn-sm d-inline-flex align-items-center"
-                              >
-                                Read More <FiArrowRight className="ms-2" size={14} />
-                              </Link>
-                            </div>
-                          </Col>
-                        </Row>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="d-flex justify-content-center mt-5">
-                  <Pagination className="modern-pagination">
-                    <Pagination.First
-                      disabled={currentNewsPage === 1}
-                      onClick={() => handlePageChange(1)}
-                    />
-                    <Pagination.Prev
-                      disabled={currentNewsPage === 1}
-                      onClick={() => handlePageChange(currentNewsPage - 1)}
-                    />
-                    {[...Array(totalPages)].map((_, i) => (
-                      <Pagination.Item
-                        key={i + 1}
-                        active={i + 1 === currentNewsPage}
-                        onClick={() => handlePageChange(i + 1)}
-                      >
-                        {i + 1}
-                      </Pagination.Item>
-                    ))}
-                    <Pagination.Next
-                      disabled={currentNewsPage === totalPages}
-                      onClick={() => handlePageChange(currentNewsPage + 1)}
-                    />
-                    <Pagination.Last
-                      disabled={currentNewsPage === totalPages}
-                      onClick={() => handlePageChange(totalPages)}
-                    />
-                  </Pagination>
-                </div>
-              )}
-              </>
-              )}
-            </div>
-          </Tab>
-
-          {/* Admissions Tab */}
-          <Tab eventKey="admissions" title={
-            <span className="tab-title">
-              <FiUsers className="me-2" />
-              <span>Admissions</span>
-            </span>
-          }>
-            <div className="admissions-section">
-              <div className="section-header mb-5 text-center">
-                <h2 className="section-title">Admission Information</h2>
-                <p className="section-subtitle text-muted">Join our community of excellence</p>
-              </div>
-
-              {admissionsLoading && (
-                <div className="text-center py-5">
-                  <Spinner animation="border" variant="primary" />
-                  <p className="mt-3">Loading admissions...</p>
-                </div>
-              )}
-
-              {admissionsError && (
-                <Alert variant="warning" className="mb-4">
-                  {admissionsError}
-                </Alert>
-              )}
-
-              {!admissionsLoading && admissions.length === 0 && (
-                <Alert variant="info" className="text-center">
-                  No admission information available at this time.
-                </Alert>
-              )}
-
-              {!admissionsLoading && admissions.length > 0 && (
-                <Row className="g-4">
-                  {admissions.map((admission, index) => (
-                  <Col lg={12} key={admission.id}>
-                    <Card className={`modern-admission-card hover-lift fade-in-up delay-${index}`}>
-                      <Card.Body>
-                        <div className="admission-header-modern mb-4">
-                          <div className="d-flex justify-content-between align-items-start">
-                            <div>
-                              <h4 className="admission-title mb-2">{admission.title}</h4>
-                              <div className="d-flex align-items-center gap-2 flex-wrap">
-                                <Badge
-                                  bg={admission.status === 'Open' ? 'success' : 'warning'}
-                                  className="modern-badge"
-                                >
-                                  {admission.status}
-                                </Badge>
-                                <Badge bg="info" className="modern-badge">
-                                  {admission.grade}
-                                </Badge>
-                              </div>
-                            </div>
-                            <div className="deadline-badge">
-                              <FiCalendar size={20} />
-                            </div>
-                          </div>
+                            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                                Tay Son School
+                            </span>
                         </div>
-
-                        <p className="admission-description text-muted mb-4">{admission.description}</p>
-
-                        {/* Key Information */}
-                        <Row className="mb-4">
-                          <Col md={12} className="mb-3">
-                            <div className="info-box p-3 bg-light rounded">
-                              <small className="text-muted d-block mb-1">📚 Eligibility - Transfer Students</small>
-                              <p className="mb-0 small fw-semibold">{admission.eligibility}</p>
-                            </div>
-                          </Col>
-                          <Col md={6} className="mb-3">
-                            <div className="info-box p-3 bg-primary bg-gradient text-white rounded">
-                              <small className="d-block mb-1 opacity-75">🎓 Total Available Seats</small>
-                              <p className="mb-0 fw-bold fs-5">{admission.seats}</p>
-                            </div>
-                          </Col>
-                          <Col md={6} className="mb-3">
-                            <div className="info-box p-3 bg-info bg-gradient text-white rounded">
-                              <small className="d-block mb-1 opacity-75">🏫 Class Structure</small>
-                              <p className="mb-1 small fw-semibold">{admission.classStructure}</p>
-                              <p className="mb-0 small opacity-90">{admission.studentsPerClass}</p>
-                            </div>
-                          </Col>
-                          <Col md={6} className="mb-3">
-                            <div className="info-box p-3 bg-light rounded border border-primary">
-                              <small className="text-muted d-block mb-1">📝 Entrance Exam Date</small>
-                              <p className="mb-0 small fw-semibold text-primary">
-                                {new Date(admission.examDate).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })}
-                              </p>
-                            </div>
-                          </Col>
-                          <Col md={6} className="mb-3">
-                            <div className="info-box p-3 bg-light rounded border border-danger">
-                              <small className="text-muted d-block mb-1">⏰ Application Deadline</small>
-                              <p className="mb-0 small fw-semibold text-danger">
-                                {new Date(admission.deadline).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })}
-                              </p>
-                            </div>
-                          </Col>
-                        </Row>
-
-                        <div className="requirements-section mb-4">
-                          <h6 className="requirements-title mb-3">
-                            <FiFileText className="me-2" />
-                            Required Documents
-                          </h6>
-                          <Row>
-                            {admission.requirements.map((req, idx) => (
-                              <Col md={6} key={idx} className="mb-2">
-                                <div className="requirement-item">
-                                  <span className="requirement-bullet">✓</span>
-                                  {req}
-                                </div>
-                              </Col>
-                            ))}
-                          </Row>
+                        <div className="flex items-center space-x-4">
+                            <Link to="/login">
+                                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                                    <ArrowRight className="w-4 h-4 mr-2" />
+                                    Login Portal
+                                </Button>
+                            </Link>
                         </div>
-
-                        <div className="admission-footer-modern">
-                          <Row className="align-items-center">
-                            <Col md={6}>
-                              <div className="d-flex align-items-center gap-2">
-                                <Badge bg="primary" className="px-3 py-2">
-                                  Apply Now
-                                </Badge>
-                                <small className="text-muted">
-                                  Application Process Online
-                                </small>
-                              </div>
-                            </Col>
-                            <Col md={6} className="text-md-end mt-3 mt-md-0">
-                              <a href={`mailto:${admission.contact}`} className="contact-link">
-                                <FiMail size={16} className="me-2" />
-                                {admission.contact}
-                              </a>
-                            </Col>
-                          </Row>
-                        </div>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                  ))}
-                </Row>
-              )}
-            </div>
-          </Tab>
-
-          {/* About Tab */}
-          <Tab eventKey="about" title={
-            <span className="tab-title">
-              <FiFileText className="me-2" />
-              <span>About Us</span>
-            </span>
-          }>
-            <div className="about-section">
-              <div className="section-header mb-5 text-center">
-                <h2 className="section-title">About Our Institution</h2>
-                <p className="section-subtitle text-muted">Building tomorrow's leaders today</p>
-              </div>
-
-              <Row className="g-4">
-                <Col lg={8}>
-                  <Card className="modern-about-card mb-4 hover-lift">
-                    <Card.Body className="p-4">
-                      <h5 className="about-subtitle mb-3">🎯 Our Mission</h5>
-                      <p className="about-text">
-                        To provide quality education that develops critical thinking, creativity, and character
-                        in our students, preparing them to be responsible global citizens who can contribute
-                        meaningfully to society.
-                      </p>
-                    </Card.Body>
-                  </Card>
-
-                  <Card className="modern-about-card mb-4 hover-lift">
-                    <Card.Body className="p-4">
-                      <h5 className="about-subtitle mb-3">🔭 Our Vision</h5>
-                      <p className="about-text">
-                        To be a leading educational institution that nurtures excellence, fosters innovation,
-                        and promotes holistic development of every individual.
-                      </p>
-                    </Card.Body>
-                  </Card>
-
-                  <Card className="modern-about-card hover-lift">
-                    <Card.Body className="p-4">
-                      <h5 className="about-subtitle mb-3">💎 Our Values</h5>
-                      <Row className="g-3">
-                        {[
-                          { icon: '🎯', title: 'Integrity', desc: 'Honesty and ethical behavior' },
-                          { icon: '⭐', title: 'Excellence', desc: 'Pursuing highest standards' },
-                          { icon: '🤝', title: 'Inclusion', desc: 'Embracing diversity' },
-                          { icon: '💡', title: 'Innovation', desc: 'Encouraging creativity' },
-                          { icon: '❤️', title: 'Compassion', desc: 'Empathy and care' },
-                        ].map((value, idx) => (
-                          <Col md={6} key={idx}>
-                            <div className="value-item">
-                              <span className="value-icon">{value.icon}</span>
-                              <div>
-                                <strong className="d-block">{value.title}</strong>
-                                <small className="text-muted">{value.desc}</small>
-                              </div>
-                            </div>
-                          </Col>
-                        ))}
-                      </Row>
-                    </Card.Body>
-                  </Card>
-                </Col>
-
-                <Col lg={4}>
-                  <Card className="modern-contact-card hover-lift sticky-top" style={{ top: '20px' }}>
-                    <div className="contact-card-header">
-                      <h5 className="text-white mb-0">📞 Contact Information</h5>
                     </div>
-                    <Card.Body className="p-4">
-                      <div className="contact-item mb-4">
-                        <div className="contact-icon-wrapper">
-                          <FiMapPin size={20} />
-                        </div>
-                        <div className="contact-details">
-                          <small className="text-muted d-block">Address</small>
-                          <p className="mb-0">
-                            Tay Son Secondary and High School<br />
-                            Tay Son District<br />
-                            Vietnam
-                          </p>
-                        </div>
-                      </div>
+                </div>
+            </nav>
 
-                      <div className="contact-item mb-4">
-                        <div className="contact-icon-wrapper">
-                          <FiPhone size={20} />
-                        </div>
-                        <div className="contact-details">
-                          <small className="text-muted d-block">Phone</small>
-                          <p className="mb-0">+84 (123) 456-7890</p>
-                        </div>
-                      </div>
+            {/* Hero Section */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 text-white">
+                {/* Animated background elements */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+                    <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-white rounded-full mix-blend-overlay filter blur-3xl animate-blob"></div>
+                    <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-blue-300 rounded-full mix-blend-overlay filter blur-3xl animate-blob animation-delay-2000"></div>
+                    <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-purple-300 rounded-full mix-blend-overlay filter blur-3xl animate-blob animation-delay-4000"></div>
+                </div>
 
-                      <div className="contact-item mb-4">
-                        <div className="contact-icon-wrapper">
-                          <FiMail size={20} />
+                <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
+                    <div className="text-center">
+                        <div className="inline-block mb-4 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-sm font-semibold">
+                            🏆 Ranked #1 School in the Region
                         </div>
-                        <div className="contact-details">
-                          <small className="text-muted d-block">Email</small>
-                          <p className="mb-0">info@taysonsecondary.edu</p>
-                        </div>
-                      </div>
+                        <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
+                            Tay Son Secondary<br />& High School
+                        </h1>
+                        <p className="text-xl md:text-2xl text-blue-100 mb-8 max-w-3xl mx-auto">
+                            Empowering minds, shaping futures. Quality education for a brighter tomorrow.
+                        </p>
+                    </div>
+                </div>
 
-                      <hr className="my-4" />
-
-                      <div className="social-links">
-                        <small className="text-muted d-block mb-3">Follow Us</small>
-                        <div className="d-flex gap-2">
-                          {[FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn].map((Icon, idx) => (
-                            <a href="#" key={idx} className="social-icon-link">
-                              <Icon size={18} />
-                            </a>
-                          ))}
-                        </div>
-                      </div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              </Row>
+                {/* Wave separator */}
+                <div className="absolute bottom-0 left-0 right-0">
+                    <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="#F8FAFC" />
+                    </svg>
+                </div>
             </div>
-          </Tab>
-        </Tabs>
-      </Container>
 
-      {/* Modern Footer */}
-      <footer className="modern-footer">
-        <Container>
-          <Row className="py-5">
-            <Col lg={4} className="mb-4">
-              <h5 className="footer-title mb-4">Tay Son School</h5>
-              <p className="footer-text">
-                Empowering students with quality education and preparing them for a successful future.
-              </p>
-              <div className="social-icons mt-4">
-                {[
-                  { Icon: FaFacebookF, label: 'Facebook' },
-                  { Icon: FaTwitter, label: 'Twitter' },
-                  { Icon: FaInstagram, label: 'Instagram' },
-                  { Icon: FaLinkedinIn, label: 'LinkedIn' }
-                ].map((social, idx) => (
-                  <a href="#" key={idx} className="footer-social-link" aria-label={social.label}>
-                    <social.Icon size={16} />
-                  </a>
-                ))}
-              </div>
-            </Col>
+            {/* Statistics Section */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 relative z-10 mb-20">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {statistics.map((stat, index) => (
+                        <Card key={index} className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 bg-white/80 backdrop-blur-sm">
+                            <CardContent className="p-6">
+                                <div className={`w-12 h-12 bg-gradient-to-br ${stat.gradient} rounded-lg flex items-center justify-center mb-4`}>
+                                    <stat.icon className="w-6 h-6 text-white" />
+                                </div>
+                                <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
+                                <div className="text-sm text-gray-600">{stat.label}</div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </div>
 
-            <Col lg={2} md={6} className="mb-4">
-              <h6 className="footer-heading mb-4">Quick Links</h6>
-              <ul className="footer-links">
-                <li><Link to="/login">Login Portal</Link></li>
-                <li><a href="#admissions">Admissions</a></li>
-                <li><a href="#news">News & Events</a></li>
-                <li><a href="#about">About Us</a></li>
-              </ul>
-            </Col>
+            {/* Tabs Section */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+                {/* Tab Navigation */}
+                <div className="flex justify-center mb-8 space-x-4">
+                    <button
+                        onClick={() => setActiveTab('news')}
+                        className={`px-6 py-3 rounded-lg font-semibold transition-all ${activeTab === 'news'
+                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                            }`}
+                    >
+                        📰 News & Updates
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('admissions')}
+                        className={`px-6 py-3 rounded-lg font-semibold transition-all ${activeTab === 'admissions'
+                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                            }`}
+                    >
+                        🎓 Admissions
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('about')}
+                        className={`px-6 py-3 rounded-lg font-semibold transition-all ${activeTab === 'about'
+                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                            }`}
+                    >
+                        ℹ️ About Us
+                    </button>
+                </div>
 
-            <Col lg={3} md={6} className="mb-4">
-              <h6 className="footer-heading mb-4">Contact Info</h6>
-              <ul className="footer-contact">
-                <li>
-                  <FiMapPin size={16} />
-                  <span>123 Tay Son Street, City</span>
-                </li>
-                <li>
-                  <FiPhone size={16} />
-                  <span>+84 (123) 456-7890</span>
-                </li>
-                <li>
-                  <FiMail size={16} />
-                  <span>info@taysonsecondary.edu</span>
-                </li>
-              </ul>
-            </Col>
+                {/* Tab Content */}
+                {activeTab === 'news' && (
+                    <div>
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl font-bold text-gray-900 mb-4">Latest News & Announcements</h2>
+                            <p className="text-gray-600">Stay updated with our school activities and achievements</p>
+                        </div>
 
-            <Col lg={3} className="mb-4">
-              <h6 className="footer-heading mb-4">Office Hours</h6>
-              <div className="office-hours">
-                <p className="mb-2">Monday - Friday</p>
-                <p className="text-primary fw-semibold mb-3">8:00 AM - 4:00 PM</p>
-                <p className="mb-2">Saturday</p>
-                <p className="text-primary fw-semibold">8:00 AM - 12:00 PM</p>
-              </div>
-            </Col>
-          </Row>
+                        {loading ? (
+                            <div className="flex justify-center items-center py-20">
+                                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                            </div>
+                        ) : error ? (
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3 mb-6">
+                                <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                                <p className="text-sm text-yellow-800">{error}</p>
+                            </div>
+                        ) : null}
 
-          <hr className="footer-divider" />
+                        <div className="space-y-6">
+                            {news.map((item) => (
+                                <Card key={item.id} className="hover:shadow-xl transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm">
+                                    <CardContent className="p-6">
+                                        <div className="flex items-start gap-4">
+                                            <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-3xl">
+                                                {item.image || '📰'}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-semibold">
+                                                        {item.category}
+                                                    </span>
+                                                    <span className="text-sm text-gray-500 flex items-center gap-1">
+                                                        <Calendar className="w-4 h-4" />
+                                                        {new Date(item.publishedDate).toLocaleDateString('en-US', {
+                                                            year: 'numeric',
+                                                            month: 'long',
+                                                            day: 'numeric'
+                                                        })}
+                                                    </span>
+                                                </div>
+                                                <h3 className="text-xl font-bold text-gray-900 mb-2">{item.title}</h3>
+                                                <p className="text-gray-600 mb-4">
+                                                    {item.content.length > 200 ? `${item.content.substring(0, 200)}...` : item.content}
+                                                </p>
+                                                <Link to={`/news/${item.id}`}>
+                                                    <Button variant="outline" size="sm" className="group">
+                                                        Read More
+                                                        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                                                    </Button>
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
-          <div className="footer-bottom py-4">
-            <Row className="align-items-center">
-              <Col md={6} className="text-center text-md-start mb-3 mb-md-0">
-                <small className="footer-copyright">
-                  © 2025 Tay Son Secondary and High School. All rights reserved.
-                </small>
-              </Col>
-              <Col md={6} className="text-center text-md-end">
-                <small className="footer-links-inline">
-                  <a href="#privacy">Privacy Policy</a>
-                  <span className="mx-2">•</span>
-                  <a href="#terms">Terms of Service</a>
-                  <span className="mx-2">•</span>
-                  <a href="#sitemap">Sitemap</a>
-                </small>
-              </Col>
-            </Row>
-          </div>
-        </Container>
-      </footer>
-    </div>
-  );
+                {activeTab === 'admissions' && (
+                    <div>
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl font-bold text-gray-900 mb-4">Admission Information</h2>
+                            <p className="text-gray-600">Join our community of excellence</p>
+                        </div>
+
+                        {admissionsLoading ? (
+                            <div className="flex justify-center items-center py-20">
+                                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                            </div>
+                        ) : admissions.length === 0 ? (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
+                                <p className="text-blue-800">No admission information available at this time.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                {admissions.map((admission) => (
+                                    <Card key={admission.id} className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+                                        <CardHeader>
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <CardTitle className="text-2xl mb-2">{admission.title}</CardTitle>
+                                                    <div className="flex gap-2">
+                                                        <span className="px-3 py-1 bg-green-100 text-green-600 rounded-full text-xs font-semibold">
+                                                            {admission.status}
+                                                        </span>
+                                                        <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-semibold">
+                                                            {admission.grade}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <Calendar className="w-10 h-10 text-blue-600" />
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <p className="text-gray-600 mb-6">{admission.description}</p>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                                <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-4 rounded-lg">
+                                                    <div className="text-sm text-gray-600 mb-1">Total Seats</div>
+                                                    <div className="text-2xl font-bold text-blue-600">{admission.seats}</div>
+                                                </div>
+                                                <div className="bg-gradient-to-br from-pink-50 to-orange-50 p-4 rounded-lg">
+                                                    <div className="text-sm text-gray-600 mb-1">Deadline</div>
+                                                    <div className="text-lg font-bold text-pink-600">
+                                                        {new Date(admission.deadline).toLocaleDateString()}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                                                <Mail className="w-4 h-4 mr-2" />
+                                                Apply Now
+                                            </Button>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'about' && (
+                    <div>
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl font-bold text-gray-900 mb-4">About Our Institution</h2>
+                            <p className="text-gray-600">Building tomorrow's leaders today</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <Card className="lg:col-span-2 border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+                                <CardHeader>
+                                    <CardTitle>🎯 Our Mission</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-gray-600">
+                                        To provide quality education that develops critical thinking, creativity, and character
+                                        in our students, preparing them to be responsible global citizens who can contribute
+                                        meaningfully to society.
+                                    </p>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+                                <CardHeader>
+                                    <CardTitle className="text-white">📞 Contact Info</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex items-start gap-3">
+                                        <MapPin className="w-5 h-5 flex-shrink-0 mt-1" />
+                                        <div>
+                                            <div className="font-semibold">Address</div>
+                                            <div className="text-blue-100 text-sm">Tay Son District, Vietnam</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <Phone className="w-5 h-5 flex-shrink-0 mt-1" />
+                                        <div>
+                                            <div className="font-semibold">Phone</div>
+                                            <div className="text-blue-100 text-sm">+84 (123) 456-7890</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <Mail className="w-5 h-5 flex-shrink-0 mt-1" />
+                                        <div>
+                                            <div className="font-semibold">Email</div>
+                                            <div className="text-blue-100 text-sm">info@taysonsecondary.edu</div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Footer */}
+            <footer className="bg-gray-900 text-white">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                        <div className="md:col-span-2">
+                            <div className="flex items-center space-x-3 mb-4">
+                                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                                    <GraduationCap className="w-6 h-6 text-white" />
+                                </div>
+                                <span className="text-xl font-bold">Tay Son School</span>
+                            </div>
+                            <p className="text-gray-400 mb-4">
+                                Empowering students with quality education and preparing them for a successful future.
+                            </p>
+                            <div className="flex gap-3">
+                                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors">
+                                    <Facebook className="w-5 h-5" />
+                                </a>
+                                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors">
+                                    <Twitter className="w-5 h-5" />
+                                </a>
+                                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors">
+                                    <Instagram className="w-5 h-5" />
+                                </a>
+                                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors">
+                                    <Linkedin className="w-5 h-5" />
+                                </a>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="font-semibold mb-4">Quick Links</h3>
+                            <ul className="space-y-2 text-gray-400">
+                                <li><Link to="/login" className="hover:text-white transition-colors">Login Portal</Link></li>
+                                <li><a href="#" className="hover:text-white transition-colors">Admissions</a></li>
+                                <li><a href="#" className="hover:text-white transition-colors">News & Events</a></li>
+                                <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h3 className="font-semibold mb-4">Office Hours</h3>
+                            <div className="text-gray-400 space-y-2">
+                                <div>
+                                    <div className="text-sm">Monday - Friday</div>
+                                    <div className="font-semibold text-white">8:00 AM - 4:00 PM</div>
+                                </div>
+                                <div>
+                                    <div className="text-sm">Saturday</div>
+                                    <div className="font-semibold text-white">8:00 AM - 12:00 PM</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
+                        <p>© 2025 Tay Son Secondary and High School. All rights reserved.</p>
+                    </div>
+                </div>
+            </footer>
+
+            <style jsx>{`
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+      `}</style>
+
+            {/* Back to Top Button */}
+            {showBackToTop && (
+                <button
+                    onClick={scrollToTop}
+                    className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full shadow-2xl hover:shadow-3xl transition-all transform hover:scale-110 z-50 flex items-center justify-center group"
+                    aria-label="Back to top"
+                >
+                    <ArrowRight className="w-6 h-6 -rotate-90 group-hover:-translate-y-1 transition-transform" />
+                </button>
+            )}
+        </div>
+    );
 }
 
 export default PrincipalHomePage;
-

@@ -73,6 +73,19 @@ public class Staff {
     @Column(name = "emergency_contact_phone")
     private String emergencyContactPhone;
 
+    // Vietnamese Education System - NEW Relationships
+    @OneToMany(mappedBy = "homeroomTeacher", fetch = FetchType.LAZY)
+    private java.util.List<SchoolClass> homeroomClasses;  // Lớp chủ nhiệm
+
+    @OneToMany(mappedBy = "teacher", fetch = FetchType.LAZY)
+    private java.util.List<ClassSubjectAssignment> subjectAssignments;  // Phân công dạy
+
+    @OneToMany(mappedBy = "teacher", fetch = FetchType.LAZY)
+    private java.util.List<TeacherSpecialization> specializations;  // Chuyên môn
+
+    @OneToMany(mappedBy = "headTeacher", fetch = FetchType.LAZY)
+    private java.util.List<GradeLevel> headedGradeLevels;  // Tổ trưởng khối
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

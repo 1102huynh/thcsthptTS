@@ -26,6 +26,10 @@ function Sidebar({ isOpen, userRole }) {
     { id: 6, label: 'Attendance', href: '/attendance', icon: FiClipboard, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
     { id: 7, label: 'Grades', href: '/grades', icon: FiAward, roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
     { id: 8, label: 'Fees', href: '/fees', icon: FiDollarSign, roles: ['ADMIN', 'ACCOUNTANT', 'STUDENT'] },
+    // Vietnamese Education System (NEW)
+    { id: 9, label: 'Class Management', href: '/classes', icon: FiBook, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+    { id: 10, label: 'Subject Management', href: '/subjects', icon: FiAward, roles: ['ADMIN', 'PRINCIPAL'] },
+    { id: 11, label: 'Teacher Assignments', href: '/assignments', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL'] },
   ];
 
   const visibleMenuItems = menuItems.filter(item => item.roles.includes(userRole));

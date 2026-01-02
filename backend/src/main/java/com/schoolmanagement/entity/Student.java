@@ -40,9 +40,24 @@ public class Student {
     @Column(name = "blood_group")
     private String bloodGroup;
 
+    // Vietnamese Education System - NEW
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "grade_level_id")
+    private GradeLevel gradeLevel;  // Khối (6-12)
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "class_id")
+    private SchoolClass schoolClass;  // Lớp học (6A, 10A1, etc.)
+
+    @Column(name = "academic_year", length = 20)
+    private String academicYear;  // "2024-2025"
+
+    // Legacy fields - kept for backward compatibility
+    @Deprecated
     @Column(name = "class_name")
     private String className;
 
+    @Deprecated
     @Column(name = "section")
     private String section;
 

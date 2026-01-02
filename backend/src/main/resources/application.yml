@@ -11,7 +11,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate  # Changed from 'update' - use manual SQL migrations instead
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
@@ -20,34 +20,21 @@ spring:
     open-in-view: false
 
   # PostgreSQL Configuration (Aiven Cloud) - commented out
-#  datasource:
-#    url: jdbc:postgresql://school-clinicbooking.c.aivencloud.com:14143/defaultdb?sslmode=require
-#    username: avnadmin
-#    password:
-#    driver-class-name: org.postgresql.Driver
-#    hikari:
-#      ssl: true
-#      ssl-mode: require
-#
-#  jpa:
-#    hibernate:
-#      ddl-auto: update
-#    properties:
-#      hibernate:
-#        dialect: org.hibernate.dialect.PostgreSQLDialect
-#        format_sql: true
-#    show-sql: false
-#    open-in-view: false
+  # Note: For PostgreSQL configuration, use environment variables or application-prod.yml
+  # datasource:
+  #   url: jdbc:postgresql://<your-aiven-host>:<port>/defaultdb?sslmode=require
+  #   username: ${DB_USERNAME}
+  #   password: ${DB_PASSWORD}
+  #   driver-class-name: org.postgresql.Driver
+  #   hikari:
+  #     ssl: true
+  #     ssl-mode: require
 
-  jackson:
-    serialization:
-      write-dates-as-timestamps: false
-    default-property-inclusion: non_null
 
 server:
   port: 8080
-  servlet:
-    context-path: /api
+  # servlet:
+  #   context-path: /api  # Commented out - causes conflict with /v1/auth endpoints
 
 logging:
   level:

@@ -86,7 +86,7 @@ public class TimetableService {
                 .orElseThrow(() -> new ResourceNotFoundException("Class not found with id: " + classId));
 
         // Verify that current user is the homeroom teacher of this class
-        if (schoolClass.getClassTeacher() == null || !schoolClass.getClassTeacher().getUser().getId().equals(currentUser.getId())) {
+        if (schoolClass.getHomeroomTeacher() == null || !schoolClass.getHomeroomTeacher().getUser().getId().equals(currentUser.getId())) {
             throw new UnauthorizedException("Only the homeroom teacher can create timetable for this class");
         }
 
@@ -128,7 +128,7 @@ public class TimetableService {
         SchoolClass schoolClass = timetable.getSchoolClass();
 
         // Verify that current user is the homeroom teacher of this class
-        if (schoolClass.getClassTeacher() == null || !schoolClass.getClassTeacher().getUser().getId().equals(currentUser.getId())) {
+        if (schoolClass.getHomeroomTeacher() == null || !schoolClass.getHomeroomTeacher().getUser().getId().equals(currentUser.getId())) {
             throw new UnauthorizedException("Only the homeroom teacher can edit timetable for this class");
         }
 
@@ -154,7 +154,7 @@ public class TimetableService {
         SchoolClass schoolClass = timetable.getSchoolClass();
 
         // Verify that current user is the homeroom teacher of this class
-        if (schoolClass.getClassTeacher() == null || !schoolClass.getClassTeacher().getUser().getId().equals(currentUser.getId())) {
+        if (schoolClass.getHomeroomTeacher() == null || !schoolClass.getHomeroomTeacher().getUser().getId().equals(currentUser.getId())) {
             throw new UnauthorizedException("Only the homeroom teacher can delete timetable for this class");
         }
 

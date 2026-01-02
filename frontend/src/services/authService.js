@@ -1,18 +1,18 @@
 import api from './api';
+import axios from 'axios';
 import jwtDecode from 'jwt-decode';
 
+const AUTH_BASE_URL = 'http://localhost:8080'; // Auth endpoints don't use /api prefix
 const AUTH_ENDPOINT = '/v1/auth';
 
 export const authService = {
   // Login user
   login: async (username, password) => {
     try {
-      const loginUrl = `${AUTH_ENDPOINT}/login`;
-      console.log('API Base URL:', api.defaults.baseURL);
-      console.log('Login endpoint:', loginUrl);
-      console.log('Full URL:', api.defaults.baseURL + loginUrl);
+      const loginUrl = `${AUTH_BASE_URL}${AUTH_ENDPOINT}/login`;
+      console.log('Login URL:', loginUrl);
 
-      const response = await api.post(loginUrl, {
+      const response = await axios.post(loginUrl, {
         username,
         password,
       });

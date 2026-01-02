@@ -1,147 +1,303 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Table, Button, Modal, Form, Alert } from 'react-bootstrap';
-import { FiEdit, FiTrash2, FiPlus } from 'react-icons/fi';
+import { FiEdit, FiTrash2, FiPlus, FiUsers } from 'react-icons/fi';
 import { staffService } from '../services/dataService';
-import './Management.css';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 
 function StaffManagement() {
-  const [staff, setStaff] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [selectedStaff, setSelectedStaff] = useState(null);
+    const [staff, setStaff] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [showModal, setShowModal] = useState(false);
+    const [selectedStaff, setSelectedStaff] = useState(null);
+    const [formData, setFormData] = useState({
+        firstName: '',
+        lastName: '',
+        email: '',
+        position: '',
+        department: '',
+        phone: ''
+    });
 
-  useEffect(() => {
-    fetchStaff();
-  }, []);
+    useEffect(() => {
+        fetchStaff();
+    }, []);
 
-  const fetchStaff = async () => {
-    try {
-      setLoading(true);
-      const response = await staffService.getAll();
-      setStaff(response.data || []);
-    } catch (err) {
-      setError('Failed to load staff members');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchStaff = async () => {
+        try {
+            setLoading(true);
+            const response = await staffService.getAll();
+            setStaff(response.data || []);
+        } catch (err) {
+            setError('Failed to load staff members');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure?')) {
-      try {
-        await staffService.delete(id);
-        setStaff(staff.filter(s => s.id !== id));
-      } catch (err) {
-        setError('Failed to delete staff member');
-      }
-    }
-  };
+    const handleDelete = async (id) => {
+        if (window.confirm('Are you sure you want to delete this staff member?')) {
+            try {
+                await staffService.delete(id);
+                setStaff(staff.filter(s => s.id !== id));
+            } catch (err) {
+                setError('Failed to delete staff member');
+            }
+        }
+    };
 
-  const handleAddNew = () => {
-    setSelectedStaff(null);
-    setShowModal(true);
-  };
+    const handleAddNew = () => {
+        setSelectedStaff(null);
+        setFormData({
+            firstName: '',
+            lastName: '',
+            email: '',
+            position: '',
+            department: '',
+            phone: ''
+        });
+        setShowModal(true);
+    };
 
-  return (
-    <Container className="management-container py-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1>Staff Management</h1>
-        <Button variant="primary" onClick={handleAddNew}>
-          <FiPlus /> Add Staff
-        </Button>
-      </div>
+    const handleEdit = (member) => {
+        setSelectedStaff(member);
+        setFormData({
+            firstName: member.user?.firstName || '',
+            lastName: member.user?.lastName || '',
+            email: member.user?.email || '',
+            position: member.position || '',
+            department: member.department || '',
+            phone: member.user?.phone || ''
+        });
+        setShowModal(true);
+    };
 
-      {error && <Alert variant="danger">{error}</Alert>}
+    const handleSave = async () => {
+        try {
+            if (!formData.firstName || !formData.lastName || !formData.email || !formData.position) {
+                setError('Please fill in all required fields');
+                return;
+            }
 
-      {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
+            if (selectedStaff) {
+                await staffService.update(selectedStaff.id, formData);
+            } else {
+                await staffService.create(formData);
+            }
+            setShowModal(false);
+            setError('');
+            fetchStaff();
+        } catch (err) {
+            setError('Failed to save staff member: ' + (err.message || 'Unknown error'));
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6">
+            <div className="max-w-7xl mx-auto">
+                {/* Header */}
+                <div className="mb-8">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+                                <FiUsers className="text-blue-600" />
+                                Staff Management
+                            </h1>
+                            <p className="text-gray-600">Manage and track your teaching and administrative staff</p>
+                        </div>
+                        <Button onClick={handleAddNew} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                            <FiPlus className="w-4 h-4 mr-2" />
+                            Add Staff
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Error Alert */}
+                {error && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-sm text-red-800">{error}</p>
+                    </div>
+                )}
+
+                {/* Staff Table */}
+                <Card className="border-0 shadow-xl">
+                    <CardHeader>
+                        <CardTitle>Staff Members ({staff.length})</CardTitle>
+                        <CardDescription>View and manage all staff members</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {loading ? (
+                            <div className="flex justify-center items-center py-12">
+                                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b border-gray-200">
+                                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Employee ID</th>
+                                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Name</th>
+                                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Position</th>
+                                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Department</th>
+                                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
+                                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
+                                            <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {staff.length > 0 ? (
+                                            staff.map((member) => (
+                                                <tr key={member.id} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="py-4 px-4 text-sm text-gray-900">{member.employeeId}</td>
+                                                    <td className="py-4 px-4">
+                                                        <div className="font-medium text-gray-900">
+                                                            {member.user?.firstName} {member.user?.lastName}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 px-4 text-sm text-gray-600">{member.position}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-600">{member.department}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-600">{member.user?.email}</td>
+                                                    <td className="py-4 px-4">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${member.status === 'ACTIVE'
+                                                                ? 'bg-green-100 text-green-700'
+                                                                : 'bg-red-100 text-red-700'
+                                                            }`}>
+                                                            {member.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-4 px-4">
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={() => handleEdit(member)}
+                                                                className="hover:bg-blue-50 hover:text-blue-700"
+                                                            >
+                                                                <FiEdit className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={() => handleDelete(member.id)}
+                                                                className="hover:bg-red-50 hover:text-red-700"
+                                                            >
+                                                                <FiTrash2 className="w-4 h-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="7" className="text-center py-12 text-gray-500">
+                                                    No staff members found
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Modal */}
+                {showModal && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                            <CardHeader>
+                                <CardTitle>{selectedStaff ? 'Edit Staff Member' : 'Add New Staff Member'}</CardTitle>
+                                <CardDescription>Fill in the staff member details</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="firstName">First Name *</Label>
+                                        <Input
+                                            id="firstName"
+                                            value={formData.firstName}
+                                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                                            placeholder="Enter first name"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="lastName">Last Name *</Label>
+                                        <Input
+                                            id="lastName"
+                                            value={formData.lastName}
+                                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                                            placeholder="Enter last name"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="email">Email *</Label>
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                        placeholder="Enter email"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone">Phone</Label>
+                                    <Input
+                                        id="phone"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                        placeholder="Enter phone number"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="position">Position *</Label>
+                                        <select
+                                            id="position"
+                                            value={formData.position}
+                                            onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                        >
+                                            <option value="">Select Position</option>
+                                            <option value="PRINCIPAL">Principal</option>
+                                            <option value="TEACHER">Teacher</option>
+                                            <option value="LIBRARIAN">Librarian</option>
+                                            <option value="ACCOUNTANT">Accountant</option>
+                                            <option value="ADMIN_STAFF">Admin Staff</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="department">Department</Label>
+                                        <Input
+                                            id="department"
+                                            value={formData.department}
+                                            onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                                            placeholder="Enter department"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-4">
+                                    <Button variant="outline" onClick={() => setShowModal(false)}>
+                                        Cancel
+                                    </Button>
+                                    <Button onClick={handleSave} className="bg-gradient-to-r from-blue-600 to-purple-600">
+                                        <FiPlus className="w-4 h-4 mr-2" />
+                                        {selectedStaff ? 'Update' : 'Save'}
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
+            </div>
         </div>
-      ) : (
-        <div className="table-responsive">
-          <Table striped bordered hover>
-            <thead>
-              <tr>
-                <th>Employee ID</th>
-                <th>Name</th>
-                <th>Position</th>
-                <th>Department</th>
-                <th>Email</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {staff.length > 0 ? (
-                staff.map((member) => (
-                  <tr key={member.id}>
-                    <td>{member.employeeId}</td>
-                    <td>{member.user?.firstName} {member.user?.lastName}</td>
-                    <td>{member.position}</td>
-                    <td>{member.department}</td>
-                    <td>{member.user?.email}</td>
-                    <td>
-                      <span className={`badge bg-${member.status === 'ACTIVE' ? 'success' : 'danger'}`}>
-                        {member.status}
-                      </span>
-                    </td>
-                    <td>
-                      <Button variant="sm" className="me-2" onClick={() => { setSelectedStaff(member); setShowModal(true); }}>
-                        <FiEdit /> Edit
-                      </Button>
-                      <Button variant="sm" variant="danger" onClick={() => handleDelete(member.id)}>
-                        <FiTrash2 /> Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="7" className="text-center py-3">No staff members found</td>
-                </tr>
-              )}
-            </tbody>
-          </Table>
-        </div>
-      )}
-
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>{selectedStaff ? 'Edit Staff' : 'Add New Staff'}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Name</Form.Label>
-              <Form.Control type="text" placeholder="Enter name" />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Position</Form.Label>
-              <Form.Control as="select" defaultValue="">
-                <option value="">Select Position</option>
-                <option value="PRINCIPAL">Principal</option>
-                <option value="TEACHER">Teacher</option>
-                <option value="LIBRARIAN">Librarian</option>
-                <option value="ACCOUNTANT">Accountant</option>
-              </Form.Control>
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary">
-            Save
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    </Container>
-  );
+    );
 }
 
 export default StaffManagement;
-
