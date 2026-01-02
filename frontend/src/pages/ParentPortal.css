@@ -1,0 +1,87 @@
+.parent-portal {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    padding-bottom: 2rem;
+}
+
+.stat-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.child-card {
+    border-left: 4px solid #0d6efd;
+    transition: transform 0.2s;
+}
+
+.child-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.announcement-item {
+    transition: background-color 0.2s;
+}
+
+.announcement-item:hover {
+    background-color: #f8f9fa;
+}
+
+.message-item {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+}
+
+.meeting-item {
+    border-left: 4px solid #198754;
+}
+
+.announcements-list,
+.messages-list,
+.meetings-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Scrollbar styling */
+.announcements-list::-webkit-scrollbar,
+.messages-list::-webkit-scrollbar,
+.meetings-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.announcements-list::-webkit-scrollbar-track,
+.messages-list::-webkit-scrollbar-track,
+.meetings-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.announcements-list::-webkit-scrollbar-thumb,
+.messages-list::-webkit-scrollbar-thumb,
+.meetings-list::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.announcements-list::-webkit-scrollbar-thumb:hover,
+.messages-list::-webkit-scrollbar-thumb:hover,
+.meetings-list::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+

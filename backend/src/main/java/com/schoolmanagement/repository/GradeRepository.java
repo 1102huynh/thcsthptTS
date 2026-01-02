@@ -10,6 +10,7 @@ import java.util.List;
 @Repository
 public interface GradeRepository extends JpaRepository<Grade, Long> {
     List<Grade> findByStudent(Student student);
+    List<Grade> findByStudentId(Long studentId);
     List<Grade> findByStudentAndAcademicYear(Student student, String academicYear);
     List<Grade> findByStudentAndSubject(Student student, String subject);
     List<Grade> findByAcademicYear(String academicYear);

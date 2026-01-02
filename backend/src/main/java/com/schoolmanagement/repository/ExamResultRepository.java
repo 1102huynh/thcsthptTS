@@ -11,6 +11,7 @@ import java.util.Optional;
 public interface ExamResultRepository extends JpaRepository<ExamResult, Long> {
     List<ExamResult> findByExam_Id(Long examId);
     List<ExamResult> findByStudent_Id(Long studentId);
+    List<ExamResult> findByStudentIdOrderByExam_ExamDateDesc(Long studentId);
     Optional<ExamResult> findByExam_IdAndStudent_Id(Long examId, Long studentId);
     List<ExamResult> findByStatus(String status);
     List<ExamResult> findByGrade(String grade);

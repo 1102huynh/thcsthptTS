@@ -62,19 +62,19 @@ ALTER SEQUENCE IF EXISTS users_id_seq RESTART WITH 1;
 -- =====================================================
 
 INSERT INTO users (username, email, password, first_name, last_name, phone_number, role, enabled, created_at, updated_at) VALUES
-('admin', 'admin@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Admin', 'User', '9876543210', 'ADMIN', true, NOW(), NOW()),
-('principal', 'principal@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Principal', 'School', '9876543211', 'PRINCIPAL', true, NOW(), NOW()),
-('teacher1', 'teacher1@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'John', 'Smith', '9876543212', 'TEACHER', true, NOW(), NOW()),
-('teacher2', 'teacher2@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Sarah', 'Johnson', '9876543213', 'TEACHER', true, NOW(), NOW()),
-('teacher3', 'teacher3@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Michael', 'Brown', '9876543214', 'TEACHER', true, NOW(), NOW()),
-('librarian', 'librarian@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Emily', 'Davis', '9876543215', 'LIBRARIAN', true, NOW(), NOW()),
-('accountant', 'accountant@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Robert', 'Wilson', '9876543216', 'ACCOUNTANT', true, NOW(), NOW()),
-('student1', 'student1@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Raj', 'Kumar', '9876543217', 'STUDENT', true, NOW(), NOW()),
-('student2', 'student2@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Priya', 'Singh', '9876543218', 'STUDENT', true, NOW(), NOW()),
-('student3', 'student3@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Amit', 'Patel', '9876543219', 'STUDENT', true, NOW(), NOW()),
-('student4', 'student4@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Anjali', 'Sharma', '9876543220', 'STUDENT', true, NOW(), NOW()),
-('student5', 'student5@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Arjun', 'Verma', '9876543221', 'STUDENT', true, NOW(), NOW()),
-('student6', 'student6@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Divya', 'Nair', '9876543222', 'STUDENT', true, NOW(), NOW());
+('admin', 'admin@school.com', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'Admin', 'User', '9876543210', 'ADMIN', true, NOW(), NOW()),
+('principal', 'principal@school.com', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'Principal', 'School', '9876543211', 'PRINCIPAL', true, NOW(), NOW()),
+('teacher1', 'teacher1@school.com', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'John', 'Smith', '9876543212', 'TEACHER', true, NOW(), NOW()),
+('teacher2', 'teacher2@school.com', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'Sarah', 'Johnson', '9876543213', 'TEACHER', true, NOW(), NOW()),
+('teacher3', 'teacher3@school.com', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'Michael', 'Brown', '9876543214', 'TEACHER', true, NOW(), NOW()),
+('librarian', 'librarian@school.com', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'Emily', 'Davis', '9876543215', 'LIBRARIAN', true, NOW(), NOW()),
+('accountant', 'accountant@school.com', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'Robert', 'Wilson', '9876543216', 'ACCOUNTANT', true, NOW(), NOW()),
+('student1', 'student1@school.com', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'Raj', 'Kumar', '9876543217', 'STUDENT', true, NOW(), NOW()),
+('student2', 'student2@school.com', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'Priya', 'Singh', '9876543218', 'STUDENT', true, NOW(), NOW()),
+('student3', 'student3@school.com', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'Amit', 'Patel', '9876543219', 'STUDENT', true, NOW(), NOW()),
+('student4', 'student4@school.com', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'Anjali', 'Sharma', '9876543220', 'STUDENT', true, NOW(), NOW()),
+('student5', 'student5@school.com', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'Arjun', 'Verma', '9876543221', 'STUDENT', true, NOW(), NOW()),
+('student6', 'student6@school.com', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'Divya', 'Nair', '9876543222', 'STUDENT', true, NOW(), NOW());
 
 -- =====================================================
 -- 2. STAFF TABLE - Employee Information
