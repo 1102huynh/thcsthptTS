@@ -18,6 +18,7 @@ import {
     UserCheck
 } from 'lucide-react';
 import { staffService, studentService, libraryService } from '../services/dataService';
+import api from '../services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 
@@ -28,6 +29,11 @@ function Dashboard({ user }) {
         bookCount: 0,
         attendanceRate: 85,
         totalRevenue: 0,
+        // Vietnamese Education stats
+        classCount: 0,
+        subjectCount: 0,
+        gradeLevelCount: 0,
+        assignmentCount: 0,
         loading: true,
         error: null,
     });
@@ -47,9 +53,20 @@ function Dashboard({ user }) {
         try {
             setStats(prev => ({ ...prev, loading: true }));
 
-            const staffRes = await staffService.getAll();
-            const studentRes = await studentService.getAll();
-            const bookRes = await libraryService.getBooks();
+            // Fetch old stats
+            const [staffRes, studentRes, bookRes] = await Promise.all([
+                staffService.getAll(),
+                studentService.getAll(),
+                libraryService.getBooks()
+            ]);
+
+            // Fetch Vietnamese Education stats
+            const [classesRes, subjectsRes, gradeLevelsRes, assignmentsRes] = await Promise.all([
+                api.get('/api/classes'),
+                api.get('/api/subjects'),
+                api.get('/api/grade-levels'),
+                api.get('/api/assignments')
+            ]);
 
             setStats({
                 staffCount: staffRes.data.length || 0,
@@ -57,10 +74,16 @@ function Dashboard({ user }) {
                 bookCount: bookRes.data.length || 0,
                 attendanceRate: 85,
                 totalRevenue: 125000,
+                // Vietnamese Education stats
+                classCount: classesRes.data.length || 0,
+                subjectCount: subjectsRes.data.length || 0,
+                gradeLevelCount: gradeLevelsRes.data.length || 0,
+                assignmentCount: assignmentsRes.data.length || 0,
                 loading: false,
                 error: null,
             });
         } catch (err) {
+            console.error('Error fetching stats:', err);
             setStats(prev => ({
                 ...prev,
                 loading: false,
@@ -109,6 +132,47 @@ function Dashboard({ user }) {
             color: 'from-amber-500 to-orange-600',
             bgColor: 'bg-amber-50',
             iconColor: 'text-amber-600',
+        },
+        // Vietnamese Education System Stats
+        {
+            title: 'Total Classes',
+            value: stats.classCount,
+            icon: Users,
+            trend: 'Active',
+            trendUp: true,
+            color: 'from-indigo-500 to-indigo-600',
+            bgColor: 'bg-indigo-50',
+            iconColor: 'text-indigo-600',
+        },
+        {
+            title: 'Subjects',
+            value: stats.subjectCount,
+            icon: BookOpen,
+            trend: 'THCS+THPT',
+            trendUp: true,
+            color: 'from-violet-500 to-violet-600',
+            bgColor: 'bg-violet-50',
+            iconColor: 'text-violet-600',
+        },
+        {
+            title: 'Grade Levels',
+            value: stats.gradeLevelCount,
+            icon: Award,
+            trend: '6-12',
+            trendUp: true,
+            color: 'from-pink-500 to-pink-600',
+            bgColor: 'bg-pink-50',
+            iconColor: 'text-pink-600',
+        },
+        {
+            title: 'Assignments',
+            value: stats.assignmentCount,
+            icon: ClipboardCheck,
+            trend: 'Active',
+            trendUp: true,
+            color: 'from-teal-500 to-teal-600',
+            bgColor: 'bg-teal-50',
+            iconColor: 'text-teal-600',
         },
     ];
 

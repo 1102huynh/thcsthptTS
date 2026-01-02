@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FiEdit, FiTrash2, FiPlus, FiUsers } from 'react-icons/fi';
+import { FiEdit, FiTrash2, FiPlus, FiUsers, FiBook } from 'react-icons/fi';
 import { staffService } from '../services/dataService';
+import api from '../services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -8,6 +9,7 @@ import { Label } from '../components/ui/label';
 
 function StaffManagement() {
     const [staff, setStaff] = useState([]);
+    const [assignments, setAssignments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showModal, setShowModal] = useState(false);
@@ -28,8 +30,12 @@ function StaffManagement() {
     const fetchStaff = async () => {
         try {
             setLoading(true);
-            const response = await staffService.getAll();
-            setStaff(response.data || []);
+            const [staffResponse, assignmentsResponse] = await Promise.all([
+                staffService.getAll(),
+                api.get('/api/assignments')
+            ]);
+            setStaff(staffResponse.data || []);
+            setAssignments(assignmentsResponse.data || []);
         } catch (err) {
             setError('Failed to load staff members');
         } finally {
@@ -161,8 +167,8 @@ function StaffManagement() {
                                                     <td className="py-4 px-4 text-sm text-gray-600">{member.user?.email}</td>
                                                     <td className="py-4 px-4">
                                                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${member.status === 'ACTIVE'
-                                                                ? 'bg-green-100 text-green-700'
-                                                                : 'bg-red-100 text-red-700'
+                                                            ? 'bg-green-100 text-green-700'
+                                                            : 'bg-red-100 text-red-700'
                                                             }`}>
                                                             {member.status}
                                                         </span>
