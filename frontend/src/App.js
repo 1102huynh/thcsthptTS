@@ -10,7 +10,6 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import StudentPortal from './pages/StudentPortal';
 import StaffManagement from './pages/StaffManagement';
-import StudentManagement from './pages/StudentManagement';
 import AdminNewsPage from './pages/AdminNewsPage';
 import {
   LibraryManagement,
@@ -28,6 +27,7 @@ import ReportsPage from './pages/ReportsPage';
 import AcademicYearPage from './pages/AcademicYearPage';
 import ExamManagement from './pages/ExamManagement';
 import ExamResultsPage from './pages/ExamResultsPage';
+import StudentVNManagement from './pages/StudentVNManagement';
 import BackendHealthCheck from './pages/BackendHealthCheck';
 
 // Layout
@@ -93,7 +93,6 @@ function App() {
                   <>
                     <Route path="/dashboard" element={<Dashboard user={user} />} />
                     <Route path="/staff" element={<StaffManagement />} />
-                    <Route path="/students" element={<StudentManagement />} />
                     <Route path="/library" element={<LibraryManagement />} />
                     <Route path="/attendance" element={<AttendanceManagement />} />
                     <Route path="/grades" element={<GradeManagement />} />
@@ -104,6 +103,7 @@ function App() {
                     <Route path="/exams" element={<ExamManagement />} />
                     <Route path="/exam-results" element={<ExamResultsPage />} />
                     <Route path="/subjects" element={<SubjectManagement />} />
+                    <Route path="/students" element={<StudentVNManagement />} />
                     <Route path="/assignments" element={<TeacherAssignmentPage />} />
                     <Route path="/timetable" element={<TimetableManagement />} />
                     <Route path="/reports" element={<ReportsPage />} />
