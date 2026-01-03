@@ -6,19 +6,42 @@
 -- ========================================
 
 -- ========================================
--- 1. CREATE DATABASE
+-- 0. SET SQL MODE (Fix timestamp defaults)
 -- ========================================
-CREATE DATABASE IF NOT EXISTS schoolmanagement
-CHARACTER SET utf8mb4 
-COLLATE utf8mb4_unicode_ci;
+-- This fixes "Field 'created_at' doesn't have a default value" error
 
-USE schoolmanagement;
+-- Option 1: Disable strict mode (recommended for initial setup)
+SET SESSION sql_mode = '';
+SET GLOBAL sql_mode = '';
+
+-- Option 2: If Option 1 doesn't work, use this:
+-- SET SESSION sql_mode = 'ONLY_FULL_GROUP_BY,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+-- Ensure timestamp defaults work
+SET SESSION explicit_defaults_for_timestamp = 0;
+
+-- ========================================
+-- 1. DROP AND RECREATE DATABASE (Clean Setup)
+-- ========================================
+-- WARNING: This will delete ALL data in the database!
+
+-- Drop the entire database (if exists)
+DROP DATABASE IF EXISTS school_management;
+
+-- Create fresh database
+CREATE DATABASE school_management
+    CHARACTER SET utf8mb4 
+    COLLATE utf8mb4_unicode_ci;
+
+-- Select the new database
+USE school_management;
 
 -- ========================================
 -- 2. CREATE CORE TABLES
 -- ========================================
 
--- 2.1 USERS TABLE (Authentication & Authorization)
+
+-- USERS TABLE (Authentication & Authorization)
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -28,14 +51,15 @@ CREATE TABLE IF NOT EXISTS users (
     first_name VARCHAR(50),
     last_name VARCHAR(50),
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
     INDEX idx_username (username),
     INDEX idx_email (email),
     INDEX idx_role (role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2.2 STAFF TABLE (Teachers, Admin, etc.)
+
+-- STAFF TABLE (Teachers, Admin, etc.)
 CREATE TABLE IF NOT EXISTS staff (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL UNIQUE,
@@ -48,12 +72,13 @@ CREATE TABLE IF NOT EXISTS staff (
     hire_date DATE,
     salary DECIMAL(12,2),
     status VARCHAR(20) DEFAULT 'ACTIVE',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2.3 STUDENTS TABLE (Basic student info)
+
+-- STUDENTS TABLE (Basic student info)
 CREATE TABLE IF NOT EXISTS students (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL UNIQUE,
@@ -70,8 +95,8 @@ CREATE TABLE IF NOT EXISTS students (
     parent_email VARCHAR(100),
     enrollment_date DATE,
     status VARCHAR(20) DEFAULT 'ACTIVE',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -79,7 +104,8 @@ CREATE TABLE IF NOT EXISTS students (
 -- 3. VIETNAMESE EDUCATION SYSTEM TABLES
 -- ========================================
 
--- 3.1 GRADE LEVELS TABLE (Khối Lớp)
+
+-- GRADE LEVELS TABLE (Khối Lớp)
 CREATE TABLE IF NOT EXISTS grade_levels (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     level_number INT NOT NULL COMMENT 'Số khối: 6, 7, 8, 9, 10, 11, 12',
@@ -89,14 +115,15 @@ CREATE TABLE IF NOT EXISTS grade_levels (
     head_teacher_id BIGINT NULL,
     description TEXT NULL,
     status VARCHAR(20) DEFAULT 'ACTIVE',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
     UNIQUE KEY uk_grade_level (level_number, academic_year),
     INDEX idx_school_type (school_type),
     INDEX idx_academic_year (academic_year)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3.2 CLASSES TABLE (Lớp Học)
+
+-- CLASSES TABLE (Lớp Học)
 CREATE TABLE IF NOT EXISTS classes (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     grade_level_id BIGINT NOT NULL,
@@ -108,15 +135,16 @@ CREATE TABLE IF NOT EXISTS classes (
     current_students INT DEFAULT 0,
     room_number VARCHAR(20) NULL,
     status VARCHAR(20) DEFAULT 'ACTIVE',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
     FOREIGN KEY (grade_level_id) REFERENCES grade_levels(id) ON DELETE RESTRICT,
     FOREIGN KEY (homeroom_teacher_id) REFERENCES staff(id) ON DELETE SET NULL,
     UNIQUE KEY uk_class (class_name, academic_year),
     INDEX idx_grade_level (grade_level_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3.3 SUBJECTS TABLE (Môn Học)
+
+-- SUBJECTS TABLE (Môn Học)
 CREATE TABLE IF NOT EXISTS subjects (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     subject_code VARCHAR(20) NOT NULL UNIQUE,
@@ -129,12 +157,13 @@ CREATE TABLE IF NOT EXISTS subjects (
     is_required BOOLEAN DEFAULT TRUE,
     description TEXT NULL,
     status VARCHAR(20) DEFAULT 'ACTIVE',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
     INDEX idx_school_type (school_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3.4 CLASS SUBJECT ASSIGNMENTS (Phân Công Giảng Dạy)
+
+-- CLASS SUBJECT ASSIGNMENTS (Phân Công Giảng Dạy)
 CREATE TABLE IF NOT EXISTS class_subject_assignments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     class_id BIGINT NOT NULL,
@@ -146,15 +175,16 @@ CREATE TABLE IF NOT EXISTS class_subject_assignments (
     start_date DATE NULL,
     end_date DATE NULL,
     status VARCHAR(20) DEFAULT 'ACTIVE',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
     FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
     FOREIGN KEY (teacher_id) REFERENCES staff(id) ON DELETE RESTRICT,
     UNIQUE KEY uk_assignment (class_id, subject_id, semester, academic_year)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3.5 TIMETABLES (Thời Khóa Biểu)
+
+-- TIMETABLES (Thời Khóa Biểu)
 CREATE TABLE IF NOT EXISTS timetables (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     class_id BIGINT NOT NULL,
@@ -167,15 +197,34 @@ CREATE TABLE IF NOT EXISTS timetables (
     semester INT NOT NULL,
     start_time TIME NULL,
     end_time TIME NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
     FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
     FOREIGN KEY (teacher_id) REFERENCES staff(id) ON DELETE RESTRICT,
     UNIQUE KEY uk_timetable (class_id, day_of_week, period_number, semester, academic_year)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3.6 ACADEMIC YEARS (Năm Học)
+
+-- 3.6 TEACHER SPECIALIZATIONS (Chuyên Môn Giáo Viên)
+CREATE TABLE IF NOT EXISTS teacher_specializations (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id BIGINT NOT NULL,
+    subject_id BIGINT NOT NULL,
+    is_primary BOOLEAN DEFAULT FALSE COMMENT 'Bộ môn chính',
+    certification_level VARCHAR(50) NULL COMMENT 'Trình độ: Giỏi, Khá, Trung bình',
+    years_of_experience INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
+    FOREIGN KEY (teacher_id) REFERENCES staff(id) ON DELETE CASCADE,
+    FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_teacher_subject (teacher_id, subject_id),
+    INDEX idx_teacher (teacher_id),
+    INDEX idx_subject (subject_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- 3.7 ACADEMIC YEARS (Năm Học)
 CREATE TABLE IF NOT EXISTS academic_years (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     year_name VARCHAR(20) NOT NULL UNIQUE COMMENT '2024-2025',
@@ -187,11 +236,12 @@ CREATE TABLE IF NOT EXISTS academic_years (
     semester2_start DATE,
     semester2_end DATE,
     status VARCHAR(20) DEFAULT 'ACTIVE',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3.7 STUDENT VN (Vietnam Standard Student Management)
+
+-- STUDENT VN (Vietnam Standard Student Management)
 CREATE TABLE IF NOT EXISTS students_vn (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
@@ -257,14 +307,15 @@ CREATE TABLE IF NOT EXISTS students_vn (
     birth_certificate_url VARCHAR(500),
     household_book_url VARCHAR(500),
     other_documents_url VARCHAR(500),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (grade_level_id) REFERENCES grade_levels(id) ON DELETE SET NULL,
     FOREIGN KEY (school_class_id) REFERENCES classes(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3.8 EXAMS
+
+-- EXAMS
 CREATE TABLE IF NOT EXISTS exams (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     exam_name VARCHAR(200) NOT NULL,
@@ -278,14 +329,15 @@ CREATE TABLE IF NOT EXISTS exams (
     academic_year VARCHAR(20),
     semester INT,
     status VARCHAR(20) DEFAULT 'SCHEDULED',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
     FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
     FOREIGN KEY (grade_level_id) REFERENCES grade_levels(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3.9 EXAM RESULTS
+
+-- EXAM RESULTS
 CREATE TABLE IF NOT EXISTS exam_results (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     exam_id BIGINT NOT NULL,
@@ -294,8 +346,8 @@ CREATE TABLE IF NOT EXISTS exam_results (
     grade VARCHAR(5),
     remarks TEXT,
     is_absent BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
     FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
     UNIQUE KEY uk_exam_student (exam_id, student_id)
@@ -314,15 +366,17 @@ CREATE INDEX idx_students_academic_year ON students(academic_year);
 -- 4. INSERT TEST DATA
 -- ========================================
 
--- 4.1 Insert Admin User
-INSERT INTO users (username, password, email, role, first_name, last_name) VALUES
-('admin', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'admin@school.com', 'ADMIN', 'System', 'Administrator'),
-('principal', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'principal@school.com', 'PRINCIPAL', 'Principal', 'User'),
-('teacher1', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'teacher1@school.com', 'TEACHER', 'John', 'Doe'),
-('student1', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student1@school.com', 'STUDENT', 'Jane', 'Smith')
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
 
--- 4.2 Insert Grade Levels
+-- Insert Admin User
+INSERT INTO users (username, password, email, role, first_name, last_name) VALUES
+('admin', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'admin@school.com', 'ADMIN', 'System', 'Administrator'),
+('principal', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'principal@school.com', 'PRINCIPAL', 'Principal', 'User'),
+('teacher1', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'teacher1@school.com', 'TEACHER', 'John', 'Doe'),
+('student1', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student1@school.com', 'STUDENT', 'Jane', 'Smith')
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
+
+
+-- Insert Grade Levels
 INSERT INTO grade_levels (level_number, level_name, school_type, academic_year, status) VALUES
 (6, 'Grade 6', 'THCS', '2024-2025', 'ACTIVE'),
 (7, 'Grade 7', 'THCS', '2024-2025', 'ACTIVE'),
@@ -331,9 +385,10 @@ INSERT INTO grade_levels (level_number, level_name, school_type, academic_year, 
 (10, 'Grade 10', 'THPT', '2024-2025', 'ACTIVE'),
 (11, 'Grade 11', 'THPT', '2024-2025', 'ACTIVE'),
 (12, 'Grade 12', 'THPT', '2024-2025', 'ACTIVE')
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
 
--- 4.3 Insert Subjects
+
+-- Insert Subjects
 INSERT INTO subjects (subject_code, subject_name, subject_name_en, school_type, category, total_periods_per_week, coefficient, is_required) VALUES
 ('MATH', 'Toán học', 'Mathematics', 'BOTH', 'Science', 5, 2.0, TRUE),
 ('LIT', 'Ngữ văn', 'Literature', 'BOTH', 'Language', 5, 2.0, TRUE),
@@ -349,9 +404,10 @@ INSERT INTO subjects (subject_code, subject_name, subject_name_en, school_type, 
 ('MUSIC', 'Âm nhạc', 'Music', 'BOTH', 'Arts', 1, 1.0, FALSE),
 ('ART', 'Mỹ thuật', 'Arts', 'BOTH', 'Arts', 1, 1.0, FALSE),
 ('TECH', 'Công nghệ', 'Technology', 'BOTH', 'Technology', 2, 1.0, TRUE)
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
 
--- 4.4 Insert Classes (Sample)
+
+-- Insert Classes (Sample)
 INSERT INTO classes (grade_level_id, class_name, full_name, academic_year, max_students, room_number, status) VALUES
 (1, '6A', 'Class 6A', '2024-2025', 40, 'A101', 'ACTIVE'),
 (1, '6B', 'Class 6B', '2024-2025', 40, 'A102', 'ACTIVE'),
@@ -367,27 +423,30 @@ INSERT INTO classes (grade_level_id, class_name, full_name, academic_year, max_s
 (6, '11A2', 'Class 11A2', '2024-2025', 40, 'B202', 'ACTIVE'),
 (7, '12A1', 'Class 12A1', '2024-2025', 40, 'B301', 'ACTIVE'),
 (7, '12A2', 'Class 12A2', '2024-2025', 40, 'B302', 'ACTIVE')
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
 
--- 4.5 Insert Academic Year
+
+-- Insert Academic Year
 INSERT INTO academic_years (year_name, start_date, end_date, is_current, semester1_start, semester1_end, semester2_start, semester2_end) VALUES
 ('2024-2025', '2024-09-01', '2025-05-31', TRUE, '2024-09-01', '2024-12-31', '2025-01-07', '2025-05-31')
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
 
--- 4.6 Insert More Teachers (10 teachers total)
+
+-- Insert More Teachers (10 teachers total)
 INSERT INTO users (username, password, email, role, first_name, last_name) VALUES
-('teacher_math', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'teacher.math@school.com', 'TEACHER', 'Nguyen', 'Van A'),
-('teacher_lit', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'teacher.lit@school.com', 'TEACHER', 'Tran', 'Thi B'),
-('teacher_eng', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'teacher.eng@school.com', 'TEACHER', 'Le', 'Van C'),
-('teacher_phy', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'teacher.phy@school.com', 'TEACHER', 'Pham', 'Thi D'),
-('teacher_chem', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'teacher.chem@school.com', 'TEACHER', 'Hoang', 'Van E'),
-('teacher_bio', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'teacher.bio@school.com', 'TEACHER', 'Vu', 'Thi F'),
-('teacher_hist', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'teacher.hist@school.com', 'TEACHER', 'Do', 'Van G'),
-('teacher_geo', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'teacher.geo@school.com', 'TEACHER', 'Bui', 'Thi H'),
-('teacher_it', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'teacher.it@school.com', 'TEACHER', 'Dang', 'Van I')
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
+('teacher_math', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'teacher.math@school.com', 'TEACHER', 'Nguyen', 'Van A'),
+('teacher_lit', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'teacher.lit@school.com', 'TEACHER', 'Tran', 'Thi B'),
+('teacher_eng', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'teacher.eng@school.com', 'TEACHER', 'Le', 'Van C'),
+('teacher_phy', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'teacher.phy@school.com', 'TEACHER', 'Pham', 'Thi D'),
+('teacher_chem', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'teacher.chem@school.com', 'TEACHER', 'Hoang', 'Van E'),
+('teacher_bio', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'teacher.bio@school.com', 'TEACHER', 'Vu', 'Thi F'),
+('teacher_hist', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'teacher.hist@school.com', 'TEACHER', 'Do', 'Van G'),
+('teacher_geo', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'teacher.geo@school.com', 'TEACHER', 'Bui', 'Thi H'),
+('teacher_it', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'teacher.it@school.com', 'TEACHER', 'Dang', 'Van I')
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
 
--- 4.7 Insert Staff Records for Teachers
+
+-- Insert Staff Records for Teachers
 INSERT INTO staff (user_id, staff_id, position, department, qualification, phone_number, date_of_birth, hire_date, status) VALUES
 (3, 'TCH001', 'Math Teacher', 'Science', 'Master in Mathematics', '0901234567', '1985-05-15', '2015-09-01', 'ACTIVE'),
 (5, 'TCH002', 'Math Teacher', 'Science', 'Bachelor in Mathematics', '0901234568', '1987-03-20', '2016-09-01', 'ACTIVE'),
@@ -399,33 +458,35 @@ INSERT INTO staff (user_id, staff_id, position, department, qualification, phone
 (11, 'TCH008', 'History Teacher', 'Social', 'Bachelor in History', '0901234574', '1989-12-05', '2017-09-01', 'ACTIVE'),
 (12, 'TCH009', 'Geography Teacher', 'Social', 'Bachelor in Geography', '0901234575', '1991-06-22', '2018-09-01', 'ACTIVE'),
 (13, 'TCH010', 'IT Teacher', 'Technology', 'Master in Computer Science', '0901234576', '1992-08-08', '2019-09-01', 'ACTIVE')
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
 
--- 4.8 Insert Sample Students (20 students)
+
+-- Insert Sample Students (20 students)
 INSERT INTO users (username, password, email, role, first_name, last_name) VALUES
-('student001', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student001@school.com', 'STUDENT', 'Nguyen', 'Minh Anh'),
-('student002', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student002@school.com', 'STUDENT', 'Tran', 'Hoang Bao'),
-('student003', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student003@school.com', 'STUDENT', 'Le', 'Thi Cam'),
-('student004', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student004@school.com', 'STUDENT', 'Pham', 'Van Dung'),
-('student005', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student005@school.com', 'STUDENT', 'Hoang', 'Thi Em'),
-('student006', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student006@school.com', 'STUDENT', 'Vu', 'Van Phong'),
-('student007', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student007@school.com', 'STUDENT', 'Do', 'Thi Giang'),
-('student008', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student008@school.com', 'STUDENT', 'Bui', 'Van Hai'),
-('student009', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student009@school.com', 'STUDENT', 'Dang', 'Thi Hoa'),
-('student010', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student010@school.com', 'STUDENT', 'Ngo', 'Van Khai'),
-('student011', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student011@school.com', 'STUDENT', 'Ly', 'Thi Lan'),
-('student012', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student012@school.com', 'STUDENT', 'Vo', 'Van Minh'),
-('student013', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student013@school.com', 'STUDENT', 'Trinh', 'Thi Nga'),
-('student014', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student014@school.com', 'STUDENT', 'Duong', 'Van Phuc'),
-('student015', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student015@school.com', 'STUDENT', 'Mai', 'Thi Quynh'),
-('student016', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student016@school.com', 'STUDENT', 'Ha', 'Van Son'),
-('student017', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student017@school.com', 'STUDENT', 'Cao', 'Thi Thao'),
-('student018', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student018@school.com', 'STUDENT', 'Ta', 'Van Uyen'),
-('student019', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student019@school.com', 'STUDENT', 'Tong', 'Thi Van'),
-('student020', '$2a$10$xZGKt5eOKBvKRp5WqJq8qOGj8YvXRVY6FqQGqPHe3WpNKLx.tQ8WK', 'student020@school.com', 'STUDENT', 'Lam', 'Van Xuan')
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
+('student001', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student001@school.com', 'STUDENT', 'Nguyen', 'Minh Anh'),
+('student002', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student002@school.com', 'STUDENT', 'Tran', 'Hoang Bao'),
+('student003', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student003@school.com', 'STUDENT', 'Le', 'Thi Cam'),
+('student004', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student004@school.com', 'STUDENT', 'Pham', 'Van Dung'),
+('student005', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student005@school.com', 'STUDENT', 'Hoang', 'Thi Em'),
+('student006', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student006@school.com', 'STUDENT', 'Vu', 'Van Phong'),
+('student007', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student007@school.com', 'STUDENT', 'Do', 'Thi Giang'),
+('student008', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student008@school.com', 'STUDENT', 'Bui', 'Van Hai'),
+('student009', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student009@school.com', 'STUDENT', 'Dang', 'Thi Hoa'),
+('student010', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student010@school.com', 'STUDENT', 'Ngo', 'Van Khai'),
+('student011', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student011@school.com', 'STUDENT', 'Ly', 'Thi Lan'),
+('student012', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student012@school.com', 'STUDENT', 'Vo', 'Van Minh'),
+('student013', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student013@school.com', 'STUDENT', 'Trinh', 'Thi Nga'),
+('student014', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student014@school.com', 'STUDENT', 'Duong', 'Van Phuc'),
+('student015', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student015@school.com', 'STUDENT', 'Mai', 'Thi Quynh'),
+('student016', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student016@school.com', 'STUDENT', 'Ha', 'Van Son'),
+('student017', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student017@school.com', 'STUDENT', 'Cao', 'Thi Thao'),
+('student018', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student018@school.com', 'STUDENT', 'Ta', 'Van Uyen'),
+('student019', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student019@school.com', 'STUDENT', 'Tong', 'Thi Van'),
+('student020', '$2a$10$QWJaYsgiAbGhiLrPaz7EPOzk6SMJ//AxhYZoohm6ZYpbd4t2Pxov.', 'student020@school.com', 'STUDENT', 'Lam', 'Van Xuan')
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
 
--- 4.9 Insert Student Records
+
+-- Insert Student Records
 INSERT INTO students (user_id, student_id, grade_level_id, class_id, academic_year, date_of_birth, gender, address, phone_number, parent_name, parent_phone, enrollment_date, status) VALUES
 (14, 'ST2024001', 1, 1, '2024-2025', '2012-03-15', 'Female', '123 Le Loi, District 1, HCMC', '0987654321', 'Nguyen Van Father', '0912345671', '2024-09-01', 'ACTIVE'),
 (15, 'ST2024002', 1, 1, '2024-2025', '2012-05-20', 'Male', '456 Tran Hung Dao, District 1, HCMC', '0987654322', 'Tran Van Father', '0912345672', '2024-09-01', 'ACTIVE'),
@@ -447,9 +508,10 @@ INSERT INTO students (user_id, student_id, grade_level_id, class_id, academic_ye
 (31, 'ST2024018', 6, 11, '2024-2025', '2007-10-09', 'Male', '468 Lac Long Quan, Tan Binh, HCMC', '0987654338', 'Ta Van Father', '0912345688', '2024-09-01', 'ACTIVE'),
 (32, 'ST2024019', 7, 13, '2024-2025', '2006-01-14', 'Female', '810 Phan Xich Long, Phu Nhuan, HCMC', '0987654339', 'Tong Van Father', '0912345689', '2024-09-01', 'ACTIVE'),
 (33, 'ST2024020', 7, 13, '2024-2025', '2006-12-25', 'Male', '135 Nguyen Van Troi, Phu Nhuan, HCMC', '0987654340', 'Lam Van Father', '0912345690', '2024-09-01', 'ACTIVE')
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
 
--- 4.10 Insert Class Subject Assignments (Sample for Class 6A)
+
+-- Insert Class Subject Assignments (Sample for Class 6A)
 INSERT INTO class_subject_assignments (class_id, subject_id, teacher_id, academic_year, semester, periods_per_week, start_date, end_date, status) VALUES
 (1, 1, 1, '2024-2025', 1, 5, '2024-09-01', '2024-12-31', 'ACTIVE'),  -- Math in 6A
 (1, 2, 3, '2024-2025', 1, 5, '2024-09-01', '2024-12-31', 'ACTIVE'),  -- Literature in 6A
@@ -459,27 +521,30 @@ INSERT INTO class_subject_assignments (class_id, subject_id, teacher_id, academi
 (1, 6, 7, '2024-2025', 1, 2, '2024-09-01', '2024-12-31', 'ACTIVE'),  -- Biology in 6A
 (1, 7, 8, '2024-2025', 1, 2, '2024-09-01', '2024-12-31', 'ACTIVE'),  -- History in 6A
 (1, 8, 9, '2024-2025', 1, 2, '2024-09-01', '2024-12-31', 'ACTIVE')   -- Geography in 6A
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
 
--- 4.11 Insert Sample Timetable for Class 6A (Monday)
+
+-- Insert Sample Timetable for Class 6A (Monday)
 INSERT INTO timetables (class_id, subject_id, teacher_id, day_of_week, period_number, room_number, academic_year, semester, start_time, end_time) VALUES
 (1, 1, 1, 2, 1, 'A101', '2024-2025', 1, '07:30:00', '08:15:00'),  -- Math Period 1
 (1, 1, 1, 2, 2, 'A101', '2024-2025', 1, '08:15:00', '09:00:00'),  -- Math Period 2
 (1, 2, 3, 2, 3, 'A101', '2024-2025', 1, '09:15:00', '10:00:00'),  -- Literature Period 3
 (1, 3, 4, 2, 4, 'A101', '2024-2025', 1, '10:00:00', '10:45:00'),  -- English Period 4
 (1, 4, 5, 2, 5, 'A101', '2024-2025', 1, '10:45:00', '11:30:00')   -- Physics Period 5
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
 
--- 4.12 Insert Sample Exams
+
+-- Insert Sample Exams
 INSERT INTO exams (exam_name, exam_type, subject_id, class_id, exam_date, duration, total_marks, academic_year, semester, status) VALUES
 ('Math Midterm Exam', 'MIDTERM', 1, 1, '2024-11-15', 90, 100.00, '2024-2025', 1, 'COMPLETED'),
 ('Literature Midterm Exam', 'MIDTERM', 2, 1, '2024-11-16', 90, 100.00, '2024-2025', 1, 'COMPLETED'),
 ('English Midterm Exam', 'MIDTERM', 3, 1, '2024-11-17', 60, 100.00, '2024-2025', 1, 'COMPLETED'),
 ('Math Final Exam', 'FINAL', 1, 1, '2024-12-20', 120, 100.00, '2024-2025', 1, 'SCHEDULED'),
 ('Literature Final Exam', 'FINAL', 2, 1, '2024-12-21', 120, 100.00, '2024-2025', 1, 'SCHEDULED')
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
 
--- 4.13 Insert Sample Exam Results (for completed exams)
+
+-- Insert Sample Exam Results (for completed exams)
 INSERT INTO exam_results (exam_id, student_id, marks_obtained, grade, remarks, is_absent) VALUES
 (1, 1, 85.50, 'A', 'Excellent work', FALSE),
 (1, 2, 78.00, 'B', 'Good effort', FALSE),
@@ -487,9 +552,10 @@ INSERT INTO exam_results (exam_id, student_id, marks_obtained, grade, remarks, i
 (2, 2, 76.50, 'B', 'Well done', FALSE),
 (3, 1, 88.00, 'A', 'Very good', FALSE),
 (3, 2, 82.00, 'B', 'Good progress', FALSE)
-ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
 
--- 4.14 Update class current_students count
+
+-- Update class current_students count
 UPDATE classes SET current_students = 2 WHERE id = 1;
 UPDATE classes SET current_students = 2 WHERE id = 2;
 UPDATE classes SET current_students = 2 WHERE id = 3;
@@ -500,6 +566,74 @@ UPDATE classes SET current_students = 2 WHERE id = 7;
 UPDATE classes SET current_students = 2 WHERE id = 9;
 UPDATE classes SET current_students = 2 WHERE id = 11;
 UPDATE classes SET current_students = 2 WHERE id = 13;
+
+
+-- Insert Teacher Specializations
+INSERT INTO teacher_specializations (teacher_id, subject_id, is_primary, certification_level, years_of_experience) VALUES
+(1, 1, TRUE, 'Excellent', 10),   -- teacher1 (John Doe) - Math (primary)
+(2, 1, TRUE, 'Good', 8),          -- teacher_math - Math (primary)
+(3, 2, TRUE, 'Excellent', 12),    -- teacher_lit - Literature (primary)
+(4, 3, TRUE, 'Good', 7),          -- teacher_eng - English (primary)
+(5, 4, TRUE, 'Excellent', 15),    -- teacher_phy - Physics (primary)
+(6, 5, TRUE, 'Good', 9),          -- teacher_chem - Chemistry (primary)
+(7, 6, TRUE, 'Good', 10),         -- teacher_bio - Biology (primary)
+(8, 7, TRUE, 'Good', 11),         -- teacher_hist - History (primary)
+(9, 8, TRUE, 'Good', 8),          -- teacher_geo - Geography (primary)
+(10, 11, TRUE, 'Excellent', 6)    -- teacher_it - IT (primary)
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
+
+
+-- Insert Sample Students VN (5 sample students with full Vietnam standard data)
+INSERT INTO students_vn (
+    user_id, student_code, last_name, first_name, date_of_birth, gender,
+    place_of_birth, province, district, ward, detailed_address,
+    phone_number, ethnicity, religion, priority_object,
+    grade_level_id, school_class_id, academic_year, admission_year,
+    expected_graduation_year, status,
+    father_name, father_year_of_birth, father_occupation, father_phone,
+    mother_name, mother_year_of_birth, mother_occupation, mother_phone,
+    height, weight, blood_type
+) VALUES
+(14, 'HS2024001', 'Nguyen', 'Minh Anh', '2012-03-15', 'Female',
+ 'Ho Chi Minh City', 'Ho Chi Minh', 'District 1', 'Ben Nghe', '123 Le Loi Street',
+ '0987654321', 'Kinh', 'None', 'None',
+ 1, 1, '2024-2025', 2024, 2031, 'ACTIVE',
+ 'Nguyen Van Father', 1980, 'Engineer', '0912345671',
+ 'Tran Thi Mother', 1982, 'Teacher', '0912345672',
+ 155, 45, 'A'),
+
+(15, 'HS2024002', 'Tran', 'Hoang Bao', '2012-05-20', 'Male',
+ 'Ho Chi Minh City', 'Ho Chi Minh', 'District 1', 'Ben Thanh', '456 Tran Hung Dao',
+ '0987654322', 'Kinh', 'None', 'None',
+ 1, 1, '2024-2025', 2024, 2031, 'ACTIVE',
+ 'Tran Van Father', 1978, 'Doctor', '0912345673',
+ 'Le Thi Mother', 1980, 'Nurse', '0912345674',
+ 160, 50, 'B'),
+
+(16, 'HS2024003', 'Le', 'Thi Cam', '2012-07-10', 'Female',
+ 'Ho Chi Minh City', 'Ho Chi Minh', 'District 5', 'Ward 1', '789 Nguyen Trai',
+ '0987654323', 'Kinh', 'Buddhist', 'None',
+ 1, 2, '2024-2025', 2024, 2031, 'ACTIVE',
+ 'Le Van Father', 1979, 'Accountant', '0912345675',
+ 'Pham Thi Mother', 1981, 'Lawyer', '0912345676',
+ 152, 43, 'O'),
+
+(28, 'HS2024015', 'Mai', 'Thi Quynh', '2008-04-05', 'Female',
+ 'Ho Chi Minh City', 'Ho Chi Minh', 'Tan Binh', 'Ward 15', '753 Cong Hoa',
+ '0987654335', 'Kinh', 'None', 'Good Student',
+ 5, 9, '2024-2025', 2024, 2027, 'ACTIVE',
+ 'Mai Van Father', 1975, 'Business Owner', '0912345685',
+ 'Nguyen Thi Mother', 1977, 'Pharmacist', '0912345686',
+ 165, 55, 'A'),
+
+(32, 'HS2024019', 'Tong', 'Thi Van', '2006-01-14', 'Female',
+ 'Ho Chi Minh City', 'Ho Chi Minh', 'Phu Nhuan', 'Ward 9', '810 Phan Xich Long',
+ '0987654339', 'Kinh', 'Catholic', 'Priority Area 1',
+ 7, 13, '2024-2025', 2024, 2025, 'ACTIVE',
+ 'Tong Van Father', 1973, 'Professor', '0912345689',
+ 'Hoang Thi Mother', 1975, 'Bank Manager', '0912345690',
+ 168, 58, 'AB')
+ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP();
 
 -- ========================================
 -- 5. VERIFICATION
@@ -520,6 +654,8 @@ SELECT COUNT(*) AS 'Total Assignments' FROM class_subject_assignments;
 SELECT COUNT(*) AS 'Total Timetable Entries' FROM timetables;
 SELECT COUNT(*) AS 'Total Exams' FROM exams;
 SELECT COUNT(*) AS 'Total Exam Results' FROM exam_results;
+SELECT COUNT(*) AS 'Total Teacher Specializations' FROM teacher_specializations;
+SELECT COUNT(*) AS 'Total Students VN' FROM students_vn;
 SELECT '==========================================' AS '';
 SELECT '👥 TEST ACCOUNTS:' AS '';
 SELECT '==========================================' AS '';

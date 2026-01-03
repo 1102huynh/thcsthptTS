@@ -11,7 +11,13 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update  # Temporarily set to 'update' to create new tables (academic_years)
+      # ddl-auto options:
+      # - create: Drop existing tables and create new ones (CAUTION: Data loss!)
+      # - create-drop: Create tables on startup, drop on shutdown (for testing)
+      # - update: Auto-create tables if not exist, update schema if changed (RECOMMENDED)
+      # - validate: Only validate schema, no changes (for production)
+      # - none: No automatic schema generation
+      ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
