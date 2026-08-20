@@ -61,11 +61,14 @@
             <version>8.0.33</version>
         </dependency>
 
-        <!-- PostgreSQL Driver -->
+        <!-- Flyway (schema migration) -->
         <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>42.7.1</version>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
         </dependency>
 
         <!-- JWT Token Support -->

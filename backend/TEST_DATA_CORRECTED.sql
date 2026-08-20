@@ -1,10 +1,10 @@
 -- =====================================================
--- School Management System - Test Data SQL (PostgreSQL)
+-- School Management System - Test Data SQL (MySQL)
 -- =====================================================
--- Database: defaultdb (Aiven Cloud)
--- Date: November 17, 2025
+-- Database: school_management (Local MySQL 8.0)
+-- Date: November 17, 2025 (converted to MySQL syntax: 2026-08-20)
 -- Purpose: DELETE ALL OLD DATA, then INSERT fresh test data
--- DATABASE: PostgreSQL 12+ (Aiven Cloud)
+-- DATABASE: MySQL 8.0 (Local)
 -- METHOD: DELETE with proper foreign key ordering
 -- =====================================================
 
@@ -27,7 +27,7 @@ DELETE FROM fees;
 DELETE FROM grades;
 DELETE FROM attendance;
 DELETE FROM library_books;
-DELETE FROM classes CASCADE;
+DELETE FROM classes;
 DELETE FROM students;
 DELETE FROM staff;
 DELETE FROM users;
@@ -37,21 +37,21 @@ DELETE FROM users;
 -- Fresh data will be inserted in step 3
 
 -- =====================================================
--- STEP 2: RESET ALL ID SEQUENCES
+-- STEP 2: RESET ALL AUTO_INCREMENT COUNTERS
 -- =====================================================
--- Reset all sequences to start from 1
--- Using IF EXISTS to avoid errors if sequence doesn't exist
+-- MySQL has no sequences; reset each table's AUTO_INCREMENT counter instead.
+-- Assumes all tables already exist (created by Flyway baseline).
 
-ALTER SEQUENCE IF EXISTS user_permissions_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS book_transactions_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS fees_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS grades_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS attendance_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS library_books_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS classes_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS students_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS staff_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS users_id_seq RESTART WITH 1;
+ALTER TABLE user_permissions AUTO_INCREMENT = 1;
+ALTER TABLE book_transactions AUTO_INCREMENT = 1;
+ALTER TABLE fees AUTO_INCREMENT = 1;
+ALTER TABLE grades AUTO_INCREMENT = 1;
+ALTER TABLE attendance AUTO_INCREMENT = 1;
+ALTER TABLE library_books AUTO_INCREMENT = 1;
+ALTER TABLE classes AUTO_INCREMENT = 1;
+ALTER TABLE students AUTO_INCREMENT = 1;
+ALTER TABLE staff AUTO_INCREMENT = 1;
+ALTER TABLE users AUTO_INCREMENT = 1;
 
 -- =====================================================
 -- STEP 3: INSERT FRESH NEW DATA
@@ -62,19 +62,19 @@ ALTER SEQUENCE IF EXISTS users_id_seq RESTART WITH 1;
 -- =====================================================
 
 INSERT INTO users (username, email, password, first_name, last_name, phone_number, role, enabled, created_at, updated_at) VALUES
-('admin', 'admin@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Admin', 'User', '9876543210', 'ADMIN', true, NOW(), NOW()),
-('principal', 'principal@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Principal', 'School', '9876543211', 'PRINCIPAL', true, NOW(), NOW()),
-('teacher1', 'teacher1@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'John', 'Smith', '9876543212', 'TEACHER', true, NOW(), NOW()),
-('teacher2', 'teacher2@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Sarah', 'Johnson', '9876543213', 'TEACHER', true, NOW(), NOW()),
-('teacher3', 'teacher3@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Michael', 'Brown', '9876543214', 'TEACHER', true, NOW(), NOW()),
-('librarian', 'librarian@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Emily', 'Davis', '9876543215', 'LIBRARIAN', true, NOW(), NOW()),
-('accountant', 'accountant@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Robert', 'Wilson', '9876543216', 'ACCOUNTANT', true, NOW(), NOW()),
-('student1', 'student1@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Raj', 'Kumar', '9876543217', 'STUDENT', true, NOW(), NOW()),
-('student2', 'student2@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Priya', 'Singh', '9876543218', 'STUDENT', true, NOW(), NOW()),
-('student3', 'student3@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Amit', 'Patel', '9876543219', 'STUDENT', true, NOW(), NOW()),
-('student4', 'student4@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Anjali', 'Sharma', '9876543220', 'STUDENT', true, NOW(), NOW()),
-('student5', 'student5@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Arjun', 'Verma', '9876543221', 'STUDENT', true, NOW(), NOW()),
-('student6', 'student6@school.com', '$2a$10$slYQmyNdGzin7olVaICC2OPST9/PgBkqquzi.Oy5XH..D6kWGwFqm', 'Divya', 'Nair', '9876543222', 'STUDENT', true, NOW(), NOW());
+('admin', 'admin@school.com', '$2a$10$qMHvvYkFX4F2xYMmqS1bHuQ2IWuJXTZINJsBoCe1oIAmEPwMluEY2', 'Admin', 'User', '9876543210', 'ADMIN', true, NOW(), NOW()),
+('principal', 'principal@school.com', '$2a$10$qMHvvYkFX4F2xYMmqS1bHuQ2IWuJXTZINJsBoCe1oIAmEPwMluEY2', 'Principal', 'School', '9876543211', 'PRINCIPAL', true, NOW(), NOW()),
+('teacher1', 'teacher1@school.com', '$2a$10$qMHvvYkFX4F2xYMmqS1bHuQ2IWuJXTZINJsBoCe1oIAmEPwMluEY2', 'John', 'Smith', '9876543212', 'TEACHER', true, NOW(), NOW()),
+('teacher2', 'teacher2@school.com', '$2a$10$qMHvvYkFX4F2xYMmqS1bHuQ2IWuJXTZINJsBoCe1oIAmEPwMluEY2', 'Sarah', 'Johnson', '9876543213', 'TEACHER', true, NOW(), NOW()),
+('teacher3', 'teacher3@school.com', '$2a$10$qMHvvYkFX4F2xYMmqS1bHuQ2IWuJXTZINJsBoCe1oIAmEPwMluEY2', 'Michael', 'Brown', '9876543214', 'TEACHER', true, NOW(), NOW()),
+('librarian', 'librarian@school.com', '$2a$10$qMHvvYkFX4F2xYMmqS1bHuQ2IWuJXTZINJsBoCe1oIAmEPwMluEY2', 'Emily', 'Davis', '9876543215', 'LIBRARIAN', true, NOW(), NOW()),
+('accountant', 'accountant@school.com', '$2a$10$qMHvvYkFX4F2xYMmqS1bHuQ2IWuJXTZINJsBoCe1oIAmEPwMluEY2', 'Robert', 'Wilson', '9876543216', 'ACCOUNTANT', true, NOW(), NOW()),
+('student1', 'student1@school.com', '$2a$10$qMHvvYkFX4F2xYMmqS1bHuQ2IWuJXTZINJsBoCe1oIAmEPwMluEY2', 'Raj', 'Kumar', '9876543217', 'STUDENT', true, NOW(), NOW()),
+('student2', 'student2@school.com', '$2a$10$qMHvvYkFX4F2xYMmqS1bHuQ2IWuJXTZINJsBoCe1oIAmEPwMluEY2', 'Priya', 'Singh', '9876543218', 'STUDENT', true, NOW(), NOW()),
+('student3', 'student3@school.com', '$2a$10$qMHvvYkFX4F2xYMmqS1bHuQ2IWuJXTZINJsBoCe1oIAmEPwMluEY2', 'Amit', 'Patel', '9876543219', 'STUDENT', true, NOW(), NOW()),
+('student4', 'student4@school.com', '$2a$10$qMHvvYkFX4F2xYMmqS1bHuQ2IWuJXTZINJsBoCe1oIAmEPwMluEY2', 'Anjali', 'Sharma', '9876543220', 'STUDENT', true, NOW(), NOW()),
+('student5', 'student5@school.com', '$2a$10$qMHvvYkFX4F2xYMmqS1bHuQ2IWuJXTZINJsBoCe1oIAmEPwMluEY2', 'Arjun', 'Verma', '9876543221', 'STUDENT', true, NOW(), NOW()),
+('student6', 'student6@school.com', '$2a$10$qMHvvYkFX4F2xYMmqS1bHuQ2IWuJXTZINJsBoCe1oIAmEPwMluEY2', 'Divya', 'Nair', '9876543222', 'STUDENT', true, NOW(), NOW());
 
 -- =====================================================
 -- 2. STAFF TABLE - Employee Information
@@ -103,15 +103,15 @@ INSERT INTO students (roll_number, admission_number, user_id, date_of_birth, gen
 -- =====================================================
 -- 4. CLASSES TABLE - School Classes
 -- =====================================================
--- Note: Using ON CONFLICT to handle cases where class_name + section + academic_year combination already exists
--- If the exact same class already exists, skip it (do nothing)
+-- Note: Using INSERT IGNORE (MySQL equivalent of ON CONFLICT DO NOTHING) to handle
+-- cases where class_name + section + academic_year combination already exists
+-- (requires a unique key on those columns; otherwise behaves as a plain insert).
 
-INSERT INTO classes (class_name, section, academic_year, created_at, updated_at) VALUES
+INSERT IGNORE INTO classes (class_name, section, academic_year, created_at, updated_at) VALUES
 ('10', 'A', '2024-2025', NOW(), NOW()),
 ('10', 'B', '2024-2025', NOW(), NOW()),
 ('9', 'A', '2024-2025', NOW(), NOW()),
-('9', 'B', '2024-2025', NOW(), NOW())
-ON CONFLICT DO NOTHING;
+('9', 'B', '2024-2025', NOW(), NOW());
 
 -- =====================================================
 -- 5. LIBRARY_BOOKS TABLE - Book Catalog
@@ -312,7 +312,7 @@ INSERT INTO user_permissions (user_id, permission, granted_at, granted_by) VALUE
 -- Attendance: 15 records, Grades: 9 records, Fees: 7 records
 -- Book Transactions: 6 records, Permissions: 21+ records
 -- All passwords: Test@123
--- Database: PostgreSQL (Aiven Cloud)
+-- Database: MySQL (Local)
 -- Status: All old data deleted, new data inserted
 -- =====================================================
 

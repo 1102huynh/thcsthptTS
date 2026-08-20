@@ -1,6 +1,6 @@
 # School Management System - Backend API
 
-A comprehensive REST API for school management built with Spring Boot, Spring Security, and PostgreSQL.
+A comprehensive REST API for school management built with Spring Boot, Spring Security, and MySQL.
 
 ## 🚀 Quick Start
 
@@ -18,7 +18,7 @@ http://localhost:8080/api/swagger-ui.html
 - **Spring Boot 3.1.5** - Framework
 - **Spring Security 6** - Authentication & authorization
 - **Spring Data JPA** - Database operations
-- **PostgreSQL** - Database (Aiven Cloud)
+- **MySQL 8.0** - Database (local)
 - **JWT** - Token-based authentication
 - **Lombok** - Boilerplate code reduction
 - **Swagger/OpenAPI 3.0** - API documentation
@@ -37,18 +37,17 @@ http://localhost:8080/api/swagger-ui.html
 
 ## 🗄️ Database
 
-**Current:** PostgreSQL (Aiven Cloud)
-- Host: school-clinicbooking.c.aivencloud.com
-- Port: 14143
-- Database: defaultdb
+**Current:** MySQL 8.0 (local)
+- Host/port/database/credentials are read from environment variables — see `.env.example`
+- Charset: `utf8mb4` / collation `utf8mb4_unicode_ci` (required for correct Vietnamese diacritics)
 
-**Configuration:** `src/main/resources/application.yml`
+**Configuration:** `src/main/resources/application.yml` (reads `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` — set these in a local `.env`, never commit real values)
 
 ## 📊 Test Data
 
 Import sample data:
 ```bash
-psql -U avnadmin -h school-clinicbooking.c.aivencloud.com -p 14143 -d defaultdb -f TEST_DATA_CORRECTED.sql
+mysql -u <DB_USERNAME> -p <DB_NAME> < TEST_DATA_CORRECTED.sql
 ```
 
 **Test Credentials:**
@@ -96,7 +95,7 @@ psql -U avnadmin -h school-clinicbooking.c.aivencloud.com -p 14143 -d defaultdb 
 ### Prerequisites
 - Java 17+
 - Maven 3.6+
-- PostgreSQL access
+- MySQL 8.0+ (local instance)
 - IDE (IntelliJ IDEA recommended)
 
 ### Setup
@@ -123,7 +122,7 @@ Key dependencies managed by Maven:
 - Spring Boot Starter Web
 - Spring Boot Starter Security
 - Spring Boot Starter Data JPA
-- PostgreSQL JDBC Driver
+- MySQL Connector/J
 - JWT Support (jjwt)
 - Lombok
 - SpringDoc OpenAPI (Swagger)
@@ -131,7 +130,7 @@ Key dependencies managed by Maven:
 ## 🚦 Status
 
 ✅ **Authentication:** JWT-based security working  
-✅ **Database:** PostgreSQL configured and connected  
+✅ **Database:** MySQL (local) configured and connected  
 ✅ **APIs:** All endpoints functional  
 ✅ **Documentation:** Swagger UI available  
 ✅ **Test Data:** Sample data ready for import
@@ -187,17 +186,9 @@ cd backend
 CREATE DATABASE school_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-### 3. Configure Application Properties
+### 3. Configure Environment Variables
 
-Edit `src/main/resources/application.yml`:
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/school_management?useSSL=false&serverTimezone=UTC
-    username: root
-    password: your_password
-```
+Copy `.env.example` to `.env` (git-ignored) and fill in your local MySQL credentials plus `JWT_SECRET`. `application.yml` reads these via `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` — no credentials are hard-coded in the repo.
 
 ### 4. Build the Project
 

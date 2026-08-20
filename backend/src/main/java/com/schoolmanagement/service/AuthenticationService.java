@@ -8,6 +8,8 @@ import com.schoolmanagement.exception.DuplicateResourceException;
 import com.schoolmanagement.repository.UserRepository;
 import com.schoolmanagement.security.JwtTokenProvider;
 import lombok.AllArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,6 +24,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Transactional
 public class AuthenticationService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class);
 
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
@@ -49,34 +53,19 @@ public class AuthenticationService {
     }
 
     public AuthResponse login(AuthRequest authRequest) {
-        System.out.println("=== LOGIN ATTEMPT ===");
-        System.out.println("Username: " + authRequest.getUsername());
+        log.debug("Login attempt for username: {}", authRequest.getUsername());
 
         try {
             // Check if user exists
             User user = userRepository.findByUsername(authRequest.getUsername())
                     .orElseThrow(() -> {
-                        System.out.println("ERROR: User not found: " + authRequest.getUsername());
+                        log.debug("Login failed - user not found: {}", authRequest.getUsername());
                         return new BadCredentialsException("Invalid credentials");
                     });
 
-            System.out.println("User found: " + user.getUsername());
-            System.out.println("User enabled: " + user.isEnabled());
-            System.out.println("User role: " + user.getRole());
-            System.out.println("Password hash from DB (FULL): " + user.getPassword());
-            System.out.println("Password hash length: " + user.getPassword().length());
-
-            // Generate a fresh hash for comparison
-            String freshHash = passwordEncoder.encode(authRequest.getPassword());
-            System.out.println("Fresh hash for 'Test@123': " + freshHash);
-
-            // Test password manually
             boolean passwordMatches = passwordEncoder.matches(authRequest.getPassword(), user.getPassword());
-            System.out.println("Password matches: " + passwordMatches);
-            System.out.println("Input password: " + authRequest.getPassword());
-
             if (!passwordMatches) {
-                System.out.println("ERROR: Password does not match!");
+                log.debug("Login failed - password mismatch for username: {}", authRequest.getUsername());
                 throw new BadCredentialsException("Invalid username or password");
             }
 
@@ -88,7 +77,7 @@ public class AuthenticationService {
                     )
             );
 
-            System.out.println("Authentication successful!");
+            log.debug("Login successful for username: {}", authRequest.getUsername());
 
             user.setLastLogin(LocalDateTime.now());
             userRepository.save(user);
@@ -99,11 +88,10 @@ public class AuthenticationService {
             return buildAuthResponse(user, accessToken, refreshToken);
 
         } catch (BadCredentialsException ex) {
-            System.out.println("ERROR: BadCredentialsException - " + ex.getMessage());
+            log.debug("Login failed for username: {} - {}", authRequest.getUsername(), ex.getMessage());
             throw ex;
         } catch (Exception ex) {
-            System.out.println("ERROR: Unexpected exception - " + ex.getMessage());
-            ex.printStackTrace();
+            log.error("Unexpected error during login for username: {}", authRequest.getUsername(), ex);
             throw new BadCredentialsException("Invalid username or password", ex);
         }
     }
