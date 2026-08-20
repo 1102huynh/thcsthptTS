@@ -209,15 +209,30 @@ Headers: Authorization: Bearer <token>
 
 ## 📝 Important Configuration
 
-### JWT Secret (Change for Production!)
-File: `src/main/resources/application.yml`
+### JWT Secret & Database Credentials
+Nothing is hard-coded in `application.yml` anymore — copy `.env.example` to
+`.env` (git-ignored) and fill in real local values:
 
-```yaml
-app:
-  jwt:
-    secret: "your-secret-key-change-this-in-production-make-it-at-least-256-bits-long"
-    expiration: 86400000  # 24 hours
+```bash
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=school_management
+DB_USERNAME=your_mysql_user
+DB_PASSWORD=your_mysql_password
+
+JWT_SECRET=   # generate with: openssl rand -base64 64
+JWT_EXPIRATION=86400000
+JWT_REFRESH_EXPIRATION=604800000
 ```
+
+`JWT_SECRET` has no default — the app fails fast at startup if it's missing,
+instead of silently running with a weak/shared secret.
+
+### Spring profile
+`dev` is active by default (local MySQL, DEBUG logging, SQL logging on).
+Set `SPRING_PROFILES_ACTIVE=prod` for a production deployment (strict env
+vars, INFO logging, SQL logging off) — see `application-dev.yml` /
+`application-prod.yml`.
 
 ### Database Connection
 Ensure MySQL is running before starting the application.

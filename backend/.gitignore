@@ -60,15 +60,17 @@ dist/
 .env
 .env.local
 *.properties.local
+application-local.yml
 
 # OS
 Thumbs.db
 .trash/
 
 # Application
-application-dev.yml
-application-prod.yml
-application-test.yml
+# application-dev.yml / application-prod.yml / test resources'
+# application-test.yml are committed on purpose — they hold no secrets,
+# only structure + ${ENV_VAR} placeholders. application-local.yml
+# (personal machine overrides) stays ignored above.
 config.properties
 
 # Security
