@@ -7,6 +7,7 @@ import com.schoolmanagement.entity.User;
 import com.schoolmanagement.service.LibraryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +28,7 @@ public class LibraryController {
     @PostMapping("/books")
     @PreAuthorize("hasRole('ADMIN') or hasRole('LIBRARIAN')")
     @Operation(summary = "Add new book to library")
-    public ResponseEntity<LibraryBookDTO> addBook(@RequestBody LibraryBook book) {
+    public ResponseEntity<LibraryBookDTO> addBook(@Valid @RequestBody LibraryBook book) {
         LibraryBookDTO addedBook = libraryService.addBook(book);
         return new ResponseEntity<>(addedBook, HttpStatus.CREATED);
     }
@@ -35,7 +36,7 @@ public class LibraryController {
     @PutMapping("/books/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('LIBRARIAN')")
     @Operation(summary = "Update book details")
-    public ResponseEntity<LibraryBookDTO> updateBook(@PathVariable Long id, @RequestBody LibraryBook bookDetails) {
+    public ResponseEntity<LibraryBookDTO> updateBook(@PathVariable Long id, @Valid @RequestBody LibraryBook bookDetails) {
         LibraryBookDTO updatedBook = libraryService.updateBook(id, bookDetails);
         return new ResponseEntity<>(updatedBook, HttpStatus.OK);
     }

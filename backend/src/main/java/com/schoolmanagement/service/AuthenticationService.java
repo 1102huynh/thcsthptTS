@@ -2,12 +2,16 @@ package com.schoolmanagement.service;
 
 import com.schoolmanagement.dto.AuthRequest;
 import com.schoolmanagement.dto.AuthResponse;
+import com.schoolmanagement.dto.CreateUserRequest;
+import com.schoolmanagement.dto.RegisterRequest;
 import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.User;
 import com.schoolmanagement.exception.DuplicateResourceException;
 import com.schoolmanagement.repository.UserRepository;
 import com.schoolmanagement.security.JwtTokenProvider;
 import lombok.AllArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -23,25 +27,66 @@ import java.time.LocalDateTime;
 @Transactional
 public class AuthenticationService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class);
+
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
     private AuthenticationManager authenticationManager;
     private JwtTokenProvider jwtTokenProvider;
 
-    public AuthResponse register(User user, String rawPassword) {
-        if (userRepository.existsByUsername(user.getUsername())) {
+    /**
+     * Self-service registration. Always creates a STUDENT account — RegisterRequest
+     * has no `role` field, so a client has no channel to request a privileged role.
+     * ADMIN must use {@link #createUserByAdmin(CreateUserRequest)} to grant other roles.
+     */
+    public AuthResponse register(RegisterRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
             throw new DuplicateResourceException("Username already exists");
         }
 
-        if (userRepository.existsByEmail(user.getEmail())) {
+        if (userRepository.existsByEmail(request.getEmail())) {
             throw new DuplicateResourceException("Email already exists");
         }
 
-        user.setPassword(passwordEncoder.encode(rawPassword));
-        if (user.getRole() == null) {
-            user.setRole(Role.STUDENT);
+        User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .phoneNumber(request.getPhoneNumber())
+                .role(Role.STUDENT)
+                .enabled(true)
+                .build();
+
+        User savedUser = userRepository.save(user);
+
+        return buildAuthResponse(savedUser, null);
+    }
+
+    /**
+     * ADMIN-only account creation with an explicit role. Only reachable via
+     * POST /v1/users, which requires ROLE_ADMIN (see UserController).
+     */
+    public AuthResponse createUserByAdmin(CreateUserRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new DuplicateResourceException("Username already exists");
         }
-        user.setEnabled(true);
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateResourceException("Email already exists");
+        }
+
+        User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .phoneNumber(request.getPhoneNumber())
+                .role(request.getRole())
+                .enabled(true)
+                .build();
 
         User savedUser = userRepository.save(user);
 
@@ -49,34 +94,19 @@ public class AuthenticationService {
     }
 
     public AuthResponse login(AuthRequest authRequest) {
-        System.out.println("=== LOGIN ATTEMPT ===");
-        System.out.println("Username: " + authRequest.getUsername());
+        log.debug("Login attempt for username: {}", authRequest.getUsername());
 
         try {
             // Check if user exists
             User user = userRepository.findByUsername(authRequest.getUsername())
                     .orElseThrow(() -> {
-                        System.out.println("ERROR: User not found: " + authRequest.getUsername());
+                        log.debug("Login failed - user not found: {}", authRequest.getUsername());
                         return new BadCredentialsException("Invalid credentials");
                     });
 
-            System.out.println("User found: " + user.getUsername());
-            System.out.println("User enabled: " + user.isEnabled());
-            System.out.println("User role: " + user.getRole());
-            System.out.println("Password hash from DB (FULL): " + user.getPassword());
-            System.out.println("Password hash length: " + user.getPassword().length());
-
-            // Generate a fresh hash for comparison
-            String freshHash = passwordEncoder.encode(authRequest.getPassword());
-            System.out.println("Fresh hash for 'Test@123': " + freshHash);
-
-            // Test password manually
             boolean passwordMatches = passwordEncoder.matches(authRequest.getPassword(), user.getPassword());
-            System.out.println("Password matches: " + passwordMatches);
-            System.out.println("Input password: " + authRequest.getPassword());
-
             if (!passwordMatches) {
-                System.out.println("ERROR: Password does not match!");
+                log.debug("Login failed - password mismatch for username: {}", authRequest.getUsername());
                 throw new BadCredentialsException("Invalid username or password");
             }
 
@@ -88,7 +118,7 @@ public class AuthenticationService {
                     )
             );
 
-            System.out.println("Authentication successful!");
+            log.debug("Login successful for username: {}", authRequest.getUsername());
 
             user.setLastLogin(LocalDateTime.now());
             userRepository.save(user);
@@ -99,11 +129,10 @@ public class AuthenticationService {
             return buildAuthResponse(user, accessToken, refreshToken);
 
         } catch (BadCredentialsException ex) {
-            System.out.println("ERROR: BadCredentialsException - " + ex.getMessage());
+            log.debug("Login failed for username: {} - {}", authRequest.getUsername(), ex.getMessage());
             throw ex;
         } catch (Exception ex) {
-            System.out.println("ERROR: Unexpected exception - " + ex.getMessage());
-            ex.printStackTrace();
+            log.error("Unexpected error during login for username: {}", authRequest.getUsername(), ex);
             throw new BadCredentialsException("Invalid username or password", ex);
         }
     }

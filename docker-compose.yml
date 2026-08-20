@@ -1,17 +1,19 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
+  mysql:
+    image: mysql:8.0
     container_name: school-db
     environment:
-      POSTGRES_DB: school_management
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
+      MYSQL_DATABASE: school_management
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     networks:
       - school-network
 
@@ -21,16 +23,17 @@ services:
       dockerfile: Dockerfile
     container_name: school-backend
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/school_management
-      SPRING_DATASOURCE_USERNAME: admin
-      SPRING_DATASOURCE_PASSWORD: admin123
-      JWT_SECRET: mySecretKeyForSchoolManagementSystem2024SuperSecureAndLongEnoughForHS256
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/school_management?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: 86400000
       JWT_REFRESH_EXPIRATION: 604800000
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
+      - mysql
     networks:
       - school-network
 
@@ -47,7 +50,7 @@ services:
       - school-network
 
 volumes:
-  postgres_data:
+  mysql_data:
 
 networks:
   school-network:

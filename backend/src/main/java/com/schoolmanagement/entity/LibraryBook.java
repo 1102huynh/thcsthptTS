@@ -1,6 +1,10 @@
 package com.schoolmanagement.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,12 +24,15 @@ public class LibraryBook {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank
     @Column(unique = true, nullable = false)
     private String isbn;
 
+    @NotBlank
     @Column(nullable = false)
     private String title;
 
+    @NotBlank
     @Column(nullable = false)
     private String author;
 
@@ -38,13 +45,18 @@ public class LibraryBook {
     @Column(name = "edition")
     private String edition;
 
+    @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private BookCategory category;
 
+    @NotNull
+    @Positive
     @Column(name = "total_copies", nullable = false)
     private Integer totalCopies;
 
+    @NotNull
+    @PositiveOrZero
     @Column(name = "available_copies", nullable = false)
     private Integer availableCopies;
 
@@ -57,6 +69,7 @@ public class LibraryBook {
     @Column(name = "call_number")
     private String callNumber;
 
+    @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

@@ -1,6 +1,9 @@
 package com.schoolmanagement.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,16 +24,21 @@ public class Fee {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "student_id", nullable = false)
     private Student student;
 
+    @NotBlank
     @Column(name = "academic_year", nullable = false)
     private String academicYear;
 
+    @NotBlank
     @Column(name = "fee_type", nullable = false)
     private String feeType;
 
+    @NotNull
+    @Positive
     @Column(name = "amount", nullable = false)
     private Double amount;
 
@@ -40,6 +48,7 @@ public class Fee {
     @Column(name = "paid_date")
     private LocalDate paidDate;
 
+    @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

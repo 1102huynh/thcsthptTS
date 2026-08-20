@@ -1,19 +1,23 @@
 package com.schoolmanagement.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.WebRequest;
 
 import java.time.LocalDateTime;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiError> handleResourceNotFoundException(
@@ -57,6 +61,20 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccessDeniedException(
+            AccessDeniedException ex,
+            HttpServletRequest request) {
+        ApiError error = ApiError.builder()
+                .status("FORBIDDEN")
+                .message("You do not have permission to perform this action")
+                .code(403)
+                .path(request.getRequestURI())
+                .timestamp(LocalDateTime.now())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
     @ExceptionHandler(UsernameNotFoundException.class)
     public ResponseEntity<ApiError> handleUsernameNotFoundException(
             UsernameNotFoundException ex,
@@ -96,9 +114,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleGeneralException(
             Exception ex,
             HttpServletRequest request) {
+        // Never echo ex.getMessage() (or a stack trace) to the client — it can leak
+        // internal details (SQL, class names, file paths). Log the full exception
+        // server-side instead, where an operator can actually act on it.
+        log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);
+
         ApiError error = ApiError.builder()
                 .status("INTERNAL_SERVER_ERROR")
-                .message("An unexpected error occurred: " + ex.getMessage())
+                .message("Đã có lỗi xảy ra, vui lòng thử lại sau.")
                 .code(500)
                 .path(request.getRequestURI())
                 .timestamp(LocalDateTime.now())

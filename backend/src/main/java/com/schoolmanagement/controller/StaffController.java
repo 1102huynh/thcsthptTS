@@ -7,6 +7,7 @@ import com.schoolmanagement.entity.StaffPosition;
 import com.schoolmanagement.service.StaffService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +27,7 @@ public class StaffController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('PRINCIPAL')")
     @Operation(summary = "Create new staff member")
-    public ResponseEntity<StaffDTO> createStaff(@RequestBody Staff staff) {
+    public ResponseEntity<StaffDTO> createStaff(@Valid @RequestBody Staff staff) {
         StaffDTO createdStaff = staffService.createStaff(staff);
         return new ResponseEntity<>(createdStaff, HttpStatus.CREATED);
     }
@@ -34,7 +35,7 @@ public class StaffController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('PRINCIPAL')")
     @Operation(summary = "Update staff member")
-    public ResponseEntity<StaffDTO> updateStaff(@PathVariable Long id, @RequestBody Staff staffDetails) {
+    public ResponseEntity<StaffDTO> updateStaff(@PathVariable Long id, @Valid @RequestBody Staff staffDetails) {
         StaffDTO updatedStaff = staffService.updateStaff(id, staffDetails);
         return new ResponseEntity<>(updatedStaff, HttpStatus.OK);
     }

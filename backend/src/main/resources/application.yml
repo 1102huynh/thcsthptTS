@@ -2,42 +2,22 @@ spring:
   application:
     name: school-management-system
 
-  # MySQL Configuration (commented out - using PostgreSQL instead)
-  # datasource:
-  #   url: jdbc:mysql://localhost:3306/school_management?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-  #   username: root
-  #   password: root
-  #   driver-class-name: com.mysql.cj.jdbc.Driver
-  #
-  # jpa:
-  #   hibernate:
-  #     ddl-auto: update
-  #   properties:
-  #     hibernate:
-  #       dialect: org.hibernate.dialect.MySQL8Dialect
-  #       format_sql: true
-  #   show-sql: false
-  #   open-in-view: false
-
-  # PostgreSQL Configuration (Aiven Cloud)
-  datasource:
-    url: jdbc:postgresql://school-clinicbooking.c.aivencloud.com:14143/defaultdb?sslmode=require
-    username: avnadmin
-    password: your_password_here
-    driver-class-name: org.postgresql.Driver
-    hikari:
-      ssl: true
-      ssl-mode: require
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
-    show-sql: false
     open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
 
   jackson:
     serialization:
@@ -49,20 +29,13 @@ server:
   servlet:
     context-path: /api
 
-logging:
-  level:
-    root: INFO
-    com.schoolmanagement: DEBUG
-    org.springframework.security: DEBUG
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-
-# JWT Configuration
+# JWT Configuration — secret has no default so the app fails fast at startup
+# if it isn't set, instead of silently running with a weak/shared secret.
 app:
   jwt:
-    secret: "your-secret-key-change-this-in-production-make-it-at-least-256-bits-long-for-HS256-algorithm"
-    expiration: 86400000  # 24 hours in milliseconds
-    refresh-expiration: 604800000  # 7 days in milliseconds
+    secret: ${JWT_SECRET}
+    expiration: ${JWT_EXPIRATION:86400000}  # 24 hours in milliseconds
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}  # 7 days in milliseconds
 
 # Swagger/API Documentation
 springdoc:
@@ -73,4 +46,3 @@ springdoc:
   api-docs:
     path: /v3/api-docs
   show-actuator: false
-

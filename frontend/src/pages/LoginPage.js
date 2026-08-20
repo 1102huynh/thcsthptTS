@@ -5,8 +5,8 @@ import authService from '../services/authService';
 import './LoginPage.css';
 
 function LoginPage({ onLogin }) {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('Test@123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -80,18 +80,6 @@ function LoginPage({ onLogin }) {
                 {loading ? 'Signing In...' : 'Sign In'}
               </Button>
             </Form>
-
-            <div className="mt-4 pt-4 border-top">
-              <p className="text-center text-muted mb-0">
-                <small>Test Credentials:</small>
-              </p>
-              <ul className="small text-muted ps-3">
-                <li>admin / Test@123</li>
-                <li>principal / Test@123</li>
-                <li>teacher1 / Test@123</li>
-                <li>student1 / Test@123</li>
-              </ul>
-            </div>
           </Card.Body>
         </Card>
       </Container>

@@ -1,6 +1,7 @@
 package com.schoolmanagement.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,13 +22,16 @@ public class Attendance {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "student_id", nullable = false)
     private Student student;
 
+    @NotNull
     @Column(name = "attendance_date", nullable = false)
     private LocalDate attendanceDate;
 
+    @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AttendanceStatus status;
