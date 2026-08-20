@@ -3,10 +3,13 @@ package com.schoolmanagement.controller;
 import com.schoolmanagement.dto.StudentDTO;
 import com.schoolmanagement.entity.Student;
 import com.schoolmanagement.service.StudentService;
+import com.schoolmanagement.util.PaginationUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -56,10 +59,19 @@ public class StudentController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
-    @Operation(summary = "Get all students")
-    public ResponseEntity<List<StudentDTO>> getAllStudents() {
-        List<StudentDTO> students = studentService.getAllStudents();
-        return new ResponseEntity<>(students, HttpStatus.OK);
+    @Operation(summary = "Get all students",
+            description = "Optional page/size query params paginate the result (0-indexed page); omit both to get the full list. Total count is returned in the X-Total-Count header when paginated.")
+    public ResponseEntity<List<StudentDTO>> getAllStudents(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        Pageable pageable = PaginationUtil.toPageable(page, size);
+        if (pageable == null) {
+            return new ResponseEntity<>(studentService.getAllStudents(), HttpStatus.OK);
+        }
+        Page<StudentDTO> result = studentService.getAllStudents(pageable);
+        return ResponseEntity.ok()
+                .header("X-Total-Count", String.valueOf(result.getTotalElements()))
+                .body(result.getContent());
     }
 
     @GetMapping("/class/{className}")

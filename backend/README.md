@@ -1,416 +1,177 @@
 # School Management System - Backend API
 
-A comprehensive REST API for school management built with Spring Boot, Spring Security, and MySQL.
+REST API for a Vietnamese THCS/THPT (secondary/high school) management system, built with Spring Boot, Spring Security, and MySQL.
 
 ## 🚀 Quick Start
 
 ```bash
-# Start the backend
+# 1. Copy env template and fill in real local values
+cp .env.example .env
+
+# 2. Run (env vars must be exported in the shell, or use an EnvFile plugin in your IDE)
+export $(grep -v '^#' .env | xargs)   # bash/macOS/Linux; on Windows set them manually
 mvn spring-boot:run
 
-# Access Swagger UI
+# 3. Swagger UI
 http://localhost:8080/api/swagger-ui.html
 ```
 
+`.env` is git-ignored — never commit real credentials. See [Configuration](#-configuration) below for what's required.
+
 ## 🔧 Technology Stack
 
-- **Java 17** - Programming language
-- **Spring Boot 3.1.5** - Framework
-- **Spring Security 6** - Authentication & authorization
-- **Spring Data JPA** - Database operations
-- **MySQL 8.0** - Database (local)
-- **JWT** - Token-based authentication
-- **Lombok** - Boilerplate code reduction
-- **Swagger/OpenAPI 3.0** - API documentation
+- **Java 17**, **Spring Boot 3.1.5**, **Spring Security 6** (JWT, stateless)
+- **Spring Data JPA** + **MySQL 8.0** (local)
+- **Flyway** — versioned schema migrations (`src/main/resources/db/migration`)
+- **Bean Validation** (Jakarta Validation) on all create/update endpoints
+- **Lombok**, **SpringDoc OpenAPI 3.0** (Swagger)
 
-## 📋 Features
+## 📋 Modules
 
-- 🔐 **JWT Authentication** - Secure token-based auth
-- 👥 **User Management** - Multi-role user system
-- 🏛️ **Staff Management** - Employee records and roles
-- 🎓 **Student Management** - Student profiles and academics
-- 📚 **Library Management** - Books and borrowing system
-- 📊 **Attendance System** - Daily attendance tracking
-- 🎯 **Grade Management** - Student assessments
-- 💰 **Fee Management** - Payment and billing
-- 📈 **Reports** - Academic and administrative reports
+| Module | Endpoints | Notes |
+|---|---|---|
+| Auth | `/v1/auth/*` | JWT login/register/refresh |
+| Users (admin) | `/v1/users` | ADMIN-only account creation with an explicit role |
+| Staff | `/v1/staff/*` | Employee records |
+| Students | `/v1/students/*` | Student profiles |
+| Classes | `/v1/classes/*` | Homeroom class CRUD, GVCN assignment, roster |
+| Attendance | `/v1/attendance/*` | Daily attendance |
+| Grades | `/v1/grades/*` | Assessments |
+| Fees | `/v1/fees/*` | Student fees & payments |
+| Library | `/v1/library/*` | Book catalog & borrowing |
+| Dashboard | `/v1/dashboard/stats` | Admin summary stats |
+
+See [Swagger UI](http://localhost:8080/api/swagger-ui.html) for the full, current contract (request/response shapes, required fields) — the table above is just an index.
 
 ## 🗄️ Database
 
-**Current:** MySQL 8.0 (local)
-- Host/port/database/credentials are read from environment variables — see `.env.example`
-- Charset: `utf8mb4` / collation `utf8mb4_unicode_ci` (required for correct Vietnamese diacritics)
+- **MySQL 8.0**, local. Charset **`utf8mb4`** / collation **`utf8mb4_unicode_ci`** is required (plain `utf8` only supports 3-byte characters and mangles Vietnamese diacritics).
+- Schema is managed by **Flyway** (`src/main/resources/db/migration/V1__baseline.sql`, `V2__fix_classes_unique_constraint.sql`, ...) — `ddl-auto` is `validate`, never `update`. To change the schema, add a new `V{n}__description.sql` migration; don't hand-edit the DB or rely on Hibernate to create tables.
+- Create the database once:
+  ```sql
+  CREATE DATABASE school_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  ```
 
-**Configuration:** `src/main/resources/application.yml` (reads `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` — set these in a local `.env`, never commit real values)
+### Test data
 
-## 📊 Test Data
-
-Import sample data:
 ```bash
 mysql -u <DB_USERNAME> -p <DB_NAME> < TEST_DATA_CORRECTED.sql
 ```
 
-**Test Credentials:**
-- Admin: `admin` / `Test@123`
-- Principal: `principal` / `Test@123`
-- Teacher: `teacher1` / `Test@123`
-- Student: `student1` / `Test@123`
+Resets the seeded tables and inserts sample data (6 students, 6 staff, 4 classes, grades, fees, library loans...). All seeded accounts use password `Test@123`: `admin`, `principal`, `teacher1`/`teacher2`/`teacher3`, `librarian`, `accountant`, `student1`-`student6`.
+
+## ⚙️ Configuration
+
+Nothing is hard-coded — everything sensitive comes from environment variables (see `.env.example`):
+
+| Variable | Required | Notes |
+|---|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_NAME` | dev: no (default `localhost:3306/school_management`) · prod: yes | |
+| `DB_USERNAME`, `DB_PASSWORD` | yes | don't use `root` for day-to-day app use |
+| `JWT_SECRET` | **yes, no default** | app fails fast at startup if missing — generate with `openssl rand -base64 64` |
+| `JWT_EXPIRATION`, `JWT_REFRESH_EXPIRATION` | no | default 24h / 7d (ms) |
+| `SPRING_PROFILES_ACTIVE` | no | `dev` (default, local MySQL, DEBUG logging, SQL logging on) or `prod` (strict env vars, INFO logging, SQL logging off) — see `application-dev.yml` / `application-prod.yml` |
 
 ## 🛡️ Security
 
-### Roles & Permissions
-- **ADMIN** - Full system access
-- **PRINCIPAL** - Management oversight
-- **TEACHER** - Grade and attendance management
-- **STUDENT** - Limited read access
-- **LIBRARIAN** - Book management
-- **ACCOUNTANT** - Fee management
+### Roles
+`ADMIN`, `PRINCIPAL`, `TEACHER`, `STUDENT`, `LIBRARIAN`, `ACCOUNTANT`, `PARENT` (defined; not yet wired into any module).
 
-### Authentication Flow
-1. **Login** → `POST /api/v1/auth/login`
-2. **Get JWT Token** → Include in Authorization header
-3. **Access Protected APIs** → `Bearer <token>`
+### Auth flow
+1. `POST /v1/auth/login` → `{ accessToken, refreshToken, ... }`
+2. Send `Authorization: Bearer <accessToken>` on every other request.
+3. `POST /v1/auth/refresh-token` with `Authorization: Bearer <refreshToken>` once the access token expires.
 
-## 🌐 API Endpoints
+### Registration
+- `POST /v1/auth/register` is public and **always creates a STUDENT account** — the request DTO has no `role` field, so there is no way for a client to self-assign a privileged role.
+- To create an account with any other role, an authenticated **ADMIN** calls `POST /v1/users` with an explicit `role`.
 
-| Endpoint | Description | Auth Required |
-|----------|-------------|---------------|
-| `POST /api/v1/auth/login` | User login | No |
-| `GET /api/v1/users` | List users | Yes |
-| `GET /api/v1/staff` | List staff | Yes |
-| `GET /api/v1/students` | List students | Yes |
-| `GET /api/v1/classes` | List classes | Yes |
-| `GET /api/v1/library/books` | List books | Yes |
+### Input validation & error responses
+- Every create/update endpoint validates its body (`@Valid` + Bean Validation) and returns `400` with a field-level message on failure.
+- Every response — success or failure — uses a consistent shape; errors look like:
+  ```json
+  {
+    "status": "BAD_REQUEST",
+    "message": "email: must be a well-formed email address",
+    "code": 400,
+    "path": "/api/v1/auth/register",
+    "timestamp": "2026-08-20T10:30:00"
+  }
+  ```
+- Unexpected server errors (`500`) never leak internal detail (SQL, stack traces, class names) to the client — they're logged server-side and the client gets a fixed generic message.
 
-## 📖 Documentation
+## 📄 Pagination
 
-- **API Docs:** http://localhost:8080/api/swagger-ui.html
-- **Database Setup:** [DATABASE_SETUP_INDEX.md](./DATABASE_SETUP_INDEX.md)
-- **API Testing:** [API_TESTING_GUIDE.md](./API_TESTING_GUIDE.md)
-- **Architecture:** [ARCHITECTURE.md](./ARCHITECTURE.md)
-- **Development:** [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md)
+List endpoints that can return many rows accept optional `page` (0-indexed) and `size` query params: `GET /v1/students?page=0&size=20`. Supplying both returns that page (body stays a plain JSON array) plus an `X-Total-Count` response header with the total row count. Omitting either param returns the full, unpaginated list — existing callers are unaffected. Currently on: `/v1/students`, `/v1/staff`, `/v1/library/books`, `/v1/classes`, `/v1/grades/year/{academicYear}`, `/v1/fees/year/{academicYear}`.
 
 ## 🔧 Development
 
 ### Prerequisites
-- Java 17+
-- Maven 3.6+
-- MySQL 8.0+ (local instance)
-- IDE (IntelliJ IDEA recommended)
+- Java 17+, Maven 3.6+, MySQL 8.0+ (local instance), Git
 
 ### Setup
-1. **Clone repository**
-2. **Configure database** in application.yml
-3. **Install dependencies:** `mvn clean install`
-4. **Run application:** `mvn spring-boot:run`
-5. **Import test data** (optional)
-6. **Access Swagger UI** for testing
+```bash
+git clone <repository-url> && cd backend
+cp .env.example .env   # fill in DB credentials + JWT_SECRET
+mvn clean install
+mvn spring-boot:run
+```
 
 ### Build
 ```bash
-# Development
-mvn spring-boot:run
-
-# Production build
-mvn clean package
+mvn spring-boot:run          # dev
+mvn clean package            # production jar
 java -jar target/school-management-system-1.0.0.jar
 ```
 
-## 📦 Dependencies
-
-Key dependencies managed by Maven:
-- Spring Boot Starter Web
-- Spring Boot Starter Security
-- Spring Boot Starter Data JPA
-- MySQL Connector/J
-- JWT Support (jjwt)
-- Lombok
-- SpringDoc OpenAPI (Swagger)
-
-## 🚦 Status
-
-✅ **Authentication:** JWT-based security working  
-✅ **Database:** MySQL (local) configured and connected  
-✅ **APIs:** All endpoints functional  
-✅ **Documentation:** Swagger UI available  
-✅ **Test Data:** Sample data ready for import
-
----
-
-**Port:** 8080  
-**Context Path:** /api  
-**Version:** 1.0.0  
-**Last Updated:** November 17, 2025
-
-## Features
-
-- **Authentication & Authorization**: JWT-based authentication with Spring Security
-- **Staff Management**: Manage teachers, administrators, and other staff members
-- **Student Management**: Complete student profile management
-- **Library Management**: Book catalog and borrowing system
-- **Attendance Tracking**: Mark and track student attendance
-- **Grade Management**: Record and manage student grades
-- **Fee Management**: Manage student fees and payments
-- **Role-Based Access Control**: Admin, Principal, Teacher, Student, Librarian, Accountant roles
-
-## Technology Stack
-
-- **Java 17**
-- **Spring Boot 3.1.5**
-- **Spring Security 6**
-- **Spring Data JPA**
-- **MySQL 8.0**
-- **JWT (JSON Web Tokens)**
-- **Lombok**
-- **Swagger/OpenAPI 3.0**
-
-## Prerequisites
-
-- Java 17 or higher
-- Maven 3.6+
-- MySQL 8.0+
-- Git
-
-## Installation
-
-### 1. Clone the Repository
-
+### Tests
 ```bash
-git clone <repository-url>
-cd backend
+mvn test
 ```
+Runs against your local MySQL (via the `test` Spring profile — see `src/test/resources/application-test.yml`), so `DB_*`/`JWT_SECRET` env vars must be set the same as for `spring-boot:run`.
 
-### 2. Create MySQL Database
+## 📖 More docs
 
-```sql
-CREATE DATABASE school_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
+- **Swagger UI**: `http://localhost:8080/api/swagger-ui.html` — always up to date, source of truth for the API contract.
+- **API docs (OpenAPI JSON)**: `http://localhost:8080/api/v3/api-docs`
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — system design
+- [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md) — local environment setup in detail
+- [QUICKSTART.md](./QUICKSTART.md) — condensed getting-started
+- [../IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) — the project's phased implementation plan (source of truth for what's built vs. planned)
 
-### 3. Configure Environment Variables
+## 📦 Key dependencies
 
-Copy `.env.example` to `.env` (git-ignored) and fill in your local MySQL credentials plus `JWT_SECRET`. `application.yml` reads these via `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` — no credentials are hard-coded in the repo.
+Spring Boot Starter Web/Security/Data JPA/Validation, MySQL Connector/J, Flyway (`flyway-core` + `flyway-mysql`), JWT (`jjwt`), Lombok, SpringDoc OpenAPI.
 
-### 4. Build the Project
-
-```bash
-mvn clean install
-```
-
-### 5. Run the Application
-
-```bash
-mvn spring-boot:run
-```
-
-The application will start on `http://localhost:8080/api`
-
-## API Documentation
-
-Once the application is running, access the Swagger UI at:
-- **Swagger UI**: `http://localhost:8080/api/swagger-ui.html`
-- **API Docs**: `http://localhost:8080/api/v3/api-docs`
-
-## API Endpoints
-
-### Authentication Endpoints (`/v1/auth`)
-- `POST /register` - Register a new user
-- `POST /login` - Login and get JWT token
-- `POST /refresh-token` - Refresh access token
-
-### Staff Management (`/v1/staff`)
-- `POST /` - Create staff member (Admin/Principal only)
-- `GET /` - Get all staff members
-- `GET /{id}` - Get staff by ID
-- `GET /employee/{employeeId}` - Get staff by employee ID
-- `GET /position/{position}` - Get staff by position
-- `GET /department/{department}` - Get staff by department
-- `GET /active` - Get active staff members
-- `PUT /{id}` - Update staff (Admin/Principal only)
-- `DELETE /{id}` - Delete staff (Admin/Principal only)
-
-### Student Management (`/v1/students`)
-- `POST /` - Create student (Admin/Principal only)
-- `GET /` - Get all students
-- `GET /{id}` - Get student by ID
-- `GET /roll/{rollNumber}` - Get student by roll number
-- `GET /class/{className}` - Get students by class
-- `GET /class/{className}/section/{section}` - Get students by class and section
-- `GET /active` - Get active students
-- `PUT /{id}` - Update student (Admin/Principal only)
-- `DELETE /{id}` - Delete student (Admin/Principal only)
-
-### Library Management (`/v1/library`)
-- `POST /books` - Add book (Admin/Librarian only)
-- `GET /books` - Get all books
-- `GET /books/{id}` - Get book by ID
-- `GET /books/search?title=...` - Search books by title
-- `GET /books/category/{category}` - Get books by category
-- `GET /books/author/{author}` - Get books by author
-- `GET /books/available` - Get available books
-- `POST /books/{bookId}/borrow` - Borrow a book
-- `POST /books/{bookId}/return` - Return a borrowed book
-- `PUT /books/{id}` - Update book (Admin/Librarian only)
-- `DELETE /books/{id}` - Delete book (Admin/Librarian only)
-
-### Attendance Management (`/v1/attendance`)
-- `POST /` - Mark attendance for student
-- `POST /class` - Mark attendance for entire class
-- `GET /{id}` - Get attendance record
-- `GET /student/{studentId}` - Get student attendance records
-- `GET /student/{studentId}/between` - Get attendance between dates
-- `GET /date/{date}` - Get attendance by date
-- `GET /student/{studentId}/percentage` - Get attendance percentage
-- `PUT /{id}` - Update attendance record
-- `DELETE /{id}` - Delete attendance record
-
-### Grade Management (`/v1/grades`)
-- `POST /` - Create grade record
-- `GET /{id}` - Get grade record
-- `GET /student/{studentId}` - Get all grades for student
-- `GET /student/{studentId}/year/{academicYear}` - Get grades by year
-- `GET /student/{studentId}/subject/{subject}` - Get grades by subject
-- `GET /student/{studentId}/average` - Get average percentage
-- `PUT /{id}` - Update grade record
-- `DELETE /{id}` - Delete grade record
-
-### Fee Management (`/v1/fees`)
-- `POST /` - Create fee record
-- `GET /{id}` - Get fee record
-- `GET /student/{studentId}` - Get student fees
-- `GET /student/{studentId}/year/{academicYear}` - Get fees by year
-- `GET /student/{studentId}/pending` - Get pending fees
-- `GET /status/{status}` - Get fees by status
-- `POST /{feeId}/payment` - Process fee payment
-- `PUT /{id}` - Update fee record
-- `DELETE /{id}` - Delete fee record
-
-## Authentication
-
-All protected endpoints require a JWT token in the Authorization header:
-
-```
-Authorization: Bearer <your_jwt_token>
-```
-
-Get a token by logging in:
-
-```bash
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "admin",
-    "password": "password"
-  }'
-```
-
-## Default Roles
-
-- **ADMIN**: Full system access
-- **PRINCIPAL**: School administration
-- **TEACHER**: Teaching and classroom management
-- **STUDENT**: Student access
-- **LIBRARIAN**: Library management
-- **ACCOUNTANT**: Finance management
-- **PARENT**: Parent portal access
-
-## Project Structure
+## 📁 Project structure
 
 ```
 backend/
 ├── src/
 │   ├── main/
 │   │   ├── java/com/schoolmanagement/
-│   │   │   ├── config/          # Configuration classes
-│   │   │   ├── controller/      # REST Controllers
-│   │   │   ├── dto/             # Data Transfer Objects
-│   │   │   ├── entity/          # JPA Entities
-│   │   │   ├── exception/       # Custom Exceptions
-│   │   │   ├── repository/      # JPA Repositories
-│   │   │   ├── security/        # Security configuration
-│   │   │   ├── service/         # Business Logic
-│   │   │   └── util/            # Utility classes
+│   │   │   ├── config/          # Spring/security configuration
+│   │   │   ├── controller/      # REST controllers
+│   │   │   ├── dto/             # Request/response DTOs
+│   │   │   ├── entity/          # JPA entities
+│   │   │   ├── exception/       # Custom exceptions + GlobalExceptionHandler
+│   │   │   ├── repository/      # Spring Data JPA repositories
+│   │   │   ├── security/        # JWT filter/provider
+│   │   │   ├── service/         # Business logic
+│   │   │   └── util/            # Shared helpers (e.g. pagination)
 │   │   └── resources/
-│   │       └── application.yml  # Application configuration
+│   │       ├── application.yml           # shared config
+│   │       ├── application-dev.yml       # local dev profile (default)
+│   │       ├── application-prod.yml      # production profile
+│   │       └── db/migration/             # Flyway migrations
 │   └── test/
+│       ├── java/com/schoolmanagement/    # unit tests
+│       └── resources/application-test.yml
+├── TEST_DATA_CORRECTED.sql
 ├── pom.xml
 └── README.md
 ```
 
-## Security Features
+## 🚀 Future enhancements
 
-- JWT token-based authentication
-- Role-based access control (RBAC)
-- Password encryption using BCrypt
-- Method-level security annotations
-- CSRF protection disabled (for stateless API)
-- CORS support
-
-## Database Schema
-
-The application automatically creates all tables through Hibernate JPA using the `ddl-auto: update` configuration. Tables include:
-
-- users
-- user_permissions
-- staff
-- students
-- library_books
-- book_transactions
-- attendance
-- grades
-- fees
-- classes
-
-## Error Handling
-
-The API provides consistent error responses with status codes and messages:
-
-```json
-{
-  "status": "NOT_FOUND",
-  "message": "Student not found with id: 123",
-  "code": 404,
-  "path": "/api/v1/students/123",
-  "timestamp": "2023-11-16T10:30:00"
-}
-```
-
-## Performance Considerations
-
-- Lazy loading for relationships
-- Pagination support for list endpoints
-- Query optimization with proper indexes
-- Connection pooling with HikariCP
-
-## Future Enhancements
-
-- [ ] Advanced reporting features
-- [ ] Bulk import/export functionality
-- [ ] Message notification system
-- [ ] Timetable management
-- [ ] Exam management system
-- [ ] Parent-Teacher communication module
-- [ ] Mobile app API endpoints
-- [ ] Advanced analytics and dashboards
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-
-For support, email support@schoolmanagement.com or create an issue in the repository.
-
-## Contact
-
-- **Author**: School Management Team
-- **Email**: team@schoolmanagement.com
-- **Website**: https://www.schoolmanagement.com
-
+See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — academic year/semester/subject entities, Thông tư 22/58 grading & xếp loại học lực, hạnh kiểm, thời khoá biểu, promotion workflow, parent portal & sổ liên lạc điện tử, admissions, PDF/Excel reports, audit log.

@@ -5,10 +5,13 @@ import com.schoolmanagement.entity.BookCategory;
 import com.schoolmanagement.entity.LibraryBook;
 import com.schoolmanagement.entity.User;
 import com.schoolmanagement.service.LibraryService;
+import com.schoolmanagement.util.PaginationUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -51,10 +54,19 @@ public class LibraryController {
 
     @GetMapping("/books")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN', 'TEACHER', 'STUDENT')")
-    @Operation(summary = "Get all books")
-    public ResponseEntity<List<LibraryBookDTO>> getAllBooks() {
-        List<LibraryBookDTO> books = libraryService.getAllBooks();
-        return new ResponseEntity<>(books, HttpStatus.OK);
+    @Operation(summary = "Get all books",
+            description = "Optional page/size query params paginate the result (0-indexed page); omit both to get the full list. Total count is returned in the X-Total-Count header when paginated.")
+    public ResponseEntity<List<LibraryBookDTO>> getAllBooks(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        Pageable pageable = PaginationUtil.toPageable(page, size);
+        if (pageable == null) {
+            return new ResponseEntity<>(libraryService.getAllBooks(), HttpStatus.OK);
+        }
+        Page<LibraryBookDTO> result = libraryService.getAllBooks(pageable);
+        return ResponseEntity.ok()
+                .header("X-Total-Count", String.valueOf(result.getTotalElements()))
+                .body(result.getContent());
     }
 
     @GetMapping("/books/search")

@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface StaffRepository extends JpaRepository<Staff, Long> {
     Optional<Staff> findByEmployeeId(String employeeId);
     List<Staff> findByStatus(EmploymentStatus status);
+    long countByStatus(EmploymentStatus status);
     List<Staff> findByPosition(StaffPosition position);
     List<Staff> findByDepartment(String department);
     boolean existsByEmployeeId(String employeeId);

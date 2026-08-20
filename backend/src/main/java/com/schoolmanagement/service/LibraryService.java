@@ -7,6 +7,8 @@ import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.BookTransactionRepository;
 import com.schoolmanagement.repository.LibraryBookRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,6 +72,10 @@ public class LibraryService {
                 .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
+    }
+
+    public Page<LibraryBookDTO> getAllBooks(Pageable pageable) {
+        return bookRepository.findAll(pageable).map(this::mapToDTO);
     }
 
     public List<LibraryBookDTO> searchBooks(String title) {

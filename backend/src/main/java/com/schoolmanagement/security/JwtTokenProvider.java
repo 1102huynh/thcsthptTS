@@ -30,16 +30,40 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
+    private static final String TYPE_CLAIM = "type";
+    private static final String TYPE_ACCESS = "access";
+    private static final String TYPE_REFRESH = "refresh";
+
     public String generateToken(UserDetails userDetails) {
         return generateToken(new HashMap<>(), userDetails);
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
-        return buildToken(extraClaims, userDetails.getUsername(), jwtExpiration);
+        Map<String, Object> claims = new HashMap<>(extraClaims);
+        claims.put(TYPE_CLAIM, TYPE_ACCESS);
+        return buildToken(claims, userDetails.getUsername(), jwtExpiration);
     }
 
     public String generateRefreshToken(UserDetails userDetails) {
-        return buildToken(new HashMap<>(), userDetails.getUsername(), refreshExpiration);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(TYPE_CLAIM, TYPE_REFRESH);
+        return buildToken(claims, userDetails.getUsername(), refreshExpiration);
+    }
+
+    /**
+     * True only for a token minted by {@link #generateToken(UserDetails)} — used to
+     * stop a refresh token (7-day lifetime) from being usable as API credentials.
+     */
+    public boolean isAccessToken(String token) {
+        return TYPE_ACCESS.equals(extractClaim(token, claims -> claims.get(TYPE_CLAIM, String.class)));
+    }
+
+    /**
+     * True only for a token minted by {@link #generateRefreshToken(UserDetails)} —
+     * used to stop an access token from being used to mint new token pairs.
+     */
+    public boolean isRefreshToken(String token) {
+        return TYPE_REFRESH.equals(extractClaim(token, claims -> claims.get(TYPE_CLAIM, String.class)));
     }
 
     private String buildToken(Map<String, Object> extraClaims, String subject, long expiration) {

@@ -1,5 +1,6 @@
 package com.schoolmanagement.service;
 
+import com.schoolmanagement.dto.AuthResponse;
 import com.schoolmanagement.dto.CreateUserRequest;
 import com.schoolmanagement.dto.RegisterRequest;
 import com.schoolmanagement.entity.Role;
@@ -14,11 +15,16 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.Date;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -63,6 +69,8 @@ class AuthenticationServiceTest {
             return saved;
         });
         when(jwtTokenProvider.generateRefreshToken(any(User.class))).thenReturn("refresh-token");
+        when(jwtTokenProvider.getTokenIssuedAt(anyString())).thenReturn(new Date());
+        when(jwtTokenProvider.getTokenExpiration(anyString())).thenReturn(new Date());
 
         authenticationService.register(request);
 
@@ -128,11 +136,45 @@ class AuthenticationServiceTest {
             return saved;
         });
         when(jwtTokenProvider.generateRefreshToken(any(User.class))).thenReturn("refresh-token");
+        when(jwtTokenProvider.getTokenIssuedAt(anyString())).thenReturn(new Date());
+        when(jwtTokenProvider.getTokenExpiration(anyString())).thenReturn(new Date());
 
         authenticationService.createUserByAdmin(request);
 
         ArgumentCaptor<User> savedUserCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(savedUserCaptor.capture());
         assertThat(savedUserCaptor.getValue().getRole()).isEqualTo(Role.TEACHER);
+    }
+
+    @Test
+    void refreshToken_rejectsAnAccessTokenPresentedAsARefreshToken() {
+        // An access token has no "type":"refresh" claim — isRefreshToken() must say so,
+        // otherwise a leaked/expired-soon access token could be used to mint a fresh
+        // pair, and (separately, guarded in JwtAuthenticationFilter) a refresh token
+        // could be used as API credentials for its whole 7-day lifetime.
+        when(jwtTokenProvider.isRefreshToken("some-access-token")).thenReturn(false);
+
+        assertThrows(BadCredentialsException.class,
+                () -> authenticationService.refreshToken("some-access-token"));
+        verify(userRepository, never()).findByUsername(any());
+    }
+
+    @Test
+    void refreshToken_returnsNewTokenPairForAValidRefreshToken() {
+        User user = User.builder().id(1L).username("admin").role(Role.ADMIN).build();
+
+        when(jwtTokenProvider.isRefreshToken("valid-refresh-token")).thenReturn(true);
+        when(jwtTokenProvider.extractUsername("valid-refresh-token")).thenReturn("admin");
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(user));
+        when(jwtTokenProvider.isTokenValid("valid-refresh-token", user)).thenReturn(true);
+        when(jwtTokenProvider.generateToken(user)).thenReturn("new-access-token");
+        when(jwtTokenProvider.generateRefreshToken(user)).thenReturn("new-refresh-token");
+        when(jwtTokenProvider.getTokenIssuedAt(anyString())).thenReturn(new Date());
+        when(jwtTokenProvider.getTokenExpiration(anyString())).thenReturn(new Date());
+
+        AuthResponse response = authenticationService.refreshToken("valid-refresh-token");
+
+        assertThat(response.getAccessToken()).isEqualTo("new-access-token");
+        assertThat(response.getRefreshToken()).isEqualTo("new-refresh-token");
     }
 }
