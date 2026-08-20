@@ -6,6 +6,25 @@
 
 ---
 
+## NGUYÊN TẮC XUYÊN SUỐT: Bám sát hệ thống giáo dục THCS-THPT Việt Nam
+
+Nguyên tắc này áp dụng cho **mọi giai đoạn**, không riêng Giai đoạn 3 — kể cả các module tưởng chừng "chung chung" (quản lý lớp, học sinh, nhân sự...) cũng phải thiết kế theo đúng cách một trường THCS/THPT Việt Nam thật sự vận hành, không theo mô hình trường học chung chung/quốc tế:
+
+- **Cấp học & khối lớp**: THCS (lớp 6-9), THPT (lớp 10-12); một trường thực tế thường chỉ dạy một cấp (THCS *hoặc* THPT) hoặc liên cấp — field/entity liên quan tới khối lớp (`gradeLevel`) phải giới hạn đúng phạm vi 6-12, không để tự do.
+- **Năm học & học kỳ**: năm học chạy khoảng tháng 9 → tháng 5 năm sau (không trùng năm dương lịch), chia **Học kỳ 1 / Học kỳ 2** (không phải "Fall/Spring" hay quarter/semester kiểu Mỹ).
+- **Hệ thống điểm & xếp loại học lực**: theo đúng **Thông tư 22/2021/TT-BGDĐT** (khối đã áp dụng chương trình GDPT 2018: xếp loại Tốt/Khá/Đạt/Chưa đạt) hoặc **Thông tư 58** (khối chưa chuyển đổi: Giỏi/Khá/Trung bình/Yếu/Kém) — hệ số điểm miệng/15 phút/1 tiết/giữa kỳ/cuối kỳ, cách tính điểm trung bình môn học kỳ/cả năm phải đúng công thức quy định, **không tự sáng tạo công thức khác**.
+- **Hạnh kiểm/rèn luyện**: luôn đi kèm song song với học lực (Tốt/Khá/Trung bình/Yếu), đây là phần bắt buộc trong học bạ Việt Nam, không phải tính năng phụ.
+- **Cơ cấu lớp/môn học**: sĩ số lớp, giáo viên chủ nhiệm (GVCN), phân công giảng dạy theo môn, thời khoá biểu theo tiết (thường 4-5 tiết/buổi) — đúng cách vận hành lớp học Việt Nam (một lớp cố định, nhiều giáo viên bộ môn dạy luân phiên theo tiết, không phải học sinh tự chọn phòng học như đại học).
+- **Vai trò nhân sự**: Hiệu trưởng, Hiệu phó, GVCN, Giáo viên bộ môn, Tổng phụ trách Đội (nếu có), Thư viện, Kế toán, Y tế học đường, Bảo vệ — đặt tên field/enum theo đúng vai trò thực tế trong trường Việt Nam.
+- **Học phí & khoản thu**: các khoản thu đặc trưng Việt Nam (học phí, bảo hiểm y tế học sinh (BHYT), bán trú, đồng phục, quỹ phụ huynh/quỹ lớp, dạy thêm-học thêm nếu trường có tổ chức) — không chỉ "tuition fee" chung chung kiểu Mỹ.
+- **Phụ huynh & sổ liên lạc**: mô hình liên lạc nhà trường-phụ huynh Việt Nam qua **sổ liên lạc điện tử** (thông báo điểm/điểm danh/học phí qua app/SMS/Zalo — Zalo là kênh phổ biến nhất, không phải email như phương Tây).
+- **Tuyển sinh, chuyển trường, xét lên lớp/ở lại/tốt nghiệp**: đúng quy trình hành chính giáo dục Việt Nam (hồ sơ nhập học, xét tuyển đầu cấp, quyết định lên lớp/ở lại theo ngưỡng điểm + hạnh kiểm + số buổi nghỉ theo quy định).
+- **Ngôn ngữ & thuật ngữ**: UI, tên field có ý nghĩa nghiệp vụ (không phải kỹ thuật thuần tuý), thông báo lỗi hướng tới người dùng nên dùng tiếng Việt và đúng thuật ngữ ngành giáo dục (học kỳ, hạnh kiểm, học bạ, khối, môn học...), tránh dịch word-by-word từ mô hình trường học nước ngoài.
+
+**Khi thiết kế bất kỳ entity/API/UI mới nào**: nếu có điểm mơ hồ về nghiệp vụ (ví dụ ngưỡng điểm xếp loại, quy định nghỉ học tối đa), nên hỏi lại người có chuyên môn giáo dục thay vì tự suy đoán theo mô hình nước ngoài — đã ghi trong mục "Rủi ro nghiệp vụ điểm số" cuối tài liệu.
+
+---
+
 ## 0. THAY ĐỔI HẠ TẦNG CSDL: PostgreSQL (Aiven Cloud) → MySQL (Local)
 
 Đây là việc làm **đầu tiên** trong Track Backend (gộp vào Ngày 1 của Giai đoạn 1), vì mọi thứ sau đó (Flyway baseline, migration dữ liệu Giai đoạn 3) đều phải viết theo đúng cú pháp MySQL ngay từ đầu — đổi muộn sẽ phải viết lại migration.
