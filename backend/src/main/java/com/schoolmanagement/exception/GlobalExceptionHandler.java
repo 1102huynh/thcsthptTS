@@ -47,6 +47,20 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(ResourceInUseException.class)
+    public ResponseEntity<ApiError> handleResourceInUseException(
+            ResourceInUseException ex,
+            HttpServletRequest request) {
+        ApiError error = ApiError.builder()
+                .status("CONFLICT")
+                .message(ex.getMessage())
+                .code(409)
+                .path(request.getRequestURI())
+                .timestamp(LocalDateTime.now())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiError> handleBadCredentialsException(
             BadCredentialsException ex,

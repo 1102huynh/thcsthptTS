@@ -14,6 +14,7 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     Optional<Student> findByAdmissionNumber(String admissionNumber);
     List<Student> findByClassName(String className);
     List<Student> findByClassNameAndSection(String className, String section);
+    long countByClassNameAndSection(String className, String section);
     List<Student> findByStatus(StudentStatus status);
     boolean existsByRollNumber(String rollNumber);
     boolean existsByAdmissionNumber(String admissionNumber);
