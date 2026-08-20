@@ -28,14 +28,14 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    @Operation(summary = "Login user")
+    @Operation(summary = "Login", description = "Authenticate with username/password and receive an access token + refresh token.")
     public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest authRequest) {
         AuthResponse response = authenticationService.login(authRequest);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @PostMapping("/refresh-token")
-    @Operation(summary = "Refresh access token")
+    @Operation(summary = "Refresh access token", description = "Exchange a still-valid refresh token for a new access + refresh token pair. Send it as `Authorization: Bearer <refreshToken>`.")
     public ResponseEntity<AuthResponse> refreshToken(@RequestHeader("Authorization") String refreshToken) {
         String token = refreshToken.replace("Bearer ", "");
         AuthResponse response = authenticationService.refreshToken(token);
