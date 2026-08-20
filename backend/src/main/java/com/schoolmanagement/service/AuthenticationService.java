@@ -2,6 +2,8 @@ package com.schoolmanagement.service;
 
 import com.schoolmanagement.dto.AuthRequest;
 import com.schoolmanagement.dto.AuthResponse;
+import com.schoolmanagement.dto.CreateUserRequest;
+import com.schoolmanagement.dto.RegisterRequest;
 import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.User;
 import com.schoolmanagement.exception.DuplicateResourceException;
@@ -32,20 +34,59 @@ public class AuthenticationService {
     private AuthenticationManager authenticationManager;
     private JwtTokenProvider jwtTokenProvider;
 
-    public AuthResponse register(User user, String rawPassword) {
-        if (userRepository.existsByUsername(user.getUsername())) {
+    /**
+     * Self-service registration. Always creates a STUDENT account — RegisterRequest
+     * has no `role` field, so a client has no channel to request a privileged role.
+     * ADMIN must use {@link #createUserByAdmin(CreateUserRequest)} to grant other roles.
+     */
+    public AuthResponse register(RegisterRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
             throw new DuplicateResourceException("Username already exists");
         }
 
-        if (userRepository.existsByEmail(user.getEmail())) {
+        if (userRepository.existsByEmail(request.getEmail())) {
             throw new DuplicateResourceException("Email already exists");
         }
 
-        user.setPassword(passwordEncoder.encode(rawPassword));
-        if (user.getRole() == null) {
-            user.setRole(Role.STUDENT);
+        User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .phoneNumber(request.getPhoneNumber())
+                .role(Role.STUDENT)
+                .enabled(true)
+                .build();
+
+        User savedUser = userRepository.save(user);
+
+        return buildAuthResponse(savedUser, null);
+    }
+
+    /**
+     * ADMIN-only account creation with an explicit role. Only reachable via
+     * POST /v1/users, which requires ROLE_ADMIN (see UserController).
+     */
+    public AuthResponse createUserByAdmin(CreateUserRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new DuplicateResourceException("Username already exists");
         }
-        user.setEnabled(true);
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateResourceException("Email already exists");
+        }
+
+        User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .phoneNumber(request.getPhoneNumber())
+                .role(request.getRole())
+                .enabled(true)
+                .build();
 
         User savedUser = userRepository.save(user);
 
