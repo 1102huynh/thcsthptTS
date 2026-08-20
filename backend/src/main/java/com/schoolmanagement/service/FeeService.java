@@ -1,5 +1,6 @@
 package com.schoolmanagement.service;
 
+import com.schoolmanagement.dto.FeeDTO;
 import com.schoolmanagement.entity.Fee;
 import com.schoolmanagement.entity.FeeStatus;
 import com.schoolmanagement.entity.Student;
@@ -7,6 +8,8 @@ import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.FeeRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,8 +70,22 @@ public class FeeService {
         return feeRepository.findByStatus(status);
     }
 
-    public List<Fee> getFeesByAcademicYear(String academicYear) {
-        return feeRepository.findByAcademicYear(academicYear);
+    /**
+     * Returns FeeDTO (not the raw entity) because this listing spans many
+     * students, whose lazy `student` association is not already resolved in
+     * the persistence context the way the single-student queries above are —
+     * serializing the raw entity after the transaction closes (open-in-view
+     * is off) throws LazyInitializationException.
+     */
+    public List<FeeDTO> getFeesByAcademicYear(String academicYear) {
+        return feeRepository.findByAcademicYear(academicYear)
+                .stream()
+                .map(this::mapToDTO)
+                .toList();
+    }
+
+    public Page<FeeDTO> getFeesByAcademicYear(String academicYear, Pageable pageable) {
+        return feeRepository.findByAcademicYear(academicYear, pageable).map(this::mapToDTO);
     }
 
     public Fee processPayment(Long feeId, Double paidAmount, String paymentMethod) {
@@ -118,6 +135,31 @@ public class FeeService {
         Fee fee = feeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Fee record not found"));
         feeRepository.delete(fee);
+    }
+
+    private FeeDTO mapToDTO(Fee fee) {
+        Student student = fee.getStudent();
+
+        return FeeDTO.builder()
+                .id(fee.getId())
+                .studentId(student != null ? student.getId() : null)
+                .studentName(student != null && student.getUser() != null
+                        ? student.getUser().getFirstName() + " " + student.getUser().getLastName()
+                        : null)
+                .academicYear(fee.getAcademicYear())
+                .feeType(fee.getFeeType())
+                .amount(fee.getAmount())
+                .dueDate(fee.getDueDate())
+                .paidDate(fee.getPaidDate())
+                .status(fee.getStatus())
+                .paidAmount(fee.getPaidAmount())
+                .remainingAmount(fee.getRemainingAmount())
+                .paymentMethod(fee.getPaymentMethod())
+                .transactionId(fee.getTransactionId())
+                .remarks(fee.getRemarks())
+                .createdAt(fee.getCreatedAt())
+                .updatedAt(fee.getUpdatedAt())
+                .build();
     }
 }
 

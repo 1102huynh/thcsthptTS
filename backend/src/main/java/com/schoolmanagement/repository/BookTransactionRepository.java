@@ -16,5 +16,6 @@ public interface BookTransactionRepository extends JpaRepository<BookTransaction
     List<BookTransaction> findByBorrowDateBetween(LocalDate startDate, LocalDate endDate);
     List<BookTransaction> findByDueDateBeforeAndReturnDateIsNull(LocalDate dueDate);
     List<BookTransaction> findByUserAndTransactionType(User user, TransactionType type);
+    long countByTransactionTypeAndReturnDateIsNull(TransactionType type);
 }
 

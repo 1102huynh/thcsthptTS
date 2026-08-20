@@ -1,12 +1,16 @@
 package com.schoolmanagement.controller;
 
+import com.schoolmanagement.dto.FeeDTO;
 import com.schoolmanagement.entity.Fee;
 import com.schoolmanagement.entity.FeeStatus;
 import com.schoolmanagement.service.FeeService;
+import com.schoolmanagement.util.PaginationUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -82,10 +86,20 @@ public class FeeController {
 
     @GetMapping("/year/{academicYear}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('ACCOUNTANT')")
-    @Operation(summary = "Get all fees by academic year")
-    public ResponseEntity<List<Fee>> getFeesByAcademicYear(@PathVariable String academicYear) {
-        List<Fee> fees = feeService.getFeesByAcademicYear(academicYear);
-        return new ResponseEntity<>(fees, HttpStatus.OK);
+    @Operation(summary = "Get all fees by academic year",
+            description = "Optional page/size query params paginate the result (0-indexed page); omit both to get the full list. Total count is returned in the X-Total-Count header when paginated.")
+    public ResponseEntity<List<FeeDTO>> getFeesByAcademicYear(
+            @PathVariable String academicYear,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        Pageable pageable = PaginationUtil.toPageable(page, size);
+        if (pageable == null) {
+            return new ResponseEntity<>(feeService.getFeesByAcademicYear(academicYear), HttpStatus.OK);
+        }
+        Page<FeeDTO> result = feeService.getFeesByAcademicYear(academicYear, pageable);
+        return ResponseEntity.ok()
+                .header("X-Total-Count", String.valueOf(result.getTotalElements()))
+                .body(result.getContent());
     }
 
     @PostMapping("/{feeId}/payment")

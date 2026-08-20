@@ -1,11 +1,15 @@
 package com.schoolmanagement.controller;
 
+import com.schoolmanagement.dto.GradeDTO;
 import com.schoolmanagement.entity.Grade;
 import com.schoolmanagement.service.GradeService;
+import com.schoolmanagement.util.PaginationUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -75,10 +79,20 @@ public class GradeController {
 
     @GetMapping("/year/{academicYear}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
-    @Operation(summary = "Get all grades by academic year")
-    public ResponseEntity<List<Grade>> getGradesByAcademicYear(@PathVariable String academicYear) {
-        List<Grade> grades = gradeService.getGradesByAcademicYear(academicYear);
-        return new ResponseEntity<>(grades, HttpStatus.OK);
+    @Operation(summary = "Get all grades by academic year",
+            description = "Optional page/size query params paginate the result (0-indexed page); omit both to get the full list. Total count is returned in the X-Total-Count header when paginated.")
+    public ResponseEntity<List<GradeDTO>> getGradesByAcademicYear(
+            @PathVariable String academicYear,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        Pageable pageable = PaginationUtil.toPageable(page, size);
+        if (pageable == null) {
+            return new ResponseEntity<>(gradeService.getGradesByAcademicYear(academicYear), HttpStatus.OK);
+        }
+        Page<GradeDTO> result = gradeService.getGradesByAcademicYear(academicYear, pageable);
+        return ResponseEntity.ok()
+                .header("X-Total-Count", String.valueOf(result.getTotalElements()))
+                .body(result.getContent());
     }
 
     @GetMapping("/student/{studentId}/average")

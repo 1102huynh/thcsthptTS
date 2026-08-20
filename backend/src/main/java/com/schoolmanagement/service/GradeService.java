@@ -1,11 +1,15 @@
 package com.schoolmanagement.service;
 
+import com.schoolmanagement.dto.GradeDTO;
 import com.schoolmanagement.entity.Grade;
+import com.schoolmanagement.entity.Staff;
 import com.schoolmanagement.entity.Student;
 import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.GradeRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,8 +69,22 @@ public class GradeService {
         return gradeRepository.findByStudentAndSubject(student, subject);
     }
 
-    public List<Grade> getGradesByAcademicYear(String academicYear) {
-        return gradeRepository.findByAcademicYear(academicYear);
+    /**
+     * Returns GradeDTO (not the raw entity) because this listing spans many
+     * students/teachers, whose lazy `student`/`teacher` associations are not
+     * already resolved in the persistence context the way the single-student
+     * queries above are — serializing the raw entity after the transaction
+     * closes (open-in-view is off) throws LazyInitializationException.
+     */
+    public List<GradeDTO> getGradesByAcademicYear(String academicYear) {
+        return gradeRepository.findByAcademicYear(academicYear)
+                .stream()
+                .map(this::mapToDTO)
+                .toList();
+    }
+
+    public Page<GradeDTO> getGradesByAcademicYear(String academicYear, Pageable pageable) {
+        return gradeRepository.findByAcademicYear(academicYear, pageable).map(this::mapToDTO);
     }
 
     public double getStudentAveragePercentage(Long studentId) {
@@ -95,6 +113,33 @@ public class GradeService {
         Grade grade = gradeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Grade record not found"));
         gradeRepository.delete(grade);
+    }
+
+    private GradeDTO mapToDTO(Grade grade) {
+        Student student = grade.getStudent();
+        Staff teacher = grade.getTeacher();
+
+        return GradeDTO.builder()
+                .id(grade.getId())
+                .studentId(student != null ? student.getId() : null)
+                .studentName(student != null && student.getUser() != null
+                        ? student.getUser().getFirstName() + " " + student.getUser().getLastName()
+                        : null)
+                .subject(grade.getSubject())
+                .examType(grade.getExamType())
+                .marksObtained(grade.getMarksObtained())
+                .totalMarks(grade.getTotalMarks())
+                .percentage(grade.getPercentage())
+                .grade(grade.getGrade())
+                .teacherId(teacher != null ? teacher.getId() : null)
+                .teacherName(teacher != null && teacher.getUser() != null
+                        ? teacher.getUser().getFirstName() + " " + teacher.getUser().getLastName()
+                        : null)
+                .academicYear(grade.getAcademicYear())
+                .remarks(grade.getRemarks())
+                .createdAt(grade.getCreatedAt())
+                .updatedAt(grade.getUpdatedAt())
+                .build();
     }
 
     private String calculateGrade(Double percentage) {

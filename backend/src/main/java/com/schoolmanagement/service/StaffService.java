@@ -10,6 +10,8 @@ import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.UserRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,6 +81,10 @@ public class StaffService {
                 .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
+    }
+
+    public Page<StaffDTO> getAllStaff(Pageable pageable) {
+        return staffRepository.findAll(pageable).map(this::mapToDTO);
     }
 
     public List<StaffDTO> getStaffByPosition(StaffPosition position) {
