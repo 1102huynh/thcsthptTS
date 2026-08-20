@@ -1,6 +1,11 @@
 package com.schoolmanagement.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +26,7 @@ public class Staff {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank
     @Column(unique = true, nullable = false)
     private String employeeId;
 
@@ -28,6 +34,7 @@ public class Staff {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private StaffPosition position;
@@ -35,9 +42,11 @@ public class Staff {
     @Column(name = "department")
     private String department;
 
+    @Past
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
+    @PastOrPresent
     @Column(name = "date_of_joining")
     private LocalDate dateOfJoining;
 
@@ -47,9 +56,11 @@ public class Staff {
     @Column(name = "subject_specialization")
     private String subjectSpecialization;
 
+    @PositiveOrZero
     @Column(name = "salary")
     private Double salary;
 
+    @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

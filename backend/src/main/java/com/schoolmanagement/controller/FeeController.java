@@ -5,6 +5,7 @@ import com.schoolmanagement.entity.FeeStatus;
 import com.schoolmanagement.service.FeeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +25,7 @@ public class FeeController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('ACCOUNTANT')")
     @Operation(summary = "Create fee record")
-    public ResponseEntity<Fee> createFee(@RequestBody Fee fee) {
+    public ResponseEntity<Fee> createFee(@Valid @RequestBody Fee fee) {
         Fee createdFee = feeService.createFee(fee);
         return new ResponseEntity<>(createdFee, HttpStatus.CREATED);
     }
@@ -32,7 +33,7 @@ public class FeeController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('ACCOUNTANT')")
     @Operation(summary = "Update fee record")
-    public ResponseEntity<Fee> updateFee(@PathVariable Long id, @RequestBody Fee feeDetails) {
+    public ResponseEntity<Fee> updateFee(@PathVariable Long id, @Valid @RequestBody Fee feeDetails) {
         Fee updatedFee = feeService.updateFee(id, feeDetails);
         return new ResponseEntity<>(updatedFee, HttpStatus.OK);
     }

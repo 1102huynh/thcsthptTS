@@ -4,6 +4,7 @@ import com.schoolmanagement.entity.Grade;
 import com.schoolmanagement.service.GradeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +24,7 @@ public class GradeController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
     @Operation(summary = "Create grade record")
-    public ResponseEntity<Grade> createGrade(@RequestBody Grade grade) {
+    public ResponseEntity<Grade> createGrade(@Valid @RequestBody Grade grade) {
         Grade createdGrade = gradeService.createGrade(grade);
         return new ResponseEntity<>(createdGrade, HttpStatus.CREATED);
     }
@@ -31,7 +32,7 @@ public class GradeController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
     @Operation(summary = "Update grade record")
-    public ResponseEntity<Grade> updateGrade(@PathVariable Long id, @RequestBody Grade gradeDetails) {
+    public ResponseEntity<Grade> updateGrade(@PathVariable Long id, @Valid @RequestBody Grade gradeDetails) {
         Grade updatedGrade = gradeService.updateGrade(id, gradeDetails);
         return new ResponseEntity<>(updatedGrade, HttpStatus.OK);
     }

@@ -5,6 +5,7 @@ import com.schoolmanagement.entity.Student;
 import com.schoolmanagement.service.StudentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +25,7 @@ public class StudentController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('PRINCIPAL')")
     @Operation(summary = "Create new student")
-    public ResponseEntity<StudentDTO> createStudent(@RequestBody Student student) {
+    public ResponseEntity<StudentDTO> createStudent(@Valid @RequestBody Student student) {
         StudentDTO createdStudent = studentService.createStudent(student);
         return new ResponseEntity<>(createdStudent, HttpStatus.CREATED);
     }
@@ -32,7 +33,7 @@ public class StudentController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('PRINCIPAL')")
     @Operation(summary = "Update student")
-    public ResponseEntity<StudentDTO> updateStudent(@PathVariable Long id, @RequestBody Student studentDetails) {
+    public ResponseEntity<StudentDTO> updateStudent(@PathVariable Long id, @Valid @RequestBody Student studentDetails) {
         StudentDTO updatedStudent = studentService.updateStudent(id, studentDetails);
         return new ResponseEntity<>(updatedStudent, HttpStatus.OK);
     }

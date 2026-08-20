@@ -1,6 +1,10 @@
 package com.schoolmanagement.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.PastOrPresent;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,9 +25,11 @@ public class Student {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank
     @Column(unique = true, nullable = false)
     private String rollNumber;
 
+    @NotBlank
     @Column(unique = true, nullable = false)
     private String admissionNumber;
 
@@ -31,6 +37,7 @@ public class Student {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Past
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
@@ -46,9 +53,11 @@ public class Student {
     @Column(name = "section")
     private String section;
 
+    @PastOrPresent
     @Column(name = "date_of_admission")
     private LocalDate dateOfAdmission;
 
+    @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

@@ -5,6 +5,7 @@ import com.schoolmanagement.entity.AttendanceStatus;
 import com.schoolmanagement.service.AttendanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -26,7 +27,7 @@ public class AttendanceController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
     @Operation(summary = "Mark attendance for a student")
-    public ResponseEntity<Attendance> markAttendance(@RequestBody Attendance attendance) {
+    public ResponseEntity<Attendance> markAttendance(@Valid @RequestBody Attendance attendance) {
         Attendance savedAttendance = attendanceService.markAttendance(attendance);
         return new ResponseEntity<>(savedAttendance, HttpStatus.CREATED);
     }
@@ -47,7 +48,7 @@ public class AttendanceController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
     @Operation(summary = "Update attendance record")
-    public ResponseEntity<Attendance> updateAttendance(@PathVariable Long id, @RequestBody Attendance attendanceDetails) {
+    public ResponseEntity<Attendance> updateAttendance(@PathVariable Long id, @Valid @RequestBody Attendance attendanceDetails) {
         Attendance updatedAttendance = attendanceService.updateAttendance(id, attendanceDetails);
         return new ResponseEntity<>(updatedAttendance, HttpStatus.OK);
     }
