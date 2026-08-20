@@ -21,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
 
 @Service
 @AllArgsConstructor
@@ -60,8 +62,9 @@ public class AuthenticationService {
                 .build();
 
         User savedUser = userRepository.save(user);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(savedUser);
 
-        return buildAuthResponse(savedUser, null);
+        return buildAuthResponse(savedUser, null, refreshToken);
     }
 
     /**
@@ -89,8 +92,9 @@ public class AuthenticationService {
                 .build();
 
         User savedUser = userRepository.save(user);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(savedUser);
 
-        return buildAuthResponse(savedUser, null);
+        return buildAuthResponse(savedUser, null, refreshToken);
     }
 
     public AuthResponse login(AuthRequest authRequest) {
@@ -139,6 +143,12 @@ public class AuthenticationService {
 
     public AuthResponse refreshToken(String refreshToken) {
         try {
+            if (!jwtTokenProvider.isRefreshToken(refreshToken)) {
+                // Also rejects an access token presented here — access tokens carry no
+                // "type":"refresh" claim, so they can't be used to mint a fresh pair.
+                throw new BadCredentialsException("Invalid refresh token");
+            }
+
             String username = jwtTokenProvider.extractUsername(refreshToken);
             User user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new BadCredentialsException("User not found"));
@@ -155,11 +165,12 @@ public class AuthenticationService {
         }
     }
 
-    private AuthResponse buildAuthResponse(User user, String accessToken) {
-        return buildAuthResponse(user, accessToken, jwtTokenProvider.generateRefreshToken(user));
-    }
-
     private AuthResponse buildAuthResponse(User user, String accessToken, String refreshToken) {
+        // issuedAt/expiresAt describe whichever token the client will actually use for
+        // auth: the access token when there is one (login/refresh), otherwise the
+        // refresh token (register/admin-create, which issue no access token yet).
+        String tokenForTimestamps = accessToken != null ? accessToken : refreshToken;
+
         return AuthResponse.builder()
                 .userId(user.getId())
                 .username(user.getUsername())
@@ -170,9 +181,13 @@ public class AuthenticationService {
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .tokenType("Bearer")
-                .issuedAt(LocalDateTime.now())
-                .expiresAt(LocalDateTime.now().plusHours(24))
+                .issuedAt(toLocalDateTime(jwtTokenProvider.getTokenIssuedAt(tokenForTimestamps)))
+                .expiresAt(toLocalDateTime(jwtTokenProvider.getTokenExpiration(tokenForTimestamps)))
                 .build();
+    }
+
+    private LocalDateTime toLocalDateTime(Date date) {
+        return LocalDateTime.ofInstant(date.toInstant(), ZoneId.systemDefault());
     }
 }
 
