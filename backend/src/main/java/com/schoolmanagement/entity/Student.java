@@ -47,11 +47,26 @@ public class Student {
     @Column(name = "blood_group")
     private String bloodGroup;
 
+    /**
+     * @deprecated free-text class name, e.g. "10". Superseded by {@link #currentClass}
+     * (a real FK to {@link SchoolClass}), kept so Phase 1-2 code (class rosters are
+     * still matched by className+section) keeps working during the transition — see
+     * Phase 3.1 migration (V3__academic_structure.sql), which backfills
+     * {@link #currentClass} from this column + section for every existing student.
+     */
+    @Deprecated
     @Column(name = "class_name")
     private String className;
 
+    /** @deprecated see {@link #className}. */
+    @Deprecated
     @Column(name = "section")
     private String section;
+
+    /** The real current-class reference — set this on new/updated students going forward. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "current_class_id")
+    private SchoolClass currentClass;
 
     @PastOrPresent
     @Column(name = "date_of_admission")
