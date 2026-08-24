@@ -41,7 +41,9 @@ http://localhost:8080/api/swagger-ui.html
 | Teaching Assignments | `/v1/teaching-assignments/*` | Phân công giảng dạy (teacher × subject × class × semester) |
 | Timetable | `/v1/timetable/*` | Thời khoá biểu — class/teacher schedule, slot CRUD with teacher/room/class conflict checks |
 | Attendance | `/v1/attendance/*` | Daily attendance |
-| Grades | `/v1/grades/*` | Assessments |
+| Grades (legacy) | `/v1/grades/*` | Percentage-based assessments — kept for Phase 1-2 compatibility, not TT22-based |
+| Grade Records | `/v1/grade-records/*` | Điểm theo Thông tư 22/2021 — thang điểm 10, per component type (miệng/15p/1 tiết/giữa kỳ/cuối kỳ); supersedes Grades above. Điểm TB học kỳ/cả năm per subject via `/student/{id}/summary` and `/student/{id}/year-summary` |
+| Grade Config | `/v1/grade-config/*` | ADMIN-only: hệ số (weight) per component type, scoped by the academic year it starts applying from |
 | Fees | `/v1/fees/*` | Student fees & payments |
 | Library | `/v1/library/*` | Book catalog & borrowing |
 | Dashboard | `/v1/dashboard/stats` | Admin summary stats |
@@ -54,6 +56,7 @@ See [Swagger UI](http://localhost:8080/api/swagger-ui.html) for the full, curren
 - Schema is managed by **Flyway** (`src/main/resources/db/migration/`) — `ddl-auto` is `validate`, never `update`. To change the schema, add a new `V{n}__description.sql` migration; don't hand-edit the DB or rely on Hibernate to create tables.
 - `V3__academic_structure.sql` added `AcademicYear`/`Semester`/`Subject` and backfilled them from the old free-text data (`classes.academic_year`, `grades.subject`). The old columns this replaces (`SchoolClass.academicYear` String, `Student.className`/`section`) are kept and marked `@Deprecated` on the entity — not dropped — so nothing already built against them breaks; new code should read/write `SchoolClass.academicYearRef` and `Student.currentClass` instead.
 - `V4__teaching_timetable.sql` added `TeachingAssignment`/`TimetableSlot` (no backfill — nothing pre-3.2 represented this data).
+- `V5__grading_tt22.sql` added `grade_records`/`grade_component_configs` (Thông tư 22/2021 grading). No backfill from the old `grades` table — the two scoring models (percentage-of-total vs. thang điểm 10 by component type) don't map onto each other automatically — and no default weight rows are seeded; an ADMIN must configure them via `POST /v1/grade-config` before anyone can enter grades.
 - Create the database once:
   ```sql
   CREATE DATABASE school_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -181,4 +184,6 @@ backend/
 
 ## 🚀 Future enhancements
 
-See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — Thông tư 22/58 grading & xếp loại học lực, hạnh kiểm, promotion workflow, parent portal & sổ liên lạc điện tử, admissions, PDF/Excel reports, audit log. (3.1 Năm học/Học kỳ/Môn học and 3.2 Phân công giảng dạy & Thời khoá biểu are done, above.)
+See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — hạnh kiểm, promotion workflow (xét lên lớp/ở lại/tốt nghiệp), parent portal & sổ liên lạc điện tử, admissions, PDF/Excel reports, audit log. (3.1 Năm học/Học kỳ/Môn học, 3.2 Phân công giảng dạy & Thời khoá biểu, and 3.3 Điểm theo TT22 — điểm TB formulas + entity/API framework — are done, above.)
+
+**Note on 3.3**: `GradeClassification` (xếp loại học lực: Tốt/Giỏi/Khá/Đạt/Trung bình/Yếu/Chưa đạt/Kém) exists as vocabulary and the DTOs carry a `classification` field, but the actual TT22/58 threshold logic is **not implemented** — it's deliberately deferred pending confirmation from someone with education-domain expertise on the exact score cutoffs and the môn Toán/Ngữ văn condition. The field is always `null` (omitted from JSON) until that's implemented.
