@@ -1,6 +1,8 @@
 package com.schoolmanagement.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
@@ -42,9 +44,28 @@ public class SchoolClass {
     @JoinColumn(name = "class_teacher_id")
     private Staff classTeacher;
 
+    /**
+     * @deprecated free-text academic year label, e.g. "2024-2025". Superseded by
+     * {@link #academicYearRef}, kept (and still required) so Phase 1-2 code and
+     * existing rows keep working during the transition — see Phase 3.1 migration
+     * (V3__academic_structure.sql), which backfills {@link #academicYearRef} from
+     * this column for every existing class.
+     */
+    @Deprecated
     @NotBlank
     @Column(name = "academic_year", nullable = false)
     private String academicYear;
+
+    /** The real academic year reference — set this on new/updated classes going forward. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "academic_year_id")
+    private AcademicYear academicYearRef;
+
+    /** Khối 6-12 (THCS: 6-9, THPT: 10-12). Optional during the transition — see academicYearRef. */
+    @Min(6)
+    @Max(12)
+    @Column(name = "grade_level")
+    private Integer gradeLevel;
 
     @Column(name = "room_number")
     private String roomNumber;

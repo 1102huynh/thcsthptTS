@@ -35,6 +35,9 @@ http://localhost:8080/api/swagger-ui.html
 | Staff | `/v1/staff/*` | Employee records |
 | Students | `/v1/students/*` | Student profiles |
 | Classes | `/v1/classes/*` | Homeroom class CRUD, GVCN assignment, roster |
+| Academic Years | `/v1/academic-years/*` | Năm học CRUD + close |
+| Semesters | `/v1/semesters/*` | Học kỳ (HK1/HK2) CRUD |
+| Subjects | `/v1/subjects/*` | Môn học CRUD |
 | Attendance | `/v1/attendance/*` | Daily attendance |
 | Grades | `/v1/grades/*` | Assessments |
 | Fees | `/v1/fees/*` | Student fees & payments |
@@ -46,7 +49,8 @@ See [Swagger UI](http://localhost:8080/api/swagger-ui.html) for the full, curren
 ## 🗄️ Database
 
 - **MySQL 8.0**, local. Charset **`utf8mb4`** / collation **`utf8mb4_unicode_ci`** is required (plain `utf8` only supports 3-byte characters and mangles Vietnamese diacritics).
-- Schema is managed by **Flyway** (`src/main/resources/db/migration/V1__baseline.sql`, `V2__fix_classes_unique_constraint.sql`, ...) — `ddl-auto` is `validate`, never `update`. To change the schema, add a new `V{n}__description.sql` migration; don't hand-edit the DB or rely on Hibernate to create tables.
+- Schema is managed by **Flyway** (`src/main/resources/db/migration/`) — `ddl-auto` is `validate`, never `update`. To change the schema, add a new `V{n}__description.sql` migration; don't hand-edit the DB or rely on Hibernate to create tables.
+- `V3__academic_structure.sql` added `AcademicYear`/`Semester`/`Subject` and backfilled them from the old free-text data (`classes.academic_year`, `grades.subject`). The old columns this replaces (`SchoolClass.academicYear` String, `Student.className`/`section`) are kept and marked `@Deprecated` on the entity — not dropped — so nothing already built against them breaks; new code should read/write `SchoolClass.academicYearRef` and `Student.currentClass` instead.
 - Create the database once:
   ```sql
   CREATE DATABASE school_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -174,4 +178,4 @@ backend/
 
 ## 🚀 Future enhancements
 
-See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — academic year/semester/subject entities, Thông tư 22/58 grading & xếp loại học lực, hạnh kiểm, thời khoá biểu, promotion workflow, parent portal & sổ liên lạc điện tử, admissions, PDF/Excel reports, audit log.
+See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — Thông tư 22/58 grading & xếp loại học lực, hạnh kiểm, phân công giảng dạy & thời khoá biểu, promotion workflow, parent portal & sổ liên lạc điện tử, admissions, PDF/Excel reports, audit log. (Năm học/Học kỳ/Môn học — 3.1 — is done, above.)
