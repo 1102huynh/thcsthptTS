@@ -45,6 +45,8 @@ http://localhost:8080/api/swagger-ui.html
 | Grade Records | `/v1/grade-records/*` | Điểm theo Thông tư 22/2021 — thang điểm 10, per component type (miệng/15p/1 tiết/giữa kỳ/cuối kỳ); supersedes Grades above. Điểm TB học kỳ/cả năm per subject via `/student/{id}/summary` and `/student/{id}/year-summary` |
 | Grade Config | `/v1/grade-config/*` | ADMIN-only: hệ số (weight) per component type, scoped by the academic year it starts applying from |
 | Conduct (Hạnh kiểm) | `/v1/conduct/*` | Đánh giá hạnh kiểm/rèn luyện theo học kỳ (TOT/KHA/TRUNG_BINH/YEU), one per student per semester. TEACHER may only write for students in the class they are GVCN of; class/semester roster view for bulk entry |
+| Promotion Thresholds | `/v1/promotion-thresholds/*` | ADMIN/PRINCIPAL-only: cutoffs (điểm TB môn thấp nhất, hạnh kiểm tối thiểu, tỷ lệ nghỉ tối đa) used to suggest xét lên lớp decisions, scoped by academic year |
+| Promotions (Xét lên lớp) | `/v1/promotions/*` | Xét lên lớp/ở lại/tốt nghiệp — live preview per class (not persisted) + `POST /confirm` to save the final decision (bulk, overwrite-on-reconfirm). ADMIN/PRINCIPAL confirm; ADMIN/PRINCIPAL/TEACHER can preview |
 | Fees | `/v1/fees/*` | Student fees & payments |
 | Library | `/v1/library/*` | Book catalog & borrowing |
 | Dashboard | `/v1/dashboard/stats` | Admin summary stats |
@@ -59,6 +61,7 @@ See [Swagger UI](http://localhost:8080/api/swagger-ui.html) for the full, curren
 - `V4__teaching_timetable.sql` added `TeachingAssignment`/`TimetableSlot` (no backfill — nothing pre-3.2 represented this data).
 - `V5__grading_tt22.sql` added `grade_records`/`grade_component_configs` (Thông tư 22/2021 grading). No backfill from the old `grades` table — the two scoring models (percentage-of-total vs. thang điểm 10 by component type) don't map onto each other automatically — and no default weight rows are seeded; an ADMIN must configure them via `POST /v1/grade-config` before anyone can enter grades.
 - `V6__conduct_records.sql` added `conduct_records` (hạnh kiểm/rèn luyện), one row per (student, semester) enforced by a unique constraint. No backfill — nothing pre-3.4 represented this data.
+- `V7__promotion_records.sql` added `promotion_threshold_configs` (no default rows — an ADMIN/PRINCIPAL must configure cutoffs via `POST /v1/promotion-thresholds` before any suggestion can be computed) and `promotion_records` (one row per student per academic year, unique constraint enforced). No backfill.
 - Create the database once:
   ```sql
   CREATE DATABASE school_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -99,7 +102,7 @@ Nothing is hard-coded — everything sensitive comes from environment variables 
 - To create an account with any other role, an authenticated **ADMIN** calls `POST /v1/users` with an explicit `role`.
 
 ### Object-level authorization (own-record access)
-Endpoints scoped to `{studentId}` in the path/query (currently: `/v1/grade-records/student/*`, `/v1/grade-records/{id}`, `/v1/conduct/student/{id}`) additionally check, for a caller with the `STUDENT` role only, that the id being requested is their own — a student cannot read another student's grades/conduct by id even though `hasRole('STUDENT')` alone would pass. `ADMIN`/`TEACHER` callers are unrestricted. This check isn't yet applied to the older Grades/Fees/Attendance modules (Phase 1-2), which currently authorize `STUDENT` by role only.
+Endpoints scoped to `{studentId}` in the path/query (currently: `/v1/grade-records/student/*`, `/v1/grade-records/{id}`, `/v1/conduct/student/{id}`, `/v1/promotions/student/{id}`) additionally check, for a caller with the `STUDENT` role only, that the id being requested is their own — a student cannot read another student's grades/conduct/promotion decisions by id even though `hasRole('STUDENT')` alone would pass. `ADMIN`/`TEACHER`/`PRINCIPAL` callers are unrestricted. This check isn't yet applied to the older Grades/Fees/Attendance modules (Phase 1-2), which currently authorize `STUDENT` by role only.
 
 `/v1/conduct` additionally enforces a GVCN (homeroom-teacher) check on writes: a `TEACHER` may only create/update a conduct record for a student in a class they are `classTeacher` of, and may only submit it under their own staff profile (`evaluatedBy` must match). `ADMIN` is unrestricted. Updating an existing record re-checks this against *both* the record's current student and the (possibly different) target student, so a teacher can't "steal" another GVCN's record by reassigning it to their own class.
 
@@ -191,8 +194,10 @@ backend/
 
 ## 🚀 Future enhancements
 
-See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — promotion workflow (xét lên lớp/ở lại/tốt nghiệp), parent portal & sổ liên lạc điện tử, admissions, PDF/Excel reports, audit log. (3.1 Năm học/Học kỳ/Môn học, 3.2 Phân công giảng dạy & Thời khoá biểu, 3.3 Điểm theo TT22 — điểm TB formulas + entity/API framework, and 3.4 Hạnh kiểm/Rèn luyện are done, above.)
+See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — parent portal & sổ liên lạc điện tử, admissions, PDF/Excel reports, audit log. (3.1 Năm học/Học kỳ/Môn học, 3.2 Phân công giảng dạy & Thời khoá biểu, 3.3 Điểm theo TT22, 3.4 Hạnh kiểm/Rèn luyện, and 3.5 Xét lên lớp/Ở lại/Tốt nghiệp are done, above.)
 
 **Note on 3.3**: `GradeClassification` (xếp loại học lực: Tốt/Giỏi/Khá/Đạt/Trung bình/Yếu/Chưa đạt/Kém) exists as vocabulary and the DTOs carry a `classification` field, but the actual TT22/58 threshold logic is **not implemented** — it's deliberately deferred pending confirmation from someone with education-domain expertise on the exact score cutoffs and the môn Toán/Ngữ văn condition. The field is always `null` (omitted from JSON) until that's implemented.
 
 **Note on 3.4**: the class/semester roster (`GET /v1/conduct/class/{classId}/semester/{semesterId}`) matches students to a class via the same (deprecated) `className`/`section` string pair `SchoolClassService.getStudentsInClass` already uses codebase-wide — not scoped by academic year, so a reused className/section across years could over-match. Pre-existing limitation of that roster convention (Phase 1-2), not new to this endpoint; a real fix means wiring up `Student.currentClass` (the FK meant to replace it) everywhere roster membership is checked, which no code path currently maintains on write.
+
+**Note on 3.5**: `PromotionThresholdConfig`'s `minSubjectAverage` is compared against the *lowest* of a student's per-subject điểm TB năm (not an invented cross-subject blended average) precisely because xếp loại học lực isn't computed yet (see 3.3 note) — TT22/58 define promotion criteria per-subject-plus-conditions, not one overall number, so this is a configurable approximation of the real criteria, not the official calculation. `previewClassPromotions` does one grade/conduct/attendance lookup per roster student (no batching) — fine for a class-sized roster, would need work to scale to a whole-school report.

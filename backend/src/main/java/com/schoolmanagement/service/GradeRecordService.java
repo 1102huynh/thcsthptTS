@@ -22,6 +22,7 @@ import com.schoolmanagement.repository.SemesterRepository;
 import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.repository.SubjectRepository;
+import com.schoolmanagement.util.AcademicYearMatcher;
 import com.schoolmanagement.util.EntityResolver;
 import lombok.AllArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -229,24 +230,16 @@ public class GradeRecordService {
 
     /** Weight in effect for componentType as of academicYearName — the config with the latest appliesFrom <= academicYearName. */
     private int resolveWeight(GradeComponentType componentType, String academicYearName) {
-        int targetYear = extractStartYear(academicYearName);
+        int targetYear = AcademicYearMatcher.extractStartYear(academicYearName);
 
         return gradeComponentConfigRepository.findByComponentType(componentType).stream()
-                .filter(config -> extractStartYear(config.getAppliesFrom()) <= targetYear)
-                .max(Comparator.comparingInt(config -> extractStartYear(config.getAppliesFrom())))
+                .filter(config -> AcademicYearMatcher.extractStartYear(config.getAppliesFrom()) <= targetYear)
+                .max(Comparator.comparingInt(config -> AcademicYearMatcher.extractStartYear(config.getAppliesFrom())))
                 .map(GradeComponentConfig::getWeight)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No grade-component weight configured for " + componentType
                                 + " applicable to academic year " + academicYearName
                                 + " — set one via POST /v1/grade-config"));
-    }
-
-    private int extractStartYear(String academicYearLabel) {
-        try {
-            return Integer.parseInt(academicYearLabel.trim().split("-")[0].trim());
-        } catch (Exception ex) {
-            throw new IllegalArgumentException("Cannot parse a starting year out of: " + academicYearLabel);
-        }
     }
 
     private double round2(double value) {
