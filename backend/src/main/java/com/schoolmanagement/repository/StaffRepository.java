@@ -12,6 +12,7 @@ import java.util.Optional;
 @Repository
 public interface StaffRepository extends JpaRepository<Staff, Long> {
     Optional<Staff> findByEmployeeId(String employeeId);
+    Optional<Staff> findByUserId(Long userId);
     List<Staff> findByStatus(EmploymentStatus status);
     long countByStatus(EmploymentStatus status);
     List<Staff> findByPosition(StaffPosition position);

@@ -44,6 +44,7 @@ http://localhost:8080/api/swagger-ui.html
 | Grades (legacy) | `/v1/grades/*` | Percentage-based assessments — kept for Phase 1-2 compatibility, not TT22-based |
 | Grade Records | `/v1/grade-records/*` | Điểm theo Thông tư 22/2021 — thang điểm 10, per component type (miệng/15p/1 tiết/giữa kỳ/cuối kỳ); supersedes Grades above. Điểm TB học kỳ/cả năm per subject via `/student/{id}/summary` and `/student/{id}/year-summary` |
 | Grade Config | `/v1/grade-config/*` | ADMIN-only: hệ số (weight) per component type, scoped by the academic year it starts applying from |
+| Conduct (Hạnh kiểm) | `/v1/conduct/*` | Đánh giá hạnh kiểm/rèn luyện theo học kỳ (TOT/KHA/TRUNG_BINH/YEU), one per student per semester. TEACHER may only write for students in the class they are GVCN of; class/semester roster view for bulk entry |
 | Fees | `/v1/fees/*` | Student fees & payments |
 | Library | `/v1/library/*` | Book catalog & borrowing |
 | Dashboard | `/v1/dashboard/stats` | Admin summary stats |
@@ -57,6 +58,7 @@ See [Swagger UI](http://localhost:8080/api/swagger-ui.html) for the full, curren
 - `V3__academic_structure.sql` added `AcademicYear`/`Semester`/`Subject` and backfilled them from the old free-text data (`classes.academic_year`, `grades.subject`). The old columns this replaces (`SchoolClass.academicYear` String, `Student.className`/`section`) are kept and marked `@Deprecated` on the entity — not dropped — so nothing already built against them breaks; new code should read/write `SchoolClass.academicYearRef` and `Student.currentClass` instead.
 - `V4__teaching_timetable.sql` added `TeachingAssignment`/`TimetableSlot` (no backfill — nothing pre-3.2 represented this data).
 - `V5__grading_tt22.sql` added `grade_records`/`grade_component_configs` (Thông tư 22/2021 grading). No backfill from the old `grades` table — the two scoring models (percentage-of-total vs. thang điểm 10 by component type) don't map onto each other automatically — and no default weight rows are seeded; an ADMIN must configure them via `POST /v1/grade-config` before anyone can enter grades.
+- `V6__conduct_records.sql` added `conduct_records` (hạnh kiểm/rèn luyện), one row per (student, semester) enforced by a unique constraint. No backfill — nothing pre-3.4 represented this data.
 - Create the database once:
   ```sql
   CREATE DATABASE school_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -97,7 +99,9 @@ Nothing is hard-coded — everything sensitive comes from environment variables 
 - To create an account with any other role, an authenticated **ADMIN** calls `POST /v1/users` with an explicit `role`.
 
 ### Object-level authorization (own-record access)
-Endpoints scoped to `{studentId}` in the path/query (currently: `/v1/grade-records/student/*`, `/v1/grade-records/{id}`) additionally check, for a caller with the `STUDENT` role only, that the id being requested is their own — a student cannot read another student's grades by id even though `hasRole('STUDENT')` alone would pass. `ADMIN`/`TEACHER` callers are unrestricted. This check isn't yet applied to the older Grades/Fees/Attendance modules (Phase 1-2), which currently authorize `STUDENT` by role only.
+Endpoints scoped to `{studentId}` in the path/query (currently: `/v1/grade-records/student/*`, `/v1/grade-records/{id}`, `/v1/conduct/student/{id}`) additionally check, for a caller with the `STUDENT` role only, that the id being requested is their own — a student cannot read another student's grades/conduct by id even though `hasRole('STUDENT')` alone would pass. `ADMIN`/`TEACHER` callers are unrestricted. This check isn't yet applied to the older Grades/Fees/Attendance modules (Phase 1-2), which currently authorize `STUDENT` by role only.
+
+`/v1/conduct` additionally enforces a GVCN (homeroom-teacher) check on writes: a `TEACHER` may only create/update a conduct record for a student in a class they are `classTeacher` of, and may only submit it under their own staff profile (`evaluatedBy` must match). `ADMIN` is unrestricted. Updating an existing record re-checks this against *both* the record's current student and the (possibly different) target student, so a teacher can't "steal" another GVCN's record by reassigning it to their own class.
 
 ### Input validation & error responses
 - Every create/update endpoint validates its body (`@Valid` + Bean Validation) and returns `400` with a field-level message on failure.
@@ -187,6 +191,8 @@ backend/
 
 ## 🚀 Future enhancements
 
-See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — hạnh kiểm, promotion workflow (xét lên lớp/ở lại/tốt nghiệp), parent portal & sổ liên lạc điện tử, admissions, PDF/Excel reports, audit log. (3.1 Năm học/Học kỳ/Môn học, 3.2 Phân công giảng dạy & Thời khoá biểu, and 3.3 Điểm theo TT22 — điểm TB formulas + entity/API framework — are done, above.)
+See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — promotion workflow (xét lên lớp/ở lại/tốt nghiệp), parent portal & sổ liên lạc điện tử, admissions, PDF/Excel reports, audit log. (3.1 Năm học/Học kỳ/Môn học, 3.2 Phân công giảng dạy & Thời khoá biểu, 3.3 Điểm theo TT22 — điểm TB formulas + entity/API framework, and 3.4 Hạnh kiểm/Rèn luyện are done, above.)
 
 **Note on 3.3**: `GradeClassification` (xếp loại học lực: Tốt/Giỏi/Khá/Đạt/Trung bình/Yếu/Chưa đạt/Kém) exists as vocabulary and the DTOs carry a `classification` field, but the actual TT22/58 threshold logic is **not implemented** — it's deliberately deferred pending confirmation from someone with education-domain expertise on the exact score cutoffs and the môn Toán/Ngữ văn condition. The field is always `null` (omitted from JSON) until that's implemented.
+
+**Note on 3.4**: the class/semester roster (`GET /v1/conduct/class/{classId}/semester/{semesterId}`) matches students to a class via the same (deprecated) `className`/`section` string pair `SchoolClassService.getStudentsInClass` already uses codebase-wide — not scoped by academic year, so a reused className/section across years could over-match. Pre-existing limitation of that roster convention (Phase 1-2), not new to this endpoint; a real fix means wiring up `Student.currentClass` (the FK meant to replace it) everywhere roster membership is checked, which no code path currently maintains on write.
