@@ -6,6 +6,7 @@ import com.schoolmanagement.exception.DuplicateResourceException;
 import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.GradeComponentConfigRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,13 +20,34 @@ public class GradeComponentConfigService {
 
     private GradeComponentConfigRepository gradeComponentConfigRepository;
 
-    public GradeComponentConfigDTO createConfig(GradeComponentConfig config) {
+    public GradeComponentConfigDTO createConfig(GradeComponentConfig request) {
         if (gradeComponentConfigRepository.existsByComponentTypeAndAppliesFrom(
-                config.getComponentType(), config.getAppliesFrom())) {
+                request.getComponentType(), request.getAppliesFrom())) {
             throw new DuplicateResourceException(
-                    "A weight for " + config.getComponentType() + " starting " + config.getAppliesFrom() + " already exists");
+                    "A weight for " + request.getComponentType() + " starting " + request.getAppliesFrom() + " already exists");
         }
-        return mapToDTO(gradeComponentConfigRepository.save(config));
+
+        // Build a fresh entity from the validated fields only - never save the raw
+        // request body as-is: if a client sent an "id" (whether by accident or not),
+        // JpaRepository.save() would treat it as an update and silently overwrite
+        // whatever unrelated row already has that id, bypassing the duplicate check
+        // above (which only looked at componentType+appliesFrom, not that id).
+        GradeComponentConfig config = GradeComponentConfig.builder()
+                .componentType(request.getComponentType())
+                .weight(request.getWeight())
+                .appliesFrom(request.getAppliesFrom())
+                .build();
+
+        try {
+            return mapToDTO(gradeComponentConfigRepository.save(config));
+        } catch (DataIntegrityViolationException ex) {
+            // Two concurrent requests can both pass the exists() check above before
+            // either commits; the second insert then hits the DB's unique constraint.
+            // Surface that race the same way a non-racing duplicate is surfaced (409),
+            // not as a masked 500.
+            throw new DuplicateResourceException(
+                    "A weight for " + request.getComponentType() + " starting " + request.getAppliesFrom() + " already exists");
+        }
     }
 
     public GradeComponentConfigDTO updateConfig(Long id, GradeComponentConfig details) {
@@ -44,7 +66,14 @@ public class GradeComponentConfigService {
         config.setWeight(details.getWeight());
         config.setAppliesFrom(details.getAppliesFrom());
 
-        return mapToDTO(gradeComponentConfigRepository.save(config));
+        try {
+            return mapToDTO(gradeComponentConfigRepository.save(config));
+        } catch (DataIntegrityViolationException ex) {
+            // Same race as createConfig(): two concurrent updates changing to the same
+            // (componentType, appliesFrom) can both pass the exists() check above.
+            throw new DuplicateResourceException(
+                    "A weight for " + details.getComponentType() + " starting " + details.getAppliesFrom() + " already exists");
+        }
     }
 
     public GradeComponentConfigDTO getConfigById(Long id) {

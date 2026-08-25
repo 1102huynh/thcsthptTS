@@ -96,6 +96,9 @@ Nothing is hard-coded — everything sensitive comes from environment variables 
 - `POST /v1/auth/register` is public and **always creates a STUDENT account** — the request DTO has no `role` field, so there is no way for a client to self-assign a privileged role.
 - To create an account with any other role, an authenticated **ADMIN** calls `POST /v1/users` with an explicit `role`.
 
+### Object-level authorization (own-record access)
+Endpoints scoped to `{studentId}` in the path/query (currently: `/v1/grade-records/student/*`, `/v1/grade-records/{id}`) additionally check, for a caller with the `STUDENT` role only, that the id being requested is their own — a student cannot read another student's grades by id even though `hasRole('STUDENT')` alone would pass. `ADMIN`/`TEACHER` callers are unrestricted. This check isn't yet applied to the older Grades/Fees/Attendance modules (Phase 1-2), which currently authorize `STUDENT` by role only.
+
 ### Input validation & error responses
 - Every create/update endpoint validates its body (`@Valid` + Bean Validation) and returns `400` with a field-level message on failure.
 - Every response — success or failure — uses a consistent shape; errors look like:

@@ -15,6 +15,7 @@ import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.SubjectRepository;
 import com.schoolmanagement.repository.TeachingAssignmentRepository;
 import com.schoolmanagement.repository.TimetableSlotRepository;
+import com.schoolmanagement.util.EntityResolver;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -105,35 +106,19 @@ public class TeachingAssignmentService {
     }
 
     private SchoolClass resolveSchoolClass(SchoolClass reference) {
-        if (reference == null || reference.getId() == null) {
-            throw new ResourceNotFoundException("A school class id is required");
-        }
-        return schoolClassRepository.findById(reference.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Class not found with id: " + reference.getId()));
+        return EntityResolver.resolveOrThrow(schoolClassRepository, reference != null ? reference.getId() : null, "Class");
     }
 
     private Subject resolveSubject(Subject reference) {
-        if (reference == null || reference.getId() == null) {
-            throw new ResourceNotFoundException("A subject id is required");
-        }
-        return subjectRepository.findById(reference.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Subject not found with id: " + reference.getId()));
+        return EntityResolver.resolveOrThrow(subjectRepository, reference != null ? reference.getId() : null, "Subject");
     }
 
     private Staff resolveTeacher(Staff reference) {
-        if (reference == null || reference.getId() == null) {
-            throw new ResourceNotFoundException("A teacher (staff) id is required");
-        }
-        return staffRepository.findById(reference.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Staff not found with id: " + reference.getId()));
+        return EntityResolver.resolveOrThrow(staffRepository, reference != null ? reference.getId() : null, "Teacher (staff)");
     }
 
     private Semester resolveSemester(Semester reference) {
-        if (reference == null || reference.getId() == null) {
-            throw new ResourceNotFoundException("A semester id is required");
-        }
-        return semesterRepository.findById(reference.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Semester not found with id: " + reference.getId()));
+        return EntityResolver.resolveOrThrow(semesterRepository, reference != null ? reference.getId() : null, "Semester");
     }
 
     private TeachingAssignmentDTO mapToDTO(TeachingAssignment assignment) {

@@ -3,6 +3,7 @@ package com.schoolmanagement.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -40,8 +41,16 @@ public class GradeComponentConfig {
     @Column(nullable = false)
     private Integer weight;
 
-    /** Academic year name (e.g. "2025-2026") this weight starts applying from. */
+    /**
+     * Academic year name (e.g. "2025-2026") this weight starts applying from.
+     * Must be "YYYY-YYYY" — {@link com.schoolmanagement.service.GradeRecordService}
+     * parses the leading year out of this same format on both this field and
+     * {@code Semester.academicYear.name} to pick the weight in effect for a given
+     * semester, so a malformed value here would only surface later as a confusing
+     * error on an unrelated student/teacher request.
+     */
     @NotBlank
+    @Pattern(regexp = "^\\d{4}-\\d{4}$", message = "appliesFrom must look like a school year, e.g. 2025-2026")
     @Column(name = "applies_from", nullable = false)
     private String appliesFrom;
 

@@ -31,14 +31,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -83,6 +88,9 @@ class GradeRecordIntegrationTest {
     private Subject subject;
     private Student student;
     private Staff teacher;
+    private User studentUser;
+    private User teacherUser;
+    private Student otherStudent;
 
     @BeforeEach
     void setUp() {
@@ -108,7 +116,7 @@ class GradeRecordIntegrationTest {
         subject = subjectRepository.save(Subject.builder()
                 .code("ITEST-GR-SUBJ").name("ITEST Subject").category(SubjectCategory.BAT_BUOC).build());
 
-        User studentUser = userRepository.save(User.builder()
+        studentUser = userRepository.save(User.builder()
                 .username("itest.gr.student").email("itest.gr.student@school.com")
                 .password(passwordEncoder.encode("Str0ngPassw0rd!"))
                 .firstName("Integration").lastName("Student").role(Role.STUDENT).enabled(true).build());
@@ -116,7 +124,15 @@ class GradeRecordIntegrationTest {
                 .rollNumber("ITEST-GR-ROLL").admissionNumber("ITEST-GR-ADM")
                 .user(studentUser).status(StudentStatus.ACTIVE).build());
 
-        User teacherUser = userRepository.save(User.builder()
+        User otherStudentUser = userRepository.save(User.builder()
+                .username("itest.gr.student2").email("itest.gr.student2@school.com")
+                .password(passwordEncoder.encode("Str0ngPassw0rd!"))
+                .firstName("Integration").lastName("StudentTwo").role(Role.STUDENT).enabled(true).build());
+        otherStudent = studentRepository.save(Student.builder()
+                .rollNumber("ITEST-GR-ROLL-2").admissionNumber("ITEST-GR-ADM-2")
+                .user(otherStudentUser).status(StudentStatus.ACTIVE).build());
+
+        teacherUser = userRepository.save(User.builder()
                 .username("itest.gr.teacher").email("itest.gr.teacher@school.com")
                 .password(passwordEncoder.encode("Str0ngPassw0rd!"))
                 .firstName("Integration").lastName("Teacher").role(Role.TEACHER).enabled(true).build());
@@ -130,6 +146,17 @@ class GradeRecordIntegrationTest {
                 .componentType(GradeComponentType.MOT_TIET).weight(2).appliesFrom("2099-2100").build());
         gradeComponentConfigRepository.save(GradeComponentConfig.builder()
                 .componentType(GradeComponentType.CUOI_KY).weight(3).appliesFrom("2099-2100").build());
+    }
+
+    /**
+     * @WithMockUser's principal is Spring Security's own User, not our
+     * com.schoolmanagement.entity.User — the endpoints under test here cast
+     * authentication.getPrincipal() to our User to resolve the caller's own
+     * student id, so those tests authenticate as a real domain User instead.
+     */
+    private RequestPostProcessor asUser(User user, String role) {
+        return authentication(new UsernamePasswordAuthenticationToken(
+                user, null, List.of(new SimpleGrantedAuthority("ROLE_" + role))));
     }
 
     private void recordGrade(Semester semester, GradeComponentType type, double score) {
@@ -195,7 +222,6 @@ class GradeRecordIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "TEACHER")
     void semesterSummary_matchesHandCalculatedWeightedAverage() throws Exception {
         // Điểm TB môn học kỳ = Σ(score × weight) / Σ(weight).
         // MIENG(w1)=8, MOT_TIET(w2)=6, CUOI_KY(w3)=9
@@ -205,7 +231,8 @@ class GradeRecordIntegrationTest {
         recordGrade(hk1, GradeComponentType.CUOI_KY, 9.0);
 
         mockMvc.perform(get("/v1/grade-records/student/{studentId}/summary", student.getId())
-                        .param("semesterId", hk1.getId().toString()))
+                        .param("semesterId", hk1.getId().toString())
+                        .with(asUser(teacherUser, "TEACHER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].subjectId").value(subject.getId()))
                 .andExpect(jsonPath("$[0].average").value(7.83))
@@ -213,17 +240,16 @@ class GradeRecordIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "TEACHER")
     void semesterSummary_noWeightConfigured_returns404() throws Exception {
         recordGrade(hk1, GradeComponentType.GIUA_KY, 8.0); // no config seeded for GIUA_KY in setUp
 
         mockMvc.perform(get("/v1/grade-records/student/{studentId}/summary", student.getId())
-                        .param("semesterId", hk1.getId().toString()))
+                        .param("semesterId", hk1.getId().toString())
+                        .with(asUser(teacherUser, "TEACHER")))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    @WithMockUser(roles = "TEACHER")
     void yearSummary_combinesBothSemesters_matchesHandCalculatedFormula() throws Exception {
         // HK1: MIENG(w1)=8, CUOI_KY(w3)=8 -> (8+24)/4 = 8.0
         recordGrade(hk1, GradeComponentType.MIENG, 8.0);
@@ -234,11 +260,43 @@ class GradeRecordIntegrationTest {
 
         // Điểm TB cả năm = (HK1 + HK2 × 2) / 3 = (8.0 + 6.0*2) / 3 = 20/3 = 6.6666.. -> 6.67
         mockMvc.perform(get("/v1/grade-records/student/{studentId}/year-summary", student.getId())
-                        .param("academicYearId", academicYear.getId().toString()))
+                        .param("academicYearId", academicYear.getId().toString())
+                        .with(asUser(teacherUser, "TEACHER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].semester1Average").value(8.0))
                 .andExpect(jsonPath("$[0].semester2Average").value(6.0))
                 .andExpect(jsonPath("$[0].yearAverage").value(6.67));
+    }
+
+    @Test
+    void semesterSummary_studentCanViewOwnSummary_returns200() throws Exception {
+        recordGrade(hk1, GradeComponentType.MIENG, 8.0);
+
+        mockMvc.perform(get("/v1/grade-records/student/{studentId}/summary", student.getId())
+                        .param("semesterId", hk1.getId().toString())
+                        .with(asUser(studentUser, "STUDENT")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void semesterSummary_studentCannotViewAnotherStudentsSummary_returns403() throws Exception {
+        recordGrade(hk1, GradeComponentType.MIENG, 8.0);
+
+        // otherStudent's own account tries to read student's (a different student's) summary.
+        mockMvc.perform(get("/v1/grade-records/student/{studentId}/summary", student.getId())
+                        .param("semesterId", hk1.getId().toString())
+                        .with(asUser(otherStudent.getUser(), "STUDENT")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void yearSummary_studentCannotViewAnotherStudentsSummary_returns403() throws Exception {
+        recordGrade(hk1, GradeComponentType.MIENG, 8.0);
+
+        mockMvc.perform(get("/v1/grade-records/student/{studentId}/year-summary", student.getId())
+                        .param("academicYearId", academicYear.getId().toString())
+                        .with(asUser(otherStudent.getUser(), "STUDENT")))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -263,5 +321,40 @@ class GradeRecordIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(config)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void createGradeConfig_malformedAppliesFrom_returns400() throws Exception {
+        GradeComponentConfig config = GradeComponentConfig.builder()
+                .componentType(GradeComponentType.GIUA_KY).weight(3).appliesFrom("AY2100").build();
+
+        mockMvc.perform(post("/v1/grade-config")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(config)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void createGradeConfig_clientSuppliedIdIsIgnored_doesNotOverwriteExistingRow() throws Exception {
+        GradeComponentConfig miengConfig = gradeComponentConfigRepository
+                .findByComponentType(GradeComponentType.MIENG).get(0);
+
+        // Attempt to create a brand-new GIUA_KY config while (accidentally or not)
+        // reusing the existing MIENG row's id in the request body.
+        GradeComponentConfig request = GradeComponentConfig.builder()
+                .id(miengConfig.getId())
+                .componentType(GradeComponentType.GIUA_KY).weight(9).appliesFrom("2100-2101").build();
+
+        mockMvc.perform(post("/v1/grade-config")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.not(miengConfig.getId().intValue())));
+
+        GradeComponentConfig stillMieng = gradeComponentConfigRepository.findById(miengConfig.getId()).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(GradeComponentType.MIENG, stillMieng.getComponentType());
+        org.junit.jupiter.api.Assertions.assertEquals(1, stillMieng.getWeight());
     }
 }

@@ -7,11 +7,13 @@ import com.schoolmanagement.entity.AcademicYear;
 import com.schoolmanagement.entity.GradeComponentConfig;
 import com.schoolmanagement.entity.GradeComponentType;
 import com.schoolmanagement.entity.GradeRecord;
+import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.Semester;
 import com.schoolmanagement.entity.SemesterName;
 import com.schoolmanagement.entity.Staff;
 import com.schoolmanagement.entity.Student;
 import com.schoolmanagement.entity.Subject;
+import com.schoolmanagement.entity.User;
 import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.AcademicYearRepository;
 import com.schoolmanagement.repository.GradeComponentConfigRepository;
@@ -20,14 +22,17 @@ import com.schoolmanagement.repository.SemesterRepository;
 import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.repository.SubjectRepository;
+import com.schoolmanagement.util.EntityResolver;
 import lombok.AllArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
-import java.util.LinkedHashSet;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -80,9 +85,11 @@ public class GradeRecordService {
         return mapToDTO(gradeRecordRepository.save(record));
     }
 
-    public GradeRecordDTO getGradeRecordById(Long id) {
-        return mapToDTO(gradeRecordRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Grade record not found with id: " + id)));
+    public GradeRecordDTO getGradeRecordById(Long id, User requester) {
+        GradeRecord record = gradeRecordRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Grade record not found with id: " + id));
+        enforceOwnStudentAccess(record.getStudent().getId(), requester);
+        return mapToDTO(record);
     }
 
     public void deleteGradeRecord(Long id) {
@@ -91,7 +98,8 @@ public class GradeRecordService {
         gradeRecordRepository.delete(record);
     }
 
-    public List<GradeRecordDTO> getStudentSemesterGrades(Long studentId, Long semesterId) {
+    public List<GradeRecordDTO> getStudentSemesterGrades(Long studentId, Long semesterId, User requester) {
+        enforceOwnStudentAccess(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + studentId));
         Semester semester = semesterRepository.findById(semesterId)
@@ -104,7 +112,8 @@ public class GradeRecordService {
     }
 
     /** Điểm TB môn học kỳ, per subject, for every subject the student has a grade in that semester. */
-    public List<SubjectSemesterAverageDTO> getStudentSemesterSummary(Long studentId, Long semesterId) {
+    public List<SubjectSemesterAverageDTO> getStudentSemesterSummary(Long studentId, Long semesterId, User requester) {
+        enforceOwnStudentAccess(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + studentId));
         Semester semester = semesterRepository.findById(semesterId)
@@ -114,22 +123,24 @@ public class GradeRecordService {
         String academicYearName = semester.getAcademicYear().getName();
         String semesterLabel = academicYearName + " - " + semester.getName();
 
-        Set<Subject> subjects = distinctSubjects(records);
+        Map<Subject, List<GradeRecord>> bySubject = groupBySubject(records);
+        Map<GradeComponentType, Integer> weightCache = new HashMap<>();
 
-        return subjects.stream()
-                .map(subject -> SubjectSemesterAverageDTO.builder()
-                        .subjectId(subject.getId())
-                        .subjectName(subject.getName())
+        return bySubject.entrySet().stream()
+                .map(entry -> SubjectSemesterAverageDTO.builder()
+                        .subjectId(entry.getKey().getId())
+                        .subjectName(entry.getKey().getName())
                         .semesterId(semester.getId())
                         .semesterLabel(semesterLabel)
-                        .average(calculateSubjectSemesterAverage(student, subject, semester))
+                        .average(calculateWeightedAverage(entry.getValue(), academicYearName, weightCache))
                         .classification(null)
                         .build())
                 .collect(Collectors.toList());
     }
 
     /** Điểm TB môn cả năm = (ĐTB HK1 + ĐTB HK2 × 2) / 3, per subject. */
-    public List<SubjectYearAverageDTO> getStudentYearSummary(Long studentId, Long academicYearId) {
+    public List<SubjectYearAverageDTO> getStudentYearSummary(Long studentId, Long academicYearId, User requester) {
+        enforceOwnStudentAccess(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + studentId));
         AcademicYear academicYear = academicYearRepository.findById(academicYearId)
@@ -139,18 +150,29 @@ public class GradeRecordService {
         Semester hk1 = semesters.stream().filter(s -> s.getName() == SemesterName.HK1).findFirst().orElse(null);
         Semester hk2 = semesters.stream().filter(s -> s.getName() == SemesterName.HK2).findFirst().orElse(null);
 
-        Set<Subject> subjects = new LinkedHashSet<>();
-        if (hk1 != null) {
-            subjects.addAll(distinctSubjects(gradeRecordRepository.findByStudentAndSemester(student, hk1)));
-        }
-        if (hk2 != null) {
-            subjects.addAll(distinctSubjects(gradeRecordRepository.findByStudentAndSemester(student, hk2)));
-        }
+        Map<Subject, List<GradeRecord>> hk1BySubject = hk1 != null
+                ? groupBySubject(gradeRecordRepository.findByStudentAndSemester(student, hk1))
+                : Map.of();
+        Map<Subject, List<GradeRecord>> hk2BySubject = hk2 != null
+                ? groupBySubject(gradeRecordRepository.findByStudentAndSemester(student, hk2))
+                : Map.of();
 
-        return subjects.stream()
+        // Both semesters belong to the same academicYear (fetched by id above), so one
+        // weight cache — keyed only by componentType — is valid for both halves.
+        Map<GradeComponentType, Integer> weightCache = new HashMap<>();
+
+        Map<Subject, Subject> distinctSubjects = new LinkedHashMap<>();
+        hk1BySubject.keySet().forEach(s -> distinctSubjects.put(s, s));
+        hk2BySubject.keySet().forEach(s -> distinctSubjects.put(s, s));
+
+        return distinctSubjects.keySet().stream()
                 .map(subject -> {
-                    Double hk1Average = hk1 != null ? calculateSubjectSemesterAverage(student, subject, hk1) : null;
-                    Double hk2Average = hk2 != null ? calculateSubjectSemesterAverage(student, subject, hk2) : null;
+                    Double hk1Average = hk1BySubject.containsKey(subject)
+                            ? calculateWeightedAverage(hk1BySubject.get(subject), academicYear.getName(), weightCache)
+                            : null;
+                    Double hk2Average = hk2BySubject.containsKey(subject)
+                            ? calculateWeightedAverage(hk2BySubject.get(subject), academicYear.getName(), weightCache)
+                            : null;
                     Double yearAverage = (hk1Average != null && hk2Average != null)
                             ? round2((hk1Average + hk2Average * 2) / 3.0)
                             : null;
@@ -169,18 +191,35 @@ public class GradeRecordService {
                 .collect(Collectors.toList());
     }
 
-    /** Điểm TB môn học kỳ = Σ(score × weight) / Σ(weight). Null if there are no records. */
-    private Double calculateSubjectSemesterAverage(Student student, Subject subject, Semester semester) {
-        List<GradeRecord> records = gradeRecordRepository.findByStudentAndSubjectAndSemester(student, subject, semester);
+    /** Only STUDENT-role requesters are restricted, and only to their own student id. */
+    private void enforceOwnStudentAccess(Long targetStudentId, User requester) {
+        if (requester == null || requester.getRole() != Role.STUDENT) {
+            return;
+        }
+        Student own = studentRepository.findByUserId(requester.getId())
+                .orElseThrow(() -> new AccessDeniedException("No student profile linked to this account"));
+        if (!own.getId().equals(targetStudentId)) {
+            throw new AccessDeniedException("Students may only access their own grade records");
+        }
+    }
+
+    private Map<Subject, List<GradeRecord>> groupBySubject(List<GradeRecord> records) {
+        return records.stream()
+                .collect(Collectors.groupingBy(GradeRecord::getSubject, LinkedHashMap::new, Collectors.toList()));
+    }
+
+    /** Σ(score × weight) / Σ(weight) over an already-fetched list of records for one subject. */
+    private Double calculateWeightedAverage(List<GradeRecord> records, String academicYearName,
+                                             Map<GradeComponentType, Integer> weightCache) {
         if (records.isEmpty()) {
             return null;
         }
 
-        String academicYearName = semester.getAcademicYear().getName();
         double weightedSum = 0;
         double weightSum = 0;
         for (GradeRecord record : records) {
-            int weight = resolveWeight(record.getComponentType(), academicYearName);
+            int weight = weightCache.computeIfAbsent(record.getComponentType(),
+                    type -> resolveWeight(type, academicYearName));
             weightedSum += record.getScore() * weight;
             weightSum += weight;
         }
@@ -210,46 +249,24 @@ public class GradeRecordService {
         }
     }
 
-    private Set<Subject> distinctSubjects(List<GradeRecord> records) {
-        return records.stream()
-                .map(GradeRecord::getSubject)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-    }
-
     private double round2(double value) {
         return Math.round(value * 100.0) / 100.0;
     }
 
     private Student resolveStudent(Student reference) {
-        if (reference == null || reference.getId() == null) {
-            throw new ResourceNotFoundException("A student id is required");
-        }
-        return studentRepository.findById(reference.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + reference.getId()));
+        return EntityResolver.resolveOrThrow(studentRepository, reference != null ? reference.getId() : null, "Student");
     }
 
     private Subject resolveSubject(Subject reference) {
-        if (reference == null || reference.getId() == null) {
-            throw new ResourceNotFoundException("A subject id is required");
-        }
-        return subjectRepository.findById(reference.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Subject not found with id: " + reference.getId()));
+        return EntityResolver.resolveOrThrow(subjectRepository, reference != null ? reference.getId() : null, "Subject");
     }
 
     private Semester resolveSemester(Semester reference) {
-        if (reference == null || reference.getId() == null) {
-            throw new ResourceNotFoundException("A semester id is required");
-        }
-        return semesterRepository.findById(reference.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Semester not found with id: " + reference.getId()));
+        return EntityResolver.resolveOrThrow(semesterRepository, reference != null ? reference.getId() : null, "Semester");
     }
 
     private Staff resolveTeacher(Staff reference) {
-        if (reference == null || reference.getId() == null) {
-            throw new ResourceNotFoundException("A teacher (staff) id is required");
-        }
-        return staffRepository.findById(reference.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Staff not found with id: " + reference.getId()));
+        return EntityResolver.resolveOrThrow(staffRepository, reference != null ? reference.getId() : null, "Teacher (staff)");
     }
 
     private GradeRecordDTO mapToDTO(GradeRecord record) {
