@@ -61,6 +61,20 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(NotificationChannelUnavailableException.class)
+    public ResponseEntity<ApiError> handleNotificationChannelUnavailableException(
+            NotificationChannelUnavailableException ex,
+            HttpServletRequest request) {
+        ApiError error = ApiError.builder()
+                .status("NOT_IMPLEMENTED")
+                .message(ex.getMessage())
+                .code(501)
+                .path(request.getRequestURI())
+                .timestamp(LocalDateTime.now())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.NOT_IMPLEMENTED);
+    }
+
     @ExceptionHandler(ScheduleConflictException.class)
     public ResponseEntity<ApiError> handleScheduleConflictException(
             ScheduleConflictException ex,

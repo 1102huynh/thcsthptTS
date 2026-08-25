@@ -4,9 +4,11 @@ import com.schoolmanagement.dto.FeeDTO;
 import com.schoolmanagement.entity.Fee;
 import com.schoolmanagement.entity.FeeStatus;
 import com.schoolmanagement.entity.Student;
+import com.schoolmanagement.entity.User;
 import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.FeeRepository;
 import com.schoolmanagement.repository.StudentRepository;
+import com.schoolmanagement.security.StudentAccessGuard;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +25,7 @@ public class FeeService {
 
     private FeeRepository feeRepository;
     private StudentRepository studentRepository;
+    private StudentAccessGuard studentAccessGuard;
 
     public Fee createFee(Fee fee) {
         Student student = studentRepository.findById(fee.getStudent().getId())
@@ -32,7 +35,7 @@ public class FeeService {
         return feeRepository.save(fee);
     }
 
-    public Fee updateFee(Long id, Fee feeDetails) {
+    public FeeDTO updateFee(Long id, Fee feeDetails) {
         Fee fee = feeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Fee record not found"));
 
@@ -40,42 +43,49 @@ public class FeeService {
         fee.setDueDate(feeDetails.getDueDate());
         fee.setFeeType(feeDetails.getFeeType());
 
-        return feeRepository.save(fee);
+        return mapToDTO(feeRepository.save(fee));
     }
 
-    public Fee getFeeById(Long id) {
-        return feeRepository.findById(id)
+    public FeeDTO getFeeById(Long id, User requester) {
+        Fee fee = feeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Fee record not found"));
+        studentAccessGuard.enforceCanAccessStudent(fee.getStudent().getId(), requester);
+        return mapToDTO(fee);
     }
 
-    public List<Fee> getStudentFees(Long studentId) {
+    public List<FeeDTO> getStudentFees(Long studentId, User requester) {
+        studentAccessGuard.enforceCanAccessStudent(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-        return feeRepository.findByStudent(student);
+        return feeRepository.findByStudent(student).stream().map(this::mapToDTO).toList();
     }
 
-    public List<Fee> getStudentFeesByYear(Long studentId, String academicYear) {
+    public List<FeeDTO> getStudentFeesByYear(Long studentId, String academicYear, User requester) {
+        studentAccessGuard.enforceCanAccessStudent(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-        return feeRepository.findByStudentAndAcademicYear(student, academicYear);
+        return feeRepository.findByStudentAndAcademicYear(student, academicYear).stream().map(this::mapToDTO).toList();
     }
 
-    public List<Fee> getStudentPendingFees(Long studentId) {
+    public List<FeeDTO> getStudentPendingFees(Long studentId, User requester) {
+        studentAccessGuard.enforceCanAccessStudent(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-        return feeRepository.findByStudentAndStatus(student, FeeStatus.PENDING);
+        return feeRepository.findByStudentAndStatus(student, FeeStatus.PENDING).stream().map(this::mapToDTO).toList();
     }
 
-    public List<Fee> getFeesByStatus(FeeStatus status) {
-        return feeRepository.findByStatus(status);
+    public List<FeeDTO> getFeesByStatus(FeeStatus status) {
+        return feeRepository.findByStatus(status).stream().map(this::mapToDTO).toList();
     }
 
     /**
-     * Returns FeeDTO (not the raw entity) because this listing spans many
-     * students, whose lazy `student` association is not already resolved in
-     * the persistence context the way the single-student queries above are —
-     * serializing the raw entity after the transaction closes (open-in-view
-     * is off) throws LazyInitializationException.
+     * Every read path here returns FeeDTO, never the raw entity — its lazy
+     * `student` association is not resolved by the time Jackson serializes
+     * the response (open-in-view is off, so the persistence context is
+     * already closed), which throws LazyInitializationException. (Found live
+     * while retrofitting PARENT access in 3.6 — pre-existing, affected every
+     * role, not just the new one; fixed for all of these methods at once
+     * rather than only the ones PARENT needed.)
      */
     public List<FeeDTO> getFeesByAcademicYear(String academicYear) {
         return feeRepository.findByAcademicYear(academicYear)
@@ -88,9 +98,10 @@ public class FeeService {
         return feeRepository.findByAcademicYear(academicYear, pageable).map(this::mapToDTO);
     }
 
-    public Fee processPayment(Long feeId, Double paidAmount, String paymentMethod) {
+    public FeeDTO processPayment(Long feeId, Double paidAmount, String paymentMethod, User requester) {
         Fee fee = feeRepository.findById(feeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Fee record not found"));
+        studentAccessGuard.enforceCanAccessStudent(fee.getStudent().getId(), requester);
 
         if (paidAmount <= 0) {
             throw new IllegalArgumentException("Paid amount must be greater than zero");
@@ -117,10 +128,11 @@ public class FeeService {
             fee.setStatus(FeeStatus.OVERDUE);
         }
 
-        return feeRepository.save(fee);
+        return mapToDTO(feeRepository.save(fee));
     }
 
-    public Double getStudentTotalDues(Long studentId) {
+    public Double getStudentTotalDues(Long studentId, User requester) {
+        studentAccessGuard.enforceCanAccessStudent(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
 

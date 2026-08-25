@@ -11,7 +11,6 @@ import com.schoolmanagement.entity.ConductRecord;
 import com.schoolmanagement.entity.PromotionDecision;
 import com.schoolmanagement.entity.PromotionRecord;
 import com.schoolmanagement.entity.PromotionThresholdConfig;
-import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.SchoolClass;
 import com.schoolmanagement.entity.Semester;
 import com.schoolmanagement.entity.SemesterName;
@@ -29,11 +28,11 @@ import com.schoolmanagement.repository.SchoolClassRepository;
 import com.schoolmanagement.repository.SemesterRepository;
 import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.StudentRepository;
+import com.schoolmanagement.security.StudentAccessGuard;
 import com.schoolmanagement.util.AcademicYearMatcher;
 import com.schoolmanagement.util.EntityResolver;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -76,6 +75,7 @@ public class PromotionService {
     private AttendanceRepository attendanceRepository;
     private StaffRepository staffRepository;
     private GradeRecordService gradeRecordService;
+    private StudentAccessGuard studentAccessGuard;
 
     /**
      * Bảng xét lên lớp cho cả lớp — computed live, nothing here is saved yet.
@@ -115,7 +115,7 @@ public class PromotionService {
     }
 
     public List<PromotionRecordDTO> getStudentPromotionHistory(Long studentId, User requester) {
-        enforceOwnStudentAccess(studentId, requester);
+        studentAccessGuard.enforceCanAccessStudent(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + studentId));
 
@@ -283,18 +283,6 @@ public class PromotionService {
         return promotionThresholdConfigRepository.findAll().stream()
                 .filter(config -> AcademicYearMatcher.extractStartYear(config.getAppliesFrom()) <= targetYear)
                 .max(Comparator.comparingInt(config -> AcademicYearMatcher.extractStartYear(config.getAppliesFrom())));
-    }
-
-    /** Only a STUDENT is restricted, and only to their own id; ADMIN/PRINCIPAL/TEACHER are unrestricted. */
-    private void enforceOwnStudentAccess(Long targetStudentId, User requester) {
-        if (requester == null || requester.getRole() != Role.STUDENT) {
-            return;
-        }
-        Student own = studentRepository.findByUserId(requester.getId())
-                .orElseThrow(() -> new AccessDeniedException("No student profile linked to this account"));
-        if (!own.getId().equals(targetStudentId)) {
-            throw new AccessDeniedException("Students may only access their own promotion records");
-        }
     }
 
     private double round2(double value) {

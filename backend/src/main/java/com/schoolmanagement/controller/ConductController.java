@@ -46,7 +46,7 @@ public class ConductController {
     }
 
     @GetMapping("/student/{studentId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get every conduct record for a student (all semesters)",
             description = "A STUDENT caller may only fetch their own conduct records (403 otherwise).")
     public ResponseEntity<List<ConductRecordDTO>> getStudentConductRecords(

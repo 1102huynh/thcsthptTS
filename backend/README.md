@@ -47,6 +47,8 @@ http://localhost:8080/api/swagger-ui.html
 | Conduct (Hạnh kiểm) | `/v1/conduct/*` | Đánh giá hạnh kiểm/rèn luyện theo học kỳ (TOT/KHA/TRUNG_BINH/YEU), one per student per semester. TEACHER may only write for students in the class they are GVCN of; class/semester roster view for bulk entry |
 | Promotion Thresholds | `/v1/promotion-thresholds/*` | ADMIN/PRINCIPAL-only: cutoffs (điểm TB môn thấp nhất, hạnh kiểm tối thiểu, tỷ lệ nghỉ tối đa) used to suggest xét lên lớp decisions, scoped by academic year |
 | Promotions (Xét lên lớp) | `/v1/promotions/*` | Xét lên lớp/ở lại/tốt nghiệp — live preview per class (not persisted) + `POST /confirm` to save the final decision (bulk, overwrite-on-reconfirm). ADMIN/PRINCIPAL confirm; ADMIN/PRINCIPAL/TEACHER can preview |
+| Parents (Phụ huynh) | `/v1/parents/*` | Links a PARENT-role account to their children (ADMIN-managed); a PARENT may only list their own children |
+| Notifications (Sổ liên lạc điện tử) | `/v1/notifications/*` | Created and sent in the same request. `APP`/`EMAIL` channels are live; `SMS`/`ZALO` return 501 pending a vendor/Zalo OA decision. `GET /my` + `PUT /{id}/read` for any recipient (PARENT or staff) |
 | Fees | `/v1/fees/*` | Student fees & payments |
 | Library | `/v1/library/*` | Book catalog & borrowing |
 | Dashboard | `/v1/dashboard/stats` | Admin summary stats |
@@ -62,6 +64,7 @@ See [Swagger UI](http://localhost:8080/api/swagger-ui.html) for the full, curren
 - `V5__grading_tt22.sql` added `grade_records`/`grade_component_configs` (Thông tư 22/2021 grading). No backfill from the old `grades` table — the two scoring models (percentage-of-total vs. thang điểm 10 by component type) don't map onto each other automatically — and no default weight rows are seeded; an ADMIN must configure them via `POST /v1/grade-config` before anyone can enter grades.
 - `V6__conduct_records.sql` added `conduct_records` (hạnh kiểm/rèn luyện), one row per (student, semester) enforced by a unique constraint. No backfill — nothing pre-3.4 represented this data.
 - `V7__promotion_records.sql` added `promotion_threshold_configs` (no default rows — an ADMIN/PRINCIPAL must configure cutoffs via `POST /v1/promotion-thresholds` before any suggestion can be computed) and `promotion_records` (one row per student per academic year, unique constraint enforced). No backfill.
+- `V8__parents_notifications.sql` added `parent_student_relations` (unique per parent+student), `notifications`, `notification_recipients`. No backfill — nothing pre-3.6 represented this data.
 - Create the database once:
   ```sql
   CREATE DATABASE school_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -86,11 +89,13 @@ Nothing is hard-coded — everything sensitive comes from environment variables 
 | `JWT_SECRET` | **yes, no default** | app fails fast at startup if missing — generate with `openssl rand -base64 64` |
 | `JWT_EXPIRATION`, `JWT_REFRESH_EXPIRATION` | no | default 24h / 7d (ms) |
 | `SPRING_PROFILES_ACTIVE` | no | `dev` (default, local MySQL, DEBUG logging, SQL logging on) or `prod` (strict env vars, INFO logging, SQL logging off) — see `application-dev.yml` / `application-prod.yml` |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_SMTP_AUTH`, `MAIL_SMTP_STARTTLS` | no | EMAIL notification channel (3.6) — all have defaults; without a real SMTP server, sending just fails per-recipient (recorded, not a crash) |
+| `MAIL_FROM` | no | default `no-reply@school.local` — the "From" address on outgoing EMAIL notifications |
 
 ## 🛡️ Security
 
 ### Roles
-`ADMIN`, `PRINCIPAL`, `TEACHER`, `STUDENT`, `LIBRARIAN`, `ACCOUNTANT`, `PARENT` (defined; not yet wired into any module).
+`ADMIN`, `PRINCIPAL`, `TEACHER`, `STUDENT`, `LIBRARIAN`, `ACCOUNTANT`, `PARENT`. `PARENT` is wired into every per-student endpoint that has an object-level ownership check (see below) as of 3.6 — a parent can read (and, for fees, pay) their own children's grades/conduct/promotions/attendance/fees, resolved via `/v1/parents` (`ParentStudentRelation`).
 
 ### Auth flow
 1. `POST /v1/auth/login` → `{ accessToken, refreshToken, ... }`
@@ -102,7 +107,9 @@ Nothing is hard-coded — everything sensitive comes from environment variables 
 - To create an account with any other role, an authenticated **ADMIN** calls `POST /v1/users` with an explicit `role`.
 
 ### Object-level authorization (own-record access)
-Endpoints scoped to `{studentId}` in the path/query (currently: `/v1/grade-records/student/*`, `/v1/grade-records/{id}`, `/v1/conduct/student/{id}`, `/v1/promotions/student/{id}`) additionally check, for a caller with the `STUDENT` role only, that the id being requested is their own — a student cannot read another student's grades/conduct/promotion decisions by id even though `hasRole('STUDENT')` alone would pass. `ADMIN`/`TEACHER`/`PRINCIPAL` callers are unrestricted. This check isn't yet applied to the older Grades/Fees/Attendance modules (Phase 1-2), which currently authorize `STUDENT` by role only.
+Endpoints scoped to `{studentId}` in the path/query — `/v1/grade-records/*`, `/v1/conduct/student/{id}`, `/v1/promotions/student/{id}`, and (since 3.6) the legacy `/v1/grades/*`, `/v1/fees/*`, `/v1/attendance/*` — additionally check, via the shared `StudentAccessGuard`: a `STUDENT` caller may only access their own id; a `PARENT` caller may only access a student they're linked to via `ParentStudentRelation` (`/v1/parents`). A nonexistent target id correctly reports 404, not 403. `ADMIN`/`TEACHER`/`PRINCIPAL`/`ACCOUNTANT` callers are unrestricted.
+
+Fixed alongside this in 3.6: the legacy Grade/Fee/Attendance single-student read endpoints used to return the raw JPA entity, which threw `LazyInitializationException` (masked as a 500) for **every** role, not just the new PARENT one, because `open-in-view` is off and the lazy `student`/`teacher`/`markedBy` associations were never resolved before serialization — found live while adding the PARENT check, fixed by returning `GradeDTO`/`FeeDTO`/`AttendanceDTO` instead (same pattern already used for the multi-student `.../year/{academicYear}` listings).
 
 `/v1/conduct` additionally enforces a GVCN (homeroom-teacher) check on writes: a `TEACHER` may only create/update a conduct record for a student in a class they are `classTeacher` of, and may only submit it under their own staff profile (`evaluatedBy` must match). `ADMIN` is unrestricted. Updating an existing record re-checks this against *both* the record's current student and the (possibly different) target student, so a teacher can't "steal" another GVCN's record by reassigning it to their own class.
 
@@ -161,7 +168,7 @@ Runs against your local MySQL (via the `test` Spring profile — see `src/test/r
 
 ## 📦 Key dependencies
 
-Spring Boot Starter Web/Security/Data JPA/Validation, MySQL Connector/J, Flyway (`flyway-core` + `flyway-mysql`), JWT (`jjwt`), Lombok, SpringDoc OpenAPI.
+Spring Boot Starter Web/Security/Data JPA/Validation/Mail, MySQL Connector/J, Flyway (`flyway-core` + `flyway-mysql`), JWT (`jjwt`), Lombok, SpringDoc OpenAPI.
 
 ## 📁 Project structure
 
@@ -194,7 +201,9 @@ backend/
 
 ## 🚀 Future enhancements
 
-See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — parent portal & sổ liên lạc điện tử, admissions, PDF/Excel reports, audit log. (3.1 Năm học/Học kỳ/Môn học, 3.2 Phân công giảng dạy & Thời khoá biểu, 3.3 Điểm theo TT22, 3.4 Hạnh kiểm/Rèn luyện, and 3.5 Xét lên lớp/Ở lại/Tốt nghiệp are done, above.)
+See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — admissions, PDF/Excel reports, audit log/forgot-password. (3.1 Năm học/Học kỳ/Môn học, 3.2 Phân công giảng dạy & Thời khoá biểu, 3.3 Điểm theo TT22, 3.4 Hạnh kiểm/Rèn luyện, 3.5 Xét lên lớp/Ở lại/Tốt nghiệp, and 3.6 Phụ huynh & Sổ liên lạc điện tử are done, above.)
+
+**Note on 3.6**: only the `APP` and `EMAIL` notification channels are implemented — the plan explicitly requires choosing an SMS provider (eSMS/FPT SMS) and registering a Zalo OA before building `SMS`/`ZALO` for real, and there's no budget/vendor decision yet. Both channels exist in `NotificationChannel` and have a registered `NotificationSender` bean, but calling either returns `501 Not Implemented` with a clear message (see `Sms/ZaloOaNotificationSender`) rather than pretending to send. Recipients are also delivered to synchronously, one at a time, inside the single create-and-send request — fine at this school's scale (tens to a couple hundred parents), but a very large `ALL_PARENTS`/`CLASS` `EMAIL` broadcast would hold the DB connection open for as long as every SMTP round-trip takes; a real fix means an async queue/worker, out of this phase's scope.
 
 **Note on 3.3**: `GradeClassification` (xếp loại học lực: Tốt/Giỏi/Khá/Đạt/Trung bình/Yếu/Chưa đạt/Kém) exists as vocabulary and the DTOs carry a `classification` field, but the actual TT22/58 threshold logic is **not implemented** — it's deliberately deferred pending confirmation from someone with education-domain expertise on the exact score cutoffs and the môn Toán/Ngữ văn condition. The field is always `null` (omitted from JSON) until that's implemented.
 

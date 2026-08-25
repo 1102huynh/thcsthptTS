@@ -1,7 +1,9 @@
 package com.schoolmanagement.controller;
 
+import com.schoolmanagement.dto.AttendanceDTO;
 import com.schoolmanagement.entity.Attendance;
 import com.schoolmanagement.entity.AttendanceStatus;
+import com.schoolmanagement.entity.User;
 import com.schoolmanagement.service.AttendanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,6 +13,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -48,65 +51,73 @@ public class AttendanceController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
     @Operation(summary = "Update attendance record")
-    public ResponseEntity<Attendance> updateAttendance(@PathVariable Long id, @Valid @RequestBody Attendance attendanceDetails) {
-        Attendance updatedAttendance = attendanceService.updateAttendance(id, attendanceDetails);
+    public ResponseEntity<AttendanceDTO> updateAttendance(@PathVariable Long id, @Valid @RequestBody Attendance attendanceDetails) {
+        AttendanceDTO updatedAttendance = attendanceService.updateAttendance(id, attendanceDetails);
         return new ResponseEntity<>(updatedAttendance, HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
-    @Operation(summary = "Get attendance record by ID")
-    public ResponseEntity<Attendance> getAttendanceById(@PathVariable Long id) {
-        Attendance attendance = attendanceService.getAttendanceById(id);
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @Operation(summary = "Get attendance record by ID",
+            description = "A STUDENT may only fetch their own attendance; a PARENT only their own child's (403 otherwise).")
+    public ResponseEntity<AttendanceDTO> getAttendanceById(@PathVariable Long id, Authentication authentication) {
+        AttendanceDTO attendance = attendanceService.getAttendanceById(id, (User) authentication.getPrincipal());
         return new ResponseEntity<>(attendance, HttpStatus.OK);
     }
 
     @GetMapping("/student/{studentId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
-    @Operation(summary = "Get attendance records for a student")
-    public ResponseEntity<List<Attendance>> getStudentAttendance(@PathVariable Long studentId) {
-        List<Attendance> attendances = attendanceService.getStudentAttendance(studentId);
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @Operation(summary = "Get attendance records for a student",
+            description = "A STUDENT may only fetch their own attendance; a PARENT only their own child's (403 otherwise).")
+    public ResponseEntity<List<AttendanceDTO>> getStudentAttendance(@PathVariable Long studentId, Authentication authentication) {
+        List<AttendanceDTO> attendances = attendanceService.getStudentAttendance(studentId, (User) authentication.getPrincipal());
         return new ResponseEntity<>(attendances, HttpStatus.OK);
     }
 
     @GetMapping("/student/{studentId}/between")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
-    @Operation(summary = "Get student attendance between dates")
-    public ResponseEntity<List<Attendance>> getStudentAttendanceBetweenDates(
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @Operation(summary = "Get student attendance between dates",
+            description = "A STUDENT may only fetch their own attendance; a PARENT only their own child's (403 otherwise).")
+    public ResponseEntity<List<AttendanceDTO>> getStudentAttendanceBetweenDates(
             @PathVariable Long studentId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        List<Attendance> attendances = attendanceService.getStudentAttendanceBetweenDates(studentId, startDate, endDate);
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            Authentication authentication) {
+        List<AttendanceDTO> attendances = attendanceService.getStudentAttendanceBetweenDates(
+                studentId, startDate, endDate, (User) authentication.getPrincipal());
         return new ResponseEntity<>(attendances, HttpStatus.OK);
     }
 
     @GetMapping("/date/{date}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     @Operation(summary = "Get attendance records by date")
-    public ResponseEntity<List<Attendance>> getAttendanceByDate(
+    public ResponseEntity<List<AttendanceDTO>> getAttendanceByDate(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        List<Attendance> attendances = attendanceService.getAttendanceByDate(date);
+        List<AttendanceDTO> attendances = attendanceService.getAttendanceByDate(date);
         return new ResponseEntity<>(attendances, HttpStatus.OK);
     }
 
     @GetMapping("/between")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     @Operation(summary = "Get attendance records between dates")
-    public ResponseEntity<List<Attendance>> getAttendanceBetweenDates(
+    public ResponseEntity<List<AttendanceDTO>> getAttendanceBetweenDates(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        List<Attendance> attendances = attendanceService.getAttendanceBetweenDates(startDate, endDate);
+        List<AttendanceDTO> attendances = attendanceService.getAttendanceBetweenDates(startDate, endDate);
         return new ResponseEntity<>(attendances, HttpStatus.OK);
     }
 
     @GetMapping("/student/{studentId}/percentage")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
-    @Operation(summary = "Get attendance percentage for a student")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @Operation(summary = "Get attendance percentage for a student",
+            description = "A STUDENT may only fetch their own percentage; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<Double> getAttendancePercentage(
             @PathVariable Long studentId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        Double percentage = attendanceService.getAttendancePercentage(studentId, startDate, endDate);
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            Authentication authentication) {
+        Double percentage = attendanceService.getAttendancePercentage(
+                studentId, startDate, endDate, (User) authentication.getPrincipal());
         return new ResponseEntity<>(percentage, HttpStatus.OK);
     }
 

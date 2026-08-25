@@ -16,6 +16,7 @@ import com.schoolmanagement.repository.SchoolClassRepository;
 import com.schoolmanagement.repository.SemesterRepository;
 import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.StudentRepository;
+import com.schoolmanagement.security.StudentAccessGuard;
 import com.schoolmanagement.util.EntityResolver;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -45,6 +46,7 @@ public class ConductRecordService {
     private SemesterRepository semesterRepository;
     private StaffRepository staffRepository;
     private SchoolClassRepository schoolClassRepository;
+    private StudentAccessGuard studentAccessGuard;
 
     public ConductRecordDTO createConductRecord(ConductRecord request, User requester) {
         Student student = resolveStudent(request.getStudent());
@@ -115,7 +117,7 @@ public class ConductRecordService {
     }
 
     public List<ConductRecordDTO> getStudentConductRecords(Long studentId, User requester) {
-        enforceOwnStudentAccess(studentId, requester);
+        studentAccessGuard.enforceCanAccessStudent(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + studentId));
 
@@ -200,18 +202,6 @@ public class ConductRecordService {
         if (evaluatedBy != null && !teacherStaff.getId().equals(evaluatedBy.getId())) {
             throw new AccessDeniedException(
                     "A TEACHER may only submit conduct evaluations under their own staff profile");
-        }
-    }
-
-    /** Only a STUDENT is restricted, and only to their own id; ADMIN/TEACHER are unrestricted. */
-    private void enforceOwnStudentAccess(Long targetStudentId, User requester) {
-        if (requester == null || requester.getRole() != Role.STUDENT) {
-            return;
-        }
-        Student own = studentRepository.findByUserId(requester.getId())
-                .orElseThrow(() -> new AccessDeniedException("No student profile linked to this account"));
-        if (!own.getId().equals(targetStudentId)) {
-            throw new AccessDeniedException("Students may only access their own conduct records");
         }
     }
 
