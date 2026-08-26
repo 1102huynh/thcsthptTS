@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -32,6 +33,7 @@ public class SubmitAdmissionRequest implements Serializable {
 
     @Schema(example = "Nguyễn Văn An")
     @NotBlank
+    @Size(max = 255)
     private String applicantName;
 
     @Schema(example = "2014-05-20")
@@ -51,5 +53,6 @@ public class SubmitAdmissionRequest implements Serializable {
     private Integer desiredGradeLevel;
 
     @Schema(example = "THCS Nguyễn Du")
+    @Size(max = 255)
     private String priorSchool;
 }

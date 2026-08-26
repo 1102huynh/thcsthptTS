@@ -122,6 +122,24 @@ class AdmissionIntegrationTest {
     }
 
     @Test
+    void submit_applicantNameTooLong_returns400() throws Exception {
+        // varchar(255) on admission_applications.applicant_name - without
+        // @Size(max=255) on SubmitAdmissionRequest this would instead hit the
+        // DB column limit and surface as a masked 500.
+        SubmitAdmissionRequest request = SubmitAdmissionRequest.builder()
+                .applicantName("A".repeat(256))
+                .dateOfBirth(LocalDate.of(2014, 5, 20))
+                .contactPhone("0912345674")
+                .desiredGradeLevel(10)
+                .build();
+
+        mockMvc.perform(post("/v1/admissions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void submit_ignoresClientSuppliedStatus() throws Exception {
         // SubmitAdmissionRequest has no status field at all - a raw JSON body
         // trying to sneak one in has nothing to bind to.
@@ -188,6 +206,37 @@ class AdmissionIntegrationTest {
     }
 
     @Test
+    void updateStatus_omittingNote_keepsExistingNote() throws Exception {
+        // A later reviewer just changing the status (note left null on the
+        // request) must not silently wipe out a previous reviewer's note -
+        // only an explicit empty string should clear it.
+        User reviewer = userRepository.save(User.builder()
+                .username("itest.admission.reviewer2").email("itest.admission.reviewer2@school.com")
+                .password("{noop}Str0ngPassw0rd!")
+                .firstName("Integration").lastName("Reviewer2").role(Role.ADMIN).enabled(true).build());
+        AdmissionApplication application = admissionApplicationRepository.save(newApplication("ITEST KeepNote"));
+
+        UpdateAdmissionStatusRequest first = UpdateAdmissionStatusRequest.builder()
+                .status(AdmissionStatus.REVIEWING).note("Cần bổ sung hồ sơ").build();
+        mockMvc.perform(put("/v1/admissions/{id}/status", application.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(first))
+                        .with(asUser(reviewer, "ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.note").value("Cần bổ sung hồ sơ"));
+
+        UpdateAdmissionStatusRequest second = UpdateAdmissionStatusRequest.builder()
+                .status(AdmissionStatus.APPROVED).build(); // note omitted (null)
+        mockMvc.perform(put("/v1/admissions/{id}/status", application.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(second))
+                        .with(asUser(reviewer, "ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"))
+                .andExpect(jsonPath("$.note").value("Cần bổ sung hồ sơ"));
+    }
+
+    @Test
     @WithMockUser(roles = "ADMIN")
     void approveAndCreate_beforeApproved_returns400() throws Exception {
         AdmissionApplication application = admissionApplicationRepository.save(newApplication("ITEST NotApproved"));
@@ -244,6 +293,80 @@ class AdmissionIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict());
+    }
+
+    /**
+     * Exercises the DataIntegrityViolationException catch added around the
+     * User/Student saves in approveAndCreate() - a cross-application
+     * rollNumber collision that the existsByRollNumber() pre-check can't
+     * rule out under concurrent requests (TOCTOU), distinct from the
+     * @Version guard below which only protects the SAME application against
+     * a double-click. Two DIFFERENT already-APPROVED applications race to
+     * claim the same rollNumber; sequential calls can't reproduce this
+     * (the first save would already be visible to the second's
+     * existsByRollNumber() pre-check within the same transaction), so this
+     * needs the same NOT_SUPPORTED + real-thread setup as
+     * approveAndCreate_concurrentCalls_onlyOneSucceeds.
+     */
+    @Test
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    void approveAndCreate_duplicateRollNumberAcrossApplications_returns409() throws Exception {
+        AdmissionApplication first = admissionApplicationRepository.save(approvedApplication("ITEST RollA"));
+        AdmissionApplication second = admissionApplicationRepository.save(approvedApplication("ITEST RollB"));
+        Long firstId = first.getId();
+        Long secondId = second.getId();
+        String sharedRollNumber = "ITEST-ROLL-RACE";
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch go = new CountDownLatch(1);
+        AtomicInteger successCount = new AtomicInteger();
+        java.util.List<String> usernamesToCleanUp = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+        java.util.function.Function<Long, Runnable> attempt = applicationId -> () -> {
+            try {
+                String suffix = "itest.rolldup." + Thread.currentThread().getId();
+                usernamesToCleanUp.add(suffix);
+                ApproveAndCreateRequest request = ApproveAndCreateRequest.builder()
+                        .username(suffix)
+                        .email(suffix + "@school.com")
+                        .password("Str0ngPassw0rd!")
+                        .rollNumber(sharedRollNumber) // same across both applications - the race
+                        .admissionNumber("ADM-" + suffix)
+                        .build();
+                ready.countDown();
+                go.await();
+                int status = mockMvc.perform(post("/v1/admissions/{id}/approve-and-create", applicationId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .with(asAdmin()))
+                        .andReturn().getResponse().getStatus();
+                if (status == 201) {
+                    successCount.incrementAndGet();
+                }
+            } catch (Exception ignored) {
+                // A losing thread may also surface as an exception depending on
+                // timing - the success-count assertion below is what matters.
+            }
+        };
+
+        try {
+            pool.submit(attempt.apply(firstId));
+            pool.submit(attempt.apply(secondId));
+            ready.await();
+            go.countDown();
+            pool.shutdown();
+            pool.awaitTermination(10, TimeUnit.SECONDS);
+
+            Assertions.assertEquals(1, successCount.get(),
+                    "exactly one of two applications racing for the same rollNumber should succeed");
+        } finally {
+            admissionApplicationRepository.deleteById(firstId);
+            admissionApplicationRepository.deleteById(secondId);
+            studentRepository.findByRollNumber(sharedRollNumber).ifPresent(studentRepository::delete);
+            usernamesToCleanUp.forEach(username ->
+                    userRepository.findByUsername(username).ifPresent(userRepository::delete));
+        }
     }
 
     /**

@@ -17,6 +17,7 @@ import com.schoolmanagement.repository.AdmissionApplicationRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.repository.UserRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -80,7 +81,12 @@ public class AdmissionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Admission application not found with id: " + id));
 
         application.setStatus(request.getStatus());
-        application.setNote(request.getNote());
+        // note is optional on the request - omitting it (a later reviewer just
+        // changing the status) must not silently wipe out a previous reviewer's
+        // note. Send an explicit empty string to actually clear it.
+        if (request.getNote() != null) {
+            application.setNote(request.getNote());
+        }
         application.setReviewedBy(reviewer);
 
         return mapToDTO(admissionApplicationRepository.save(application));
@@ -131,17 +137,28 @@ public class AdmissionService {
                 .role(Role.STUDENT)
                 .enabled(true)
                 .build();
-        user = userRepository.save(user);
-
         Student student = Student.builder()
                 .rollNumber(request.getRollNumber())
                 .admissionNumber(request.getAdmissionNumber())
-                .user(user)
                 .dateOfBirth(application.getDateOfBirth())
                 .dateOfAdmission(LocalDate.now())
                 .status(StudentStatus.ACTIVE)
                 .build();
-        student = studentRepository.save(student);
+
+        try {
+            // IDENTITY-strategy @GeneratedValue means these INSERTs execute
+            // immediately, not deferred to commit - so a unique-constraint hit
+            // here (e.g. two applications approved concurrently landing on the
+            // same username/rollNumber, which the exists() checks above can't
+            // rule out on their own — TOCTOU) is caught here, not after this
+            // method has already returned.
+            user = userRepository.save(user);
+            student.setUser(user);
+            student = studentRepository.save(student);
+        } catch (DataIntegrityViolationException ex) {
+            throw new DuplicateResourceException(
+                    "Username, email, roll number, or admission number was just taken by another request — retry with different values");
+        }
 
         application.setCreatedStudent(student);
         try {
@@ -155,10 +172,10 @@ public class AdmissionService {
             // Two concurrent approve-and-create calls both read this application
             // before either committed - the @Version check on this second save
             // caught the race the createdStudent==null check above couldn't.
-            // The User/Student this call just created above are stray (the other
-            // caller's win is the one linked to the application) - not deleting
-            // them automatically since an ADMIN may still want the account that
-            // was created; surfacing 409 so the caller knows to check first.
+            // This whole method is @Transactional, so the User/Student this call
+            // just created above are rolled back along with this failed save -
+            // they never actually persist. Surfacing 409 so the caller knows to
+            // check the application's current state before retrying.
             throw new DuplicateResourceException(
                     "Application " + id + " was just processed by another request — check its current status before retrying");
         }

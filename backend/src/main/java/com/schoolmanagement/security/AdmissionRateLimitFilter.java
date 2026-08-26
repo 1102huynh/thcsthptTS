@@ -17,9 +17,11 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Deque;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Anti-spam rate limit for the public POST /v1/admissions endpoint — per
@@ -28,6 +30,17 @@ import java.util.concurrent.ConcurrentLinkedDeque;
  * project's single-instance, self-hosted deployment model — would need to
  * move to a shared store (e.g. Redis) if this app is ever scaled to multiple
  * instances behind a load balancer.
+ *
+ * <p>Every mutation of {@link #submissionsByIp} — recording a new submission
+ * and evicting stale entries alike — goes through a {@code compute}-family
+ * call for the same key, never a plain get-then-synchronized-mutate. That's
+ * deliberate: {@link ConcurrentHashMap}'s compute-family methods are mutually
+ * exclusive per key, so a scheduled eviction can never remove an IP's bucket
+ * in the narrow window between a request reading the map and that same
+ * request recording its own submission — which would otherwise silently
+ * lose that submission from tracking (a request "vanishing" from the
+ * limiter's memory right at an eviction boundary, quietly loosening the
+ * limit for that IP).
  */
 @Component
 public class AdmissionRateLimitFilter extends OncePerRequestFilter {
@@ -63,20 +76,21 @@ public class AdmissionRateLimitFilter extends OncePerRequestFilter {
         }
 
         String clientIp = resolveClientIp(request);
-        Instant now = Instant.now();
-        Instant windowStart = now.minus(Duration.ofMinutes(windowMinutes));
+        Instant windowStart = Instant.now().minus(Duration.ofMinutes(windowMinutes));
+        AtomicBoolean rejected = new AtomicBoolean(false);
 
-        Deque<Instant> submissions = submissionsByIp.computeIfAbsent(clientIp, ip -> new ConcurrentLinkedDeque<>());
-        boolean rejected;
-        synchronized (submissions) {
+        submissionsByIp.compute(clientIp, (ip, existing) -> {
+            Deque<Instant> submissions = existing != null ? existing : new ConcurrentLinkedDeque<>();
             pruneOlderThan(submissions, windowStart);
-            rejected = submissions.size() >= maxRequests;
-            if (!rejected) {
-                submissions.addLast(now);
+            if (submissions.size() >= maxRequests) {
+                rejected.set(true);
+            } else {
+                submissions.addLast(Instant.now());
             }
-        }
+            return submissions;
+        });
 
-        if (rejected) {
+        if (rejected.get()) {
             respondTooManyRequests(response, request);
             return;
         }
@@ -86,27 +100,28 @@ public class AdmissionRateLimitFilter extends OncePerRequestFilter {
 
     /**
      * Sweeps every tracked IP's deque on a fixed schedule (independent of
-     * request traffic, unlike an inline "clean up if empty" check on the
-     * request path — that check can never actually observe an empty deque,
-     * since the request that would empty it also just added or was refused
-     * because of an existing entry) so a one-time visitor's entry doesn't
-     * live in memory forever.
+     * request traffic) so a one-time visitor's entry doesn't live in memory
+     * forever. computeIfPresent, not a plain get+remove, for the same
+     * per-key-atomicity reason explained on the class Javadoc.
      */
-    @Scheduled(fixedRateString = "${app.admissions.rate-limit.window-minutes:60}", timeUnit = java.util.concurrent.TimeUnit.MINUTES)
+    @Scheduled(fixedRateString = "${app.admissions.rate-limit.window-minutes:60}", timeUnit = TimeUnit.MINUTES)
     void evictStaleEntries() {
         Instant windowStart = Instant.now().minus(Duration.ofMinutes(windowMinutes));
-        int removed = 0;
-        for (Map.Entry<String, Deque<Instant>> entry : submissionsByIp.entrySet()) {
-            Deque<Instant> submissions = entry.getValue();
-            synchronized (submissions) {
+        AtomicInteger removed = new AtomicInteger();
+
+        for (String ip : submissionsByIp.keySet()) {
+            submissionsByIp.computeIfPresent(ip, (key, submissions) -> {
                 pruneOlderThan(submissions, windowStart);
-                if (submissions.isEmpty() && submissionsByIp.remove(entry.getKey(), submissions)) {
-                    removed++;
+                if (submissions.isEmpty()) {
+                    removed.incrementAndGet();
+                    return null; // removes the entry
                 }
-            }
+                return submissions;
+            });
         }
-        if (removed > 0) {
-            log.debug("Admission rate limiter: evicted {} stale IP entries", removed);
+
+        if (removed.get() > 0) {
+            log.debug("Admission rate limiter: evicted {} stale IP entries", removed.get());
         }
     }
 

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -49,6 +50,7 @@ public class AdmissionApplication {
     private Long version = 0L;
 
     @NotBlank
+    @Size(max = 255)
     @Column(name = "applicant_name", nullable = false)
     private String applicantName;
 
@@ -70,6 +72,7 @@ public class AdmissionApplication {
     @Column(name = "desired_grade_level", nullable = false)
     private Integer desiredGradeLevel;
 
+    @Size(max = 255)
     @Column(name = "prior_school")
     private String priorSchool;
 
