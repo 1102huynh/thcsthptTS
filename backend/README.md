@@ -49,6 +49,7 @@ http://localhost:8080/api/swagger-ui.html
 | Promotions (Xét lên lớp) | `/v1/promotions/*` | Xét lên lớp/ở lại/tốt nghiệp — live preview per class (not persisted) + `POST /confirm` to save the final decision (bulk, overwrite-on-reconfirm). ADMIN/PRINCIPAL confirm; ADMIN/PRINCIPAL/TEACHER can preview |
 | Parents (Phụ huynh) | `/v1/parents/*` | Links a PARENT-role account to their children (ADMIN-managed); a PARENT may only list their own children |
 | Notifications (Sổ liên lạc điện tử) | `/v1/notifications/*` | Created and sent in the same request. `APP`/`EMAIL` channels are live; `SMS`/`ZALO` return 501 pending a vendor/Zalo OA decision. `GET /my` + `PUT /{id}/read` for any recipient (PARENT or staff) |
+| Admissions (Tuyển sinh) | `/v1/admissions/*` | `POST` is public (no login), rate-limited per IP (see AdmissionRateLimitFilter). ADMIN reviews (`PUT /{id}/status`) then `POST /{id}/approve-and-create` turns an APPROVED application into a real STUDENT account without retyping name/DOB/phone |
 | Fees | `/v1/fees/*` | Student fees & payments |
 | Library | `/v1/library/*` | Book catalog & borrowing |
 | Dashboard | `/v1/dashboard/stats` | Admin summary stats |
@@ -65,6 +66,7 @@ See [Swagger UI](http://localhost:8080/api/swagger-ui.html) for the full, curren
 - `V6__conduct_records.sql` added `conduct_records` (hạnh kiểm/rèn luyện), one row per (student, semester) enforced by a unique constraint. No backfill — nothing pre-3.4 represented this data.
 - `V7__promotion_records.sql` added `promotion_threshold_configs` (no default rows — an ADMIN/PRINCIPAL must configure cutoffs via `POST /v1/promotion-thresholds` before any suggestion can be computed) and `promotion_records` (one row per student per academic year, unique constraint enforced). No backfill.
 - `V8__parents_notifications.sql` added `parent_student_relations` (unique per parent+student), `notifications`, `notification_recipients`. No backfill — nothing pre-3.6 represented this data.
+- `V9__admission_applications.sql` added `admission_applications` (optimistic-locked via `@Version` — see the Security note on approve-and-create below). No backfill — nothing pre-3.7 represented this data.
 - Create the database once:
   ```sql
   CREATE DATABASE school_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -91,6 +93,8 @@ Nothing is hard-coded — everything sensitive comes from environment variables 
 | `SPRING_PROFILES_ACTIVE` | no | `dev` (default, local MySQL, DEBUG logging, SQL logging on) or `prod` (strict env vars, INFO logging, SQL logging off) — see `application-dev.yml` / `application-prod.yml` |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_SMTP_AUTH`, `MAIL_SMTP_STARTTLS` | no | EMAIL notification channel (3.6) — all have defaults; without a real SMTP server, sending just fails per-recipient (recorded, not a crash) |
 | `MAIL_FROM` | no | default `no-reply@school.local` — the "From" address on outgoing EMAIL notifications |
+| `ADMISSION_RATE_LIMIT_MAX`, `ADMISSION_RATE_LIMIT_WINDOW_MINUTES` | no | anti-spam limit on public `POST /v1/admissions` (3.7) — default 5 requests / 60 minutes per IP |
+| `ADMISSION_TRUST_FORWARDED_FOR` | no | default `false` (rate-limits by the real TCP peer address) — only set `true` behind a reverse proxy that sets/overwrites `X-Forwarded-For` itself, otherwise a caller can spoof it to dodge the limit |
 
 ## 🛡️ Security
 
@@ -201,7 +205,9 @@ backend/
 
 ## 🚀 Future enhancements
 
-See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — admissions, PDF/Excel reports, audit log/forgot-password. (3.1 Năm học/Học kỳ/Môn học, 3.2 Phân công giảng dạy & Thời khoá biểu, 3.3 Điểm theo TT22, 3.4 Hạnh kiểm/Rèn luyện, 3.5 Xét lên lớp/Ở lại/Tốt nghiệp, and 3.6 Phụ huynh & Sổ liên lạc điện tử are done, above.)
+See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — PDF/Excel reports, audit log/forgot-password. (3.1 Năm học/Học kỳ/Môn học, 3.2 Phân công giảng dạy & Thời khoá biểu, 3.3 Điểm theo TT22, 3.4 Hạnh kiểm/Rèn luyện, 3.5 Xét lên lớp/Ở lại/Tốt nghiệp, 3.6 Phụ huynh & Sổ liên lạc điện tử, and 3.7 Tuyển sinh đầu cấp are done, above.)
+
+**Note on 3.7**: `POST /v1/admissions/{id}/approve-and-create` requires the ADMIN to supply `username`/`email`/`password`/`rollNumber`/`admissionNumber` explicitly — nothing in `AdmissionApplication` can populate those (no login was ever collected from a public applicant, and roll/admission numbers follow the school's own numbering scheme, not something to invent). Everything else (name, DOB, phone, priorSchool) is pulled from the application automatically. The application row is optimistic-locked (`@Version`) specifically to prevent a double-click/concurrent-request race from creating two separate accounts from the same application — a second concurrent call gets a clean 409, not a duplicate account.
 
 **Note on 3.6**: only the `APP` and `EMAIL` notification channels are implemented — the plan explicitly requires choosing an SMS provider (eSMS/FPT SMS) and registering a Zalo OA before building `SMS`/`ZALO` for real, and there's no budget/vendor decision yet. Both channels exist in `NotificationChannel` and have a registered `NotificationSender` bean, but calling either returns `501 Not Implemented` with a clear message (see `Sms/ZaloOaNotificationSender`) rather than pretending to send. Recipients are also delivered to synchronously, one at a time, inside the single create-and-send request — fine at this school's scale (tens to a couple hundred parents), but a very large `ALL_PARENTS`/`CLASS` `EMAIL` broadcast would hold the DB connection open for as long as every SMTP round-trip takes; a real fix means an async queue/worker, out of this phase's scope.
 
