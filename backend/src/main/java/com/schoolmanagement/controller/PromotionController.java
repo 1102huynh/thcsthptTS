@@ -43,7 +43,7 @@ public class PromotionController {
     }
 
     @GetMapping("/student/{studentId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get every confirmed promotion decision for a student (all academic years)",
             description = "A STUDENT caller may only fetch their own records (403 otherwise).")
     public ResponseEntity<List<PromotionRecordDTO>> getStudentPromotionHistory(

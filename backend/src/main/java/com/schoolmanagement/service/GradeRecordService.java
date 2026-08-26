@@ -7,7 +7,6 @@ import com.schoolmanagement.entity.AcademicYear;
 import com.schoolmanagement.entity.GradeComponentConfig;
 import com.schoolmanagement.entity.GradeComponentType;
 import com.schoolmanagement.entity.GradeRecord;
-import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.Semester;
 import com.schoolmanagement.entity.SemesterName;
 import com.schoolmanagement.entity.Staff;
@@ -22,10 +21,10 @@ import com.schoolmanagement.repository.SemesterRepository;
 import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.repository.SubjectRepository;
+import com.schoolmanagement.security.StudentAccessGuard;
 import com.schoolmanagement.util.AcademicYearMatcher;
 import com.schoolmanagement.util.EntityResolver;
 import lombok.AllArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +55,7 @@ public class GradeRecordService {
     private SemesterRepository semesterRepository;
     private AcademicYearRepository academicYearRepository;
     private StaffRepository staffRepository;
+    private StudentAccessGuard studentAccessGuard;
 
     public GradeRecordDTO createGradeRecord(GradeRecord request) {
         GradeRecord record = GradeRecord.builder()
@@ -89,7 +89,7 @@ public class GradeRecordService {
     public GradeRecordDTO getGradeRecordById(Long id, User requester) {
         GradeRecord record = gradeRecordRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Grade record not found with id: " + id));
-        enforceOwnStudentAccess(record.getStudent().getId(), requester);
+        studentAccessGuard.enforceCanAccessStudent(record.getStudent().getId(), requester);
         return mapToDTO(record);
     }
 
@@ -100,7 +100,7 @@ public class GradeRecordService {
     }
 
     public List<GradeRecordDTO> getStudentSemesterGrades(Long studentId, Long semesterId, User requester) {
-        enforceOwnStudentAccess(studentId, requester);
+        studentAccessGuard.enforceCanAccessStudent(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + studentId));
         Semester semester = semesterRepository.findById(semesterId)
@@ -114,7 +114,7 @@ public class GradeRecordService {
 
     /** Điểm TB môn học kỳ, per subject, for every subject the student has a grade in that semester. */
     public List<SubjectSemesterAverageDTO> getStudentSemesterSummary(Long studentId, Long semesterId, User requester) {
-        enforceOwnStudentAccess(studentId, requester);
+        studentAccessGuard.enforceCanAccessStudent(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + studentId));
         Semester semester = semesterRepository.findById(semesterId)
@@ -141,7 +141,7 @@ public class GradeRecordService {
 
     /** Điểm TB môn cả năm = (ĐTB HK1 + ĐTB HK2 × 2) / 3, per subject. */
     public List<SubjectYearAverageDTO> getStudentYearSummary(Long studentId, Long academicYearId, User requester) {
-        enforceOwnStudentAccess(studentId, requester);
+        studentAccessGuard.enforceCanAccessStudent(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + studentId));
         AcademicYear academicYear = academicYearRepository.findById(academicYearId)
@@ -190,18 +190,6 @@ public class GradeRecordService {
                             .build();
                 })
                 .collect(Collectors.toList());
-    }
-
-    /** Only STUDENT-role requesters are restricted, and only to their own student id. */
-    private void enforceOwnStudentAccess(Long targetStudentId, User requester) {
-        if (requester == null || requester.getRole() != Role.STUDENT) {
-            return;
-        }
-        Student own = studentRepository.findByUserId(requester.getId())
-                .orElseThrow(() -> new AccessDeniedException("No student profile linked to this account"));
-        if (!own.getId().equals(targetStudentId)) {
-            throw new AccessDeniedException("Students may only access their own grade records");
-        }
     }
 
     private Map<Subject, List<GradeRecord>> groupBySubject(List<GradeRecord> records) {

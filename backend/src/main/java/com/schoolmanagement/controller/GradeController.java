@@ -2,6 +2,7 @@ package com.schoolmanagement.controller;
 
 import com.schoolmanagement.dto.GradeDTO;
 import com.schoolmanagement.entity.Grade;
+import com.schoolmanagement.entity.User;
 import com.schoolmanagement.service.GradeService;
 import com.schoolmanagement.util.PaginationUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,44 +38,52 @@ public class GradeController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
     @Operation(summary = "Update grade record")
-    public ResponseEntity<Grade> updateGrade(@PathVariable Long id, @Valid @RequestBody Grade gradeDetails) {
-        Grade updatedGrade = gradeService.updateGrade(id, gradeDetails);
+    public ResponseEntity<GradeDTO> updateGrade(@PathVariable Long id, @Valid @RequestBody Grade gradeDetails) {
+        GradeDTO updatedGrade = gradeService.updateGrade(id, gradeDetails);
         return new ResponseEntity<>(updatedGrade, HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
-    @Operation(summary = "Get grade record by ID")
-    public ResponseEntity<Grade> getGradeById(@PathVariable Long id) {
-        Grade grade = gradeService.getGradeById(id);
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @Operation(summary = "Get grade record by ID",
+            description = "A STUDENT may only fetch their own grades; a PARENT only their own child's (403 otherwise).")
+    public ResponseEntity<GradeDTO> getGradeById(@PathVariable Long id, Authentication authentication) {
+        GradeDTO grade = gradeService.getGradeById(id, (User) authentication.getPrincipal());
         return new ResponseEntity<>(grade, HttpStatus.OK);
     }
 
     @GetMapping("/student/{studentId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
-    @Operation(summary = "Get all grades for a student")
-    public ResponseEntity<List<Grade>> getStudentGrades(@PathVariable Long studentId) {
-        List<Grade> grades = gradeService.getStudentGrades(studentId);
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @Operation(summary = "Get all grades for a student",
+            description = "A STUDENT may only fetch their own grades; a PARENT only their own child's (403 otherwise).")
+    public ResponseEntity<List<GradeDTO>> getStudentGrades(@PathVariable Long studentId, Authentication authentication) {
+        List<GradeDTO> grades = gradeService.getStudentGrades(studentId, (User) authentication.getPrincipal());
         return new ResponseEntity<>(grades, HttpStatus.OK);
     }
 
     @GetMapping("/student/{studentId}/year/{academicYear}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
-    @Operation(summary = "Get grades for student by academic year")
-    public ResponseEntity<List<Grade>> getStudentGradesByYear(
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @Operation(summary = "Get grades for student by academic year",
+            description = "A STUDENT may only fetch their own grades; a PARENT only their own child's (403 otherwise).")
+    public ResponseEntity<List<GradeDTO>> getStudentGradesByYear(
             @PathVariable Long studentId,
-            @PathVariable String academicYear) {
-        List<Grade> grades = gradeService.getStudentGradesByAcademicYear(studentId, academicYear);
+            @PathVariable String academicYear,
+            Authentication authentication) {
+        List<GradeDTO> grades = gradeService.getStudentGradesByAcademicYear(
+                studentId, academicYear, (User) authentication.getPrincipal());
         return new ResponseEntity<>(grades, HttpStatus.OK);
     }
 
     @GetMapping("/student/{studentId}/subject/{subject}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
-    @Operation(summary = "Get grades for student by subject")
-    public ResponseEntity<List<Grade>> getStudentGradesBySubject(
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @Operation(summary = "Get grades for student by subject",
+            description = "A STUDENT may only fetch their own grades; a PARENT only their own child's (403 otherwise).")
+    public ResponseEntity<List<GradeDTO>> getStudentGradesBySubject(
             @PathVariable Long studentId,
-            @PathVariable String subject) {
-        List<Grade> grades = gradeService.getStudentGradesBySubject(studentId, subject);
+            @PathVariable String subject,
+            Authentication authentication) {
+        List<GradeDTO> grades = gradeService.getStudentGradesBySubject(
+                studentId, subject, (User) authentication.getPrincipal());
         return new ResponseEntity<>(grades, HttpStatus.OK);
     }
 
@@ -96,20 +106,24 @@ public class GradeController {
     }
 
     @GetMapping("/student/{studentId}/average")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
-    @Operation(summary = "Get average percentage for student")
-    public ResponseEntity<Double> getStudentAveragePercentage(@PathVariable Long studentId) {
-        Double average = gradeService.getStudentAveragePercentage(studentId);
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @Operation(summary = "Get average percentage for student",
+            description = "A STUDENT may only fetch their own average; a PARENT only their own child's (403 otherwise).")
+    public ResponseEntity<Double> getStudentAveragePercentage(@PathVariable Long studentId, Authentication authentication) {
+        Double average = gradeService.getStudentAveragePercentage(studentId, (User) authentication.getPrincipal());
         return new ResponseEntity<>(average, HttpStatus.OK);
     }
 
     @GetMapping("/student/{studentId}/average/year/{academicYear}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
-    @Operation(summary = "Get average percentage for student by academic year")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @Operation(summary = "Get average percentage for student by academic year",
+            description = "A STUDENT may only fetch their own average; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<Double> getStudentAveragePercentageByYear(
             @PathVariable Long studentId,
-            @PathVariable String academicYear) {
-        Double average = gradeService.getStudentAveragePercentageByYear(studentId, academicYear);
+            @PathVariable String academicYear,
+            Authentication authentication) {
+        Double average = gradeService.getStudentAveragePercentageByYear(
+                studentId, academicYear, (User) authentication.getPrincipal());
         return new ResponseEntity<>(average, HttpStatus.OK);
     }
 

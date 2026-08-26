@@ -4,9 +4,11 @@ import com.schoolmanagement.dto.GradeDTO;
 import com.schoolmanagement.entity.Grade;
 import com.schoolmanagement.entity.Staff;
 import com.schoolmanagement.entity.Student;
+import com.schoolmanagement.entity.User;
 import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.GradeRepository;
 import com.schoolmanagement.repository.StudentRepository;
+import com.schoolmanagement.security.StudentAccessGuard;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +24,7 @@ public class GradeService {
 
     private GradeRepository gradeRepository;
     private StudentRepository studentRepository;
+    private StudentAccessGuard studentAccessGuard;
 
     public Grade createGrade(Grade grade) {
         Student student = studentRepository.findById(grade.getStudent().getId())
@@ -33,7 +36,7 @@ public class GradeService {
         return gradeRepository.save(grade);
     }
 
-    public Grade updateGrade(Long id, Grade gradeDetails) {
+    public GradeDTO updateGrade(Long id, Grade gradeDetails) {
         Grade grade = gradeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Grade record not found"));
 
@@ -43,38 +46,45 @@ public class GradeService {
         grade.setGrade(calculateGrade(grade.getPercentage()));
         grade.setRemarks(gradeDetails.getRemarks());
 
-        return gradeRepository.save(grade);
+        return mapToDTO(gradeRepository.save(grade));
     }
 
-    public Grade getGradeById(Long id) {
-        return gradeRepository.findById(id)
+    public GradeDTO getGradeById(Long id, User requester) {
+        Grade grade = gradeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Grade record not found"));
+        studentAccessGuard.enforceCanAccessStudent(grade.getStudent().getId(), requester);
+        return mapToDTO(grade);
     }
 
-    public List<Grade> getStudentGrades(Long studentId) {
+    public List<GradeDTO> getStudentGrades(Long studentId, User requester) {
+        studentAccessGuard.enforceCanAccessStudent(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-        return gradeRepository.findByStudent(student);
+        return gradeRepository.findByStudent(student).stream().map(this::mapToDTO).toList();
     }
 
-    public List<Grade> getStudentGradesByAcademicYear(Long studentId, String academicYear) {
+    public List<GradeDTO> getStudentGradesByAcademicYear(Long studentId, String academicYear, User requester) {
+        studentAccessGuard.enforceCanAccessStudent(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-        return gradeRepository.findByStudentAndAcademicYear(student, academicYear);
+        return gradeRepository.findByStudentAndAcademicYear(student, academicYear).stream().map(this::mapToDTO).toList();
     }
 
-    public List<Grade> getStudentGradesBySubject(Long studentId, String subject) {
+    public List<GradeDTO> getStudentGradesBySubject(Long studentId, String subject, User requester) {
+        studentAccessGuard.enforceCanAccessStudent(studentId, requester);
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-        return gradeRepository.findByStudentAndSubject(student, subject);
+        return gradeRepository.findByStudentAndSubject(student, subject).stream().map(this::mapToDTO).toList();
     }
 
     /**
-     * Returns GradeDTO (not the raw entity) because this listing spans many
-     * students/teachers, whose lazy `student`/`teacher` associations are not
-     * already resolved in the persistence context the way the single-student
-     * queries above are — serializing the raw entity after the transaction
-     * closes (open-in-view is off) throws LazyInitializationException.
+     * Every read path here returns GradeDTO, never the raw entity — its lazy
+     * `student`/`teacher` associations are not resolved by the time Jackson
+     * serializes the response (open-in-view is off, so the persistence
+     * context is already closed), which throws LazyInitializationException.
+     * (Found live while retrofitting PARENT access in 3.6 — pre-existing,
+     * affected every role, not just the new one; fixed for all of these
+     * methods at once rather than only the ones PARENT needed.)
      */
     public List<GradeDTO> getGradesByAcademicYear(String academicYear) {
         return gradeRepository.findByAcademicYear(academicYear)
@@ -87,24 +97,24 @@ public class GradeService {
         return gradeRepository.findByAcademicYear(academicYear, pageable).map(this::mapToDTO);
     }
 
-    public double getStudentAveragePercentage(Long studentId) {
-        List<Grade> grades = getStudentGrades(studentId);
+    public double getStudentAveragePercentage(Long studentId, User requester) {
+        List<GradeDTO> grades = getStudentGrades(studentId, requester);
         if (grades.isEmpty()) {
             return 0;
         }
         return grades.stream()
-                .mapToDouble(Grade::getPercentage)
+                .mapToDouble(GradeDTO::getPercentage)
                 .average()
                 .orElse(0);
     }
 
-    public double getStudentAveragePercentageByYear(Long studentId, String academicYear) {
-        List<Grade> grades = getStudentGradesByAcademicYear(studentId, academicYear);
+    public double getStudentAveragePercentageByYear(Long studentId, String academicYear, User requester) {
+        List<GradeDTO> grades = getStudentGradesByAcademicYear(studentId, academicYear, requester);
         if (grades.isEmpty()) {
             return 0;
         }
         return grades.stream()
-                .mapToDouble(Grade::getPercentage)
+                .mapToDouble(GradeDTO::getPercentage)
                 .average()
                 .orElse(0);
     }
