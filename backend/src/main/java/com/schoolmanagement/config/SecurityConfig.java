@@ -1,10 +1,12 @@
 package com.schoolmanagement.config;
 
+import com.schoolmanagement.security.AdmissionRateLimitFilter;
 import com.schoolmanagement.security.JwtAuthenticationFilter;
 import com.schoolmanagement.security.JwtTokenProvider;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -32,6 +34,7 @@ public class SecurityConfig {
 
     private UserDetailsService userDetailsService;
     private JwtTokenProvider jwtTokenProvider;
+    private AdmissionRateLimitFilter admissionRateLimitFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -82,6 +85,10 @@ public class SecurityConfig {
                 .requestMatchers("/v1/auth/**").permitAll()
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers("/api/v1/public/**").permitAll()
+                // Public admission submission (3.7) — rate-limited by AdmissionRateLimitFilter,
+                // added to the chain below. GET/PUT/other /v1/admissions paths stay authenticated.
+                .requestMatchers(HttpMethod.POST, "/v1/admissions").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/admissions").permitAll()
                 // Swagger UI - note: swagger-ui is outside /api context path
                 .requestMatchers("/swagger-ui/**").permitAll()
                 .requestMatchers("/swagger-ui.html").permitAll()
@@ -100,7 +107,8 @@ public class SecurityConfig {
                 })
             )
             .authenticationProvider(authenticationProvider())
-            .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(admissionRateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

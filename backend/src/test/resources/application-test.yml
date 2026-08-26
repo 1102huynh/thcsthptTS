@@ -7,3 +7,15 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+app:
+  admissions:
+    rate-limit:
+      # High enough that ordinary functional tests posting to /v1/admissions a
+      # few times never trip it — AdmissionRateLimitFilter is a singleton bean
+      # whose in-memory counters persist across test methods/classes sharing
+      # this Spring context (they're not part of the @Transactional DB
+      # rollback). The 429-triggering behavior itself is tested separately
+      # with its own low override + @DirtiesContext, so it doesn't affect
+      # every other test's shared state.
+      max-requests: 1000
