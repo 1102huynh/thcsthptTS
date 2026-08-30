@@ -2,6 +2,7 @@ package com.schoolmanagement.controller;
 
 import com.schoolmanagement.dto.StudentDTO;
 import com.schoolmanagement.entity.Student;
+import com.schoolmanagement.entity.User;
 import com.schoolmanagement.service.StudentService;
 import com.schoolmanagement.util.PaginationUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -103,8 +105,9 @@ public class StudentController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('PRINCIPAL')")
     @Operation(summary = "Delete student")
-    public ResponseEntity<Void> deleteStudent(@PathVariable Long id) {
-        studentService.deleteStudent(id);
+    public ResponseEntity<Void> deleteStudent(@PathVariable Long id, Authentication authentication) {
+        User actor = (User) authentication.getPrincipal();
+        studentService.deleteStudent(id, actor);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }

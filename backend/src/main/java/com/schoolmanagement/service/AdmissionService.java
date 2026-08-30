@@ -42,6 +42,7 @@ public class AdmissionService {
     private UserRepository userRepository;
     private StudentRepository studentRepository;
     private PasswordEncoder passwordEncoder;
+    private AuditLogService auditLogService;
 
     public AdmissionApplicationDTO submit(SubmitAdmissionRequest request) {
         AdmissionApplication application = AdmissionApplication.builder()
@@ -89,7 +90,12 @@ public class AdmissionService {
         }
         application.setReviewedBy(reviewer);
 
-        return mapToDTO(admissionApplicationRepository.save(application));
+        AdmissionApplicationDTO result = mapToDTO(admissionApplicationRepository.save(application));
+
+        auditLogService.log(reviewer, "STATUS_CHANGE", "AdmissionApplication", id,
+                java.util.Map.of("newStatus", request.getStatus().name()));
+
+        return result;
     }
 
     /**
@@ -98,7 +104,7 @@ public class AdmissionService {
      * password/rollNumber/admissionNumber must be supplied (nothing to pull
      * them from — see ApproveAndCreateRequest's Javadoc).
      */
-    public AdmissionApprovalResultDTO approveAndCreate(Long id, ApproveAndCreateRequest request) {
+    public AdmissionApprovalResultDTO approveAndCreate(Long id, ApproveAndCreateRequest request, User actor) {
         AdmissionApplication application = admissionApplicationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Admission application not found with id: " + id));
 
@@ -180,7 +186,7 @@ public class AdmissionService {
                     "Application " + id + " was just processed by another request — check its current status before retrying");
         }
 
-        return AdmissionApprovalResultDTO.builder()
+        AdmissionApprovalResultDTO result = AdmissionApprovalResultDTO.builder()
                 .applicationId(application.getId())
                 .userId(user.getId())
                 .username(user.getUsername())
@@ -188,6 +194,11 @@ public class AdmissionService {
                 .rollNumber(student.getRollNumber())
                 .admissionNumber(student.getAdmissionNumber())
                 .build();
+
+        auditLogService.log(actor, "APPROVE_AND_CREATE", "AdmissionApplication", id,
+                java.util.Map.of("createdUserId", String.valueOf(user.getId()), "createdStudentId", String.valueOf(student.getId())));
+
+        return result;
     }
 
     /**

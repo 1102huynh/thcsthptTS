@@ -38,13 +38,15 @@ class AuthenticationServiceTest {
     private AuthenticationManager authenticationManager;
     @Mock
     private JwtTokenProvider jwtTokenProvider;
+    @Mock
+    private AuditLogService auditLogService;
 
     private AuthenticationService authenticationService;
 
     @BeforeEach
     void setUp() {
         authenticationService = new AuthenticationService(
-                userRepository, passwordEncoder, authenticationManager, jwtTokenProvider);
+                userRepository, passwordEncoder, authenticationManager, jwtTokenProvider, auditLogService);
     }
 
     @Test
@@ -139,7 +141,8 @@ class AuthenticationServiceTest {
         when(jwtTokenProvider.getTokenIssuedAt(anyString())).thenReturn(new Date());
         when(jwtTokenProvider.getTokenExpiration(anyString())).thenReturn(new Date());
 
-        authenticationService.createUserByAdmin(request);
+        User actingAdmin = User.builder().id(1L).role(Role.ADMIN).build();
+        authenticationService.createUserByAdmin(request, actingAdmin);
 
         ArgumentCaptor<User> savedUserCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(savedUserCaptor.capture());

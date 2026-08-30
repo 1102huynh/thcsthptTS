@@ -67,7 +67,8 @@ public class AdmissionController {
     @Operation(summary = "Create a User+Student account from an APPROVED application",
             description = "Fails if the application isn't APPROVED yet, or if an account was already created from it.")
     public ResponseEntity<AdmissionApprovalResultDTO> approveAndCreate(
-            @PathVariable Long id, @Valid @RequestBody ApproveAndCreateRequest request) {
-        return new ResponseEntity<>(admissionService.approveAndCreate(id, request), HttpStatus.CREATED);
+            @PathVariable Long id, @Valid @RequestBody ApproveAndCreateRequest request, Authentication authentication) {
+        User actor = (User) authentication.getPrincipal();
+        return new ResponseEntity<>(admissionService.approveAndCreate(id, request, actor), HttpStatus.CREATED);
     }
 }

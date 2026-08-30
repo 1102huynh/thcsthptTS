@@ -56,6 +56,7 @@ public class GradeRecordService {
     private AcademicYearRepository academicYearRepository;
     private StaffRepository staffRepository;
     private StudentAccessGuard studentAccessGuard;
+    private AuditLogService auditLogService;
 
     public GradeRecordDTO createGradeRecord(GradeRecord request) {
         GradeRecord record = GradeRecord.builder()
@@ -71,9 +72,11 @@ public class GradeRecordService {
         return mapToDTO(gradeRecordRepository.save(record));
     }
 
-    public GradeRecordDTO updateGradeRecord(Long id, GradeRecord request) {
+    public GradeRecordDTO updateGradeRecord(Long id, GradeRecord request, User actor) {
         GradeRecord record = gradeRecordRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Grade record not found with id: " + id));
+
+        Double previousScore = record.getScore();
 
         record.setStudent(resolveStudent(request.getStudent()));
         record.setSubject(resolveSubject(request.getSubject()));
@@ -83,7 +86,12 @@ public class GradeRecordService {
         record.setTeacher(resolveTeacher(request.getTeacher()));
         record.setRemarks(request.getRemarks());
 
-        return mapToDTO(gradeRecordRepository.save(record));
+        GradeRecordDTO result = mapToDTO(gradeRecordRepository.save(record));
+
+        auditLogService.log(actor, "UPDATE", "GradeRecord", id,
+                Map.of("previousScore", String.valueOf(previousScore), "newScore", String.valueOf(request.getScore())));
+
+        return result;
     }
 
     public GradeRecordDTO getGradeRecordById(Long id, User requester) {
@@ -93,10 +101,16 @@ public class GradeRecordService {
         return mapToDTO(record);
     }
 
-    public void deleteGradeRecord(Long id) {
+    public void deleteGradeRecord(Long id, User actor) {
         GradeRecord record = gradeRecordRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Grade record not found with id: " + id));
+        Long studentId = record.getStudent().getId();
+        Double score = record.getScore();
+
         gradeRecordRepository.delete(record);
+
+        auditLogService.log(actor, "DELETE", "GradeRecord", id,
+                Map.of("studentId", String.valueOf(studentId), "score", String.valueOf(score)));
     }
 
     public List<GradeRecordDTO> getStudentSemesterGrades(Long studentId, Long semesterId, User requester) {

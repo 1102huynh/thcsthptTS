@@ -24,6 +24,13 @@ spring:
       write-dates-as-timestamps: false
     default-property-inclusion: non_null
 
+  # Document attachment uploads (3.9) - server rejects anything over this
+  # before DocumentService's own MAX_FILE_SIZE_BYTES check even runs.
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
   # Email (sổ liên lạc điện tử, 3.6 EMAIL channel). Unlike JWT_SECRET this has
   # defaults and doesn't fail startup if unconfigured — an unreachable/absent
   # SMTP server just makes EmailNotificationSender.send() fail per-recipient
@@ -66,6 +73,20 @@ app:
       # header to dodge the limit. Default false rate-limits by the real TCP
       # peer address instead.
       trust-forwarded-for: ${ADMISSION_TRUST_FORWARDED_FOR:false}
+  auth:
+    forgot-password-rate-limit:
+      max-requests: ${FORGOT_PASSWORD_RATE_LIMIT_MAX:3}
+      window-minutes: ${FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MINUTES:60}
+      trust-forwarded-for: ${ADMISSION_TRUST_FORWARDED_FOR:false}
+  frontend:
+    # Where the reset-password link in the forgot-password email points -
+    # a real frontend route that reads ?token= and calls POST /v1/auth/reset-password.
+    reset-password-url: ${FRONTEND_RESET_PASSWORD_URL:http://localhost:3000/reset-password}
+  uploads:
+    # Local filesystem directory for DocumentAttachment files (3.9) - chose
+    # filesystem over MinIO/S3, see FileStorageService's Javadoc. Resolved to
+    # an absolute path at startup; created if missing.
+    dir: ${UPLOAD_DIR:./uploads}
 
 # Swagger/API Documentation
 springdoc:

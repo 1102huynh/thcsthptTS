@@ -54,6 +54,9 @@ http://localhost:8080/api/swagger-ui.html
 | Fees | `/v1/fees/*` | Student fees & payments |
 | Library | `/v1/library/*` | Book catalog & borrowing |
 | Dashboard | `/v1/dashboard/stats` | Admin summary stats |
+| Documents (Tệp đính kèm) | `/v1/documents/*` | Upload/download/delete file attachments for a STUDENT/STAFF/ADMISSION_APPLICATION owner. Local filesystem storage (see `FileStorageService`), max 10MB, pdf/jpg/jpeg/png/doc/docx/xls/xlsx only. STUDENT/PARENT limited to their own/child's documents; STAFF/ADMISSION_APPLICATION owners are ADMIN/PRINCIPAL-only; deleting is ADMIN/PRINCIPAL-only regardless of owner |
+| Audit Log | `/v1/audit-logs` | ADMIN-only, paginated (`?page=&size=`, default 0/20), optional `?entityType=`/`?actorId=` filters. Written manually at specific sensitive call sites (sửa/xóa điểm, xóa học sinh, duyệt tuyển sinh, cấp tài khoản kèm quyền, đặt lại mật khẩu) — not a blanket interceptor around every create/update/delete in the app |
+| Forgot/Reset Password | `/v1/auth/forgot-password`, `/v1/auth/reset-password` | Both public, no login. `forgot-password` always returns the same generic response regardless of whether the email matches an account (no user enumeration) and is rate-limited per IP (see `ForgotPasswordRateLimitFilter`). Tokens are single-use, expire after 15 minutes, and only their SHA-256 hash is ever persisted |
 
 See [Swagger UI](http://localhost:8080/api/swagger-ui.html) for the full, current contract (request/response shapes, required fields) — the table above is just an index.
 
@@ -68,6 +71,7 @@ See [Swagger UI](http://localhost:8080/api/swagger-ui.html) for the full, curren
 - `V7__promotion_records.sql` added `promotion_threshold_configs` (no default rows — an ADMIN/PRINCIPAL must configure cutoffs via `POST /v1/promotion-thresholds` before any suggestion can be computed) and `promotion_records` (one row per student per academic year, unique constraint enforced). No backfill.
 - `V8__parents_notifications.sql` added `parent_student_relations` (unique per parent+student), `notifications`, `notification_recipients`. No backfill — nothing pre-3.6 represented this data.
 - `V9__admission_applications.sql` added `admission_applications` (optimistic-locked via `@Version` — see the Security note on approve-and-create below). No backfill — nothing pre-3.7 represented this data.
+- `V10__shared_infra.sql` added `document_attachments`, `audit_logs`, `password_reset_tokens`. No backfill — nothing pre-3.9 represented any of this data.
 - Create the database once:
   ```sql
   CREATE DATABASE school_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -95,7 +99,10 @@ Nothing is hard-coded — everything sensitive comes from environment variables 
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_SMTP_AUTH`, `MAIL_SMTP_STARTTLS` | no | EMAIL notification channel (3.6) — all have defaults; without a real SMTP server, sending just fails per-recipient (recorded, not a crash) |
 | `MAIL_FROM` | no | default `no-reply@school.local` — the "From" address on outgoing EMAIL notifications |
 | `ADMISSION_RATE_LIMIT_MAX`, `ADMISSION_RATE_LIMIT_WINDOW_MINUTES` | no | anti-spam limit on public `POST /v1/admissions` (3.7) — default 5 requests / 60 minutes per IP |
-| `ADMISSION_TRUST_FORWARDED_FOR` | no | default `false` (rate-limits by the real TCP peer address) — only set `true` behind a reverse proxy that sets/overwrites `X-Forwarded-For` itself, otherwise a caller can spoof it to dodge the limit |
+| `ADMISSION_TRUST_FORWARDED_FOR` | no | default `false` (rate-limits by the real TCP peer address) — only set `true` behind a reverse proxy that sets/overwrites `X-Forwarded-For` itself, otherwise a caller can spoof it to dodge the limit. Shared with the forgot-password limiter below |
+| `FORGOT_PASSWORD_RATE_LIMIT_MAX`, `FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MINUTES` | no | anti-spam limit on public `POST /v1/auth/forgot-password` (3.9) — default 3 requests / 60 minutes per IP |
+| `FRONTEND_RESET_PASSWORD_URL` | no | default `http://localhost:3000/reset-password` — the frontend route the reset-password email link points at (reads `?token=`) |
+| `UPLOAD_DIR` | no | default `./uploads` — local filesystem directory for document attachments (3.9) |
 
 ## 🛡️ Security
 
@@ -208,7 +215,9 @@ backend/
 
 ## 🚀 Future enhancements
 
-See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — hạ tầng dùng chung (document attachments, audit log, forgot-password). (3.1 Năm học/Học kỳ/Môn học, 3.2 Phân công giảng dạy & Thời khoá biểu, 3.3 Điểm theo TT22, 3.4 Hạnh kiểm/Rèn luyện, 3.5 Xét lên lớp/Ở lại/Tốt nghiệp, 3.6 Phụ huynh & Sổ liên lạc điện tử, 3.7 Tuyển sinh đầu cấp, and 3.8 Xuất báo cáo PDF/Excel are done, above.)
+"Giai đoạn 3" of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) is now fully implemented (3.1 Năm học/Học kỳ/Môn học through 3.9 Hạ tầng dùng chung — document attachments, audit log, forgot/reset password, above). See the plan for Track Frontend and any further phases.
+
+**Note on 3.9**: `AuditLogService.log(...)` is called manually from a specific, deliberately small set of sensitive operations (grade record update/delete, student delete, admission status-change/approve-and-create, ADMIN-created-account role grants, password reset) rather than via a blanket AOP interceptor around every service's create/update/delete — see its Javadoc for the full list and the reasoning. `DocumentAttachment` files live on local disk (`app.uploads.dir`/`UPLOAD_DIR`), not MinIO/S3 — same "single self-hosted instance" reasoning as the in-memory admission rate limiter (3.7); every stored filename is a server-generated UUID, never derived from the client-supplied original filename, to rule out path traversal. Forgot/reset-password tokens are 256 bits of `SecureRandom`, only their SHA-256 hash is ever persisted, and requesting a new one invalidates any still-outstanding earlier token for that user.
 
 **Note on 3.8**: the transcript PDF shows raw điểm trung bình (per the same formulas as `/v1/grade-records`) and hạnh kiểm per semester — it never shows xếp loại học lực, since that classification still isn't implemented (see the 3.3 note below). Its "Lớp" line is labelled "Lớp (hiện tại)" deliberately — `Student` has no per-academic-year class history, only the student's *current* class, so a transcript pulled for a past year can't show which class they were actually in back then. The class attendance Excel has one column per calendar day in the requested range — fine for a week/month; `[from, to]` is capped at 366 days (one academic year) and returns 400 past that, both to keep the sheet from exceeding Excel's column limit and because that's already far past any realistic use of this report. `GET /fees/receipt/{feeId}` rejects (400) a fee with no `paidAmount` recorded yet — a receipt only makes sense as proof of an actual payment. Every `/v1/reports/*` endpoint's role list deliberately matches the equivalent existing endpoint for the same data (e.g. the transcript matches `/v1/grade-records/student/{id}/year-summary`'s ADMIN/TEACHER/STUDENT/PARENT, not PRINCIPAL) — a report is a different shape of the same data, not a different access policy, so it doesn't unilaterally decide PRINCIPAL should see more than the underlying API already allows.
 

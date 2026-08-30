@@ -19,3 +19,11 @@ app:
       # with its own low override + @DirtiesContext, so it doesn't affect
       # every other test's shared state.
       max-requests: 1000
+  auth:
+    forgot-password-rate-limit:
+      # Same reasoning as admissions.rate-limit.max-requests above.
+      max-requests: 1000
+  uploads:
+    # Isolated from the real dev ./uploads dir (still covered by .gitignore's
+    # /uploads/ pattern) so test runs never touch real uploaded files.
+    dir: ./uploads/test

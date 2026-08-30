@@ -1,6 +1,7 @@
 package com.schoolmanagement.config;
 
 import com.schoolmanagement.security.AdmissionRateLimitFilter;
+import com.schoolmanagement.security.ForgotPasswordRateLimitFilter;
 import com.schoolmanagement.security.JwtAuthenticationFilter;
 import com.schoolmanagement.security.JwtTokenProvider;
 import lombok.AllArgsConstructor;
@@ -35,6 +36,7 @@ public class SecurityConfig {
     private UserDetailsService userDetailsService;
     private JwtTokenProvider jwtTokenProvider;
     private AdmissionRateLimitFilter admissionRateLimitFilter;
+    private ForgotPasswordRateLimitFilter forgotPasswordRateLimitFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -108,7 +110,8 @@ public class SecurityConfig {
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(admissionRateLimitFilter, JwtAuthenticationFilter.class);
+            .addFilterBefore(admissionRateLimitFilter, JwtAuthenticationFilter.class)
+            .addFilterBefore(forgotPasswordRateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
