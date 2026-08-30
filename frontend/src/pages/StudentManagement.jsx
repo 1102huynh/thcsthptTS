@@ -60,8 +60,8 @@ function StudentManagement() {
                     <td>{student.user?.email}</td>
                     <td><span className="badge bg-success">{student.status}</span></td>
                     <td>
-                      <Button variant="sm" className="me-2"><FiEdit /> Edit</Button>
-                      <Button variant="sm" variant="danger"><FiTrash2 /> Delete</Button>
+                      <Button size="sm" className="me-2"><FiEdit /> Edit</Button>
+                      <Button size="sm" variant="danger"><FiTrash2 /> Delete</Button>
                     </td>
                   </tr>
                 ))

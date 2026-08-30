@@ -89,10 +89,10 @@ function StaffManagement() {
                       </span>
                     </td>
                     <td>
-                      <Button variant="sm" className="me-2" onClick={() => { setSelectedStaff(member); setShowModal(true); }}>
+                      <Button size="sm" className="me-2" onClick={() => { setSelectedStaff(member); setShowModal(true); }}>
                         <FiEdit /> Edit
                       </Button>
-                      <Button variant="sm" variant="danger" onClick={() => handleDelete(member.id)}>
+                      <Button size="sm" variant="danger" onClick={() => handleDelete(member.id)}>
                         <FiTrash2 /> Delete
                       </Button>
                     </td>
