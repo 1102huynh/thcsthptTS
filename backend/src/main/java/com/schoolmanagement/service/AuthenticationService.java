@@ -35,11 +35,12 @@ public class AuthenticationService {
     private PasswordEncoder passwordEncoder;
     private AuthenticationManager authenticationManager;
     private JwtTokenProvider jwtTokenProvider;
+    private AuditLogService auditLogService;
 
     /**
      * Self-service registration. Always creates a STUDENT account — RegisterRequest
      * has no `role` field, so a client has no channel to request a privileged role.
-     * ADMIN must use {@link #createUserByAdmin(CreateUserRequest)} to grant other roles.
+     * ADMIN must use {@link #createUserByAdmin(CreateUserRequest, User)} to grant other roles.
      */
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -71,7 +72,7 @@ public class AuthenticationService {
      * ADMIN-only account creation with an explicit role. Only reachable via
      * POST /v1/users, which requires ROLE_ADMIN (see UserController).
      */
-    public AuthResponse createUserByAdmin(CreateUserRequest request) {
+    public AuthResponse createUserByAdmin(CreateUserRequest request, User actor) {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new DuplicateResourceException("Username already exists");
         }
@@ -93,6 +94,9 @@ public class AuthenticationService {
 
         User savedUser = userRepository.save(user);
         String refreshToken = jwtTokenProvider.generateRefreshToken(savedUser);
+
+        auditLogService.log(actor, "CREATE", "User", savedUser.getId(),
+                java.util.Map.of("username", savedUser.getUsername(), "role", savedUser.getRole().name()));
 
         return buildAuthResponse(savedUser, null, refreshToken);
     }

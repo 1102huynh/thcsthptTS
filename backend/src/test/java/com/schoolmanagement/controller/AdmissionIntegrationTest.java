@@ -60,27 +60,39 @@ class AdmissionIntegrationTest {
     private StudentRepository studentRepository;
     @Autowired
     private UserRepository userRepository;
-
-    /**
-     * @WithMockUser's SecurityContext lives on the test method's own thread
-     * (ThreadLocal) — invisible to the pool threads the concurrency test
-     * below dispatches MockMvc calls from. Attaching authentication directly
-     * to each request like this works regardless of which thread executes it.
-     * Transient (unsaved) principal — fine wherever the endpoint only checks
-     * @PreAuthorize and never persists a reference to the caller (approve-and-
-     * create takes no Authentication at all). Endpoints that do persist the
-     * caller (e.g. updateStatus's reviewedBy) need asUser() with a real,
-     * already-saved User instead — a transient one has no id to put in the FK.
-     */
-    private RequestPostProcessor asAdmin() {
-        User admin = User.builder().role(Role.ADMIN).username("itest-admin-principal").build();
-        return authentication(new UsernamePasswordAuthenticationToken(
-                admin, null, java.util.List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
-    }
+    @Autowired
+    private com.schoolmanagement.repository.AuditLogRepository auditLogRepository;
 
     private RequestPostProcessor asUser(User user, String role) {
         return authentication(new UsernamePasswordAuthenticationToken(
                 user, null, java.util.List.of(new SimpleGrantedAuthority("ROLE_" + role))));
+    }
+
+    /**
+     * approve-and-create now audits itself (3.9) — AuditLogService persists
+     * an AuditLog row whose actor FK must reference a real, already-saved
+     * User, so every caller (including the two NOT_SUPPORTED concurrency
+     * tests below, whose SecurityContext isn't visible to their pool threads
+     * anyway — see their own Javadoc) needs a real persisted admin now, not
+     * a transient principal.
+     */
+    /**
+     * The NOT_SUPPORTED tests' admin user is real/persisted (see saveAdmin's
+     * Javadoc) - a successful approve-and-create through it leaves a real
+     * AuditLog row with an FK to that user, which must be deleted before the
+     * user itself can be (no ON DELETE CASCADE on audit_logs.actor_id).
+     */
+    private void deleteAuditLogsFor(User actor) {
+        auditLogRepository.deleteAll(
+                auditLogRepository.search(null, actor.getId(), org.springframework.data.domain.Pageable.unpaged()).getContent());
+    }
+
+    private User saveAdmin(String usernameSuffix) {
+        return userRepository.save(User.builder()
+                .username("itest.admission.admin." + usernameSuffix)
+                .email("itest.admission.admin." + usernameSuffix + "@school.com")
+                .password("{noop}Str0ngPassw0rd!")
+                .firstName("Integration").lastName("Admin").role(Role.ADMIN).enabled(true).build());
     }
 
     private String submitPayload(String phone, int gradeLevel) throws Exception {
@@ -237,24 +249,26 @@ class AdmissionIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
     void approveAndCreate_beforeApproved_returns400() throws Exception {
         AdmissionApplication application = admissionApplicationRepository.save(newApplication("ITEST NotApproved"));
+        User admin = saveAdmin("beforeapproved");
 
         mockMvc.perform(post("/v1/admissions/{id}/approve-and-create", application.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(approveRequest("itest.notapproved"))))
+                        .content(objectMapper.writeValueAsString(approveRequest("itest.notapproved")))
+                        .with(asUser(admin, "ADMIN")))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
     void approveAndCreate_persistsUserAndStudentFromApplicationData() throws Exception {
         AdmissionApplication application = admissionApplicationRepository.save(approvedApplication("Tran Thi ITEST"));
+        User admin = saveAdmin("persists");
 
         mockMvc.perform(post("/v1/admissions/{id}/approve-and-create", application.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(approveRequest("itest.approved1"))))
+                        .content(objectMapper.writeValueAsString(approveRequest("itest.approved1")))
+                        .with(asUser(admin, "ADMIN")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username").value("itest.approved1"))
                 .andExpect(jsonPath("$.rollNumber").value("ITEST-ROLL-1"));
@@ -268,23 +282,24 @@ class AdmissionIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
     void approveAndCreate_secondAttempt_returns409() throws Exception {
         AdmissionApplication application = admissionApplicationRepository.save(approvedApplication("ITEST Twice"));
+        User admin = saveAdmin("twice");
 
         mockMvc.perform(post("/v1/admissions/{id}/approve-and-create", application.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(approveRequest("itest.twice1"))))
+                        .content(objectMapper.writeValueAsString(approveRequest("itest.twice1")))
+                        .with(asUser(admin, "ADMIN")))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/v1/admissions/{id}/approve-and-create", application.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(approveRequest("itest.twice2"))))
+                        .content(objectMapper.writeValueAsString(approveRequest("itest.twice2")))
+                        .with(asUser(admin, "ADMIN")))
                 .andExpect(status().isConflict());
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
     void approveAndCreate_duplicateUsername_returns409() throws Exception {
         // Own dedicated User, not a hardcoded seeded username ("admin") - this
         // test previously assumed TEST_DATA_CORRECTED.sql had already been run
@@ -295,11 +310,13 @@ class AdmissionIntegrationTest {
                 .password("{noop}Str0ngPassw0rd!")
                 .firstName("Existing").lastName("User").role(Role.ADMIN).enabled(true).build());
         AdmissionApplication application = admissionApplicationRepository.save(approvedApplication("ITEST DupUser"));
+        User admin = saveAdmin("dupusername");
         ApproveAndCreateRequest request = approveRequest("itest.existing.username");
 
         mockMvc.perform(post("/v1/admissions/{id}/approve-and-create", application.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(request))
+                        .with(asUser(admin, "ADMIN")))
                 .andExpect(status().isConflict());
     }
 
@@ -324,6 +341,10 @@ class AdmissionIntegrationTest {
         Long firstId = first.getId();
         Long secondId = second.getId();
         String sharedRollNumber = "ITEST-ROLL-RACE";
+        // NOT_SUPPORTED suspends this test's transaction entirely, so this save
+        // is NOT auto-rolled-back either - cleaned up in the finally block below
+        // alongside the rest of this test's manually-tracked rows.
+        User admin = saveAdmin("rolldup-" + System.nanoTime());
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         CountDownLatch ready = new CountDownLatch(2);
@@ -347,7 +368,7 @@ class AdmissionIntegrationTest {
                 int status = mockMvc.perform(post("/v1/admissions/{id}/approve-and-create", applicationId)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
-                                .with(asAdmin()))
+                                .with(asUser(admin, "ADMIN")))
                         .andReturn().getResponse().getStatus();
                 if (status == 201) {
                     successCount.incrementAndGet();
@@ -374,6 +395,8 @@ class AdmissionIntegrationTest {
             studentRepository.findByRollNumber(sharedRollNumber).ifPresent(studentRepository::delete);
             usernamesToCleanUp.forEach(username ->
                     userRepository.findByUsername(username).ifPresent(userRepository::delete));
+            deleteAuditLogsFor(admin);
+            userRepository.delete(admin);
         }
     }
 
@@ -403,6 +426,7 @@ class AdmissionIntegrationTest {
     void approveAndCreate_concurrentCalls_onlyOneSucceeds() throws Exception {
         AdmissionApplication application = admissionApplicationRepository.save(approvedApplication("ITEST Concurrent"));
         Long applicationId = application.getId();
+        User admin = saveAdmin("concurrent-" + System.nanoTime());
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         CountDownLatch ready = new CountDownLatch(2);
@@ -434,7 +458,7 @@ class AdmissionIntegrationTest {
                 int status = mockMvc.perform(post("/v1/admissions/{id}/approve-and-create", applicationId)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
-                                .with(asAdmin()))
+                                .with(asUser(admin, "ADMIN")))
                         .andReturn().getResponse().getStatus();
                 if (status == 201) {
                     successCount.incrementAndGet();
@@ -462,6 +486,8 @@ class AdmissionIntegrationTest {
                     studentRepository.findByRollNumber(roll).ifPresent(studentRepository::delete));
             usernamesToCleanUp.forEach(username ->
                     userRepository.findByUsername(username).ifPresent(userRepository::delete));
+            deleteAuditLogsFor(admin);
+            userRepository.delete(admin);
         }
     }
 

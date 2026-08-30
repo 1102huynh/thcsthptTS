@@ -144,3 +144,7 @@ ENV/
 *~.nib
 local.properties
 
+# Local document-attachment storage (3.9) — real uploaded files, never
+# committed. See app.uploads.dir / UPLOAD_DIR.
+/uploads/
+

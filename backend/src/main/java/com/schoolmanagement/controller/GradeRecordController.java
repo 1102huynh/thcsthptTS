@@ -36,8 +36,10 @@ public class GradeRecordController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
     @Operation(summary = "Update a grade record")
-    public ResponseEntity<GradeRecordDTO> updateGradeRecord(@PathVariable Long id, @Valid @RequestBody GradeRecord request) {
-        return new ResponseEntity<>(gradeRecordService.updateGradeRecord(id, request), HttpStatus.OK);
+    public ResponseEntity<GradeRecordDTO> updateGradeRecord(
+            @PathVariable Long id, @Valid @RequestBody GradeRecord request, Authentication authentication) {
+        User actor = (User) authentication.getPrincipal();
+        return new ResponseEntity<>(gradeRecordService.updateGradeRecord(id, request, actor), HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
@@ -52,8 +54,9 @@ public class GradeRecordController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
     @Operation(summary = "Delete a grade record")
-    public ResponseEntity<Void> deleteGradeRecord(@PathVariable Long id) {
-        gradeRecordService.deleteGradeRecord(id);
+    public ResponseEntity<Void> deleteGradeRecord(@PathVariable Long id, Authentication authentication) {
+        User actor = (User) authentication.getPrincipal();
+        gradeRecordService.deleteGradeRecord(id, actor);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 

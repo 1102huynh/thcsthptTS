@@ -1,10 +1,14 @@
 package com.schoolmanagement.service;
 
 import com.schoolmanagement.dto.StudentDTO;
+import com.schoolmanagement.entity.DocumentAttachment;
+import com.schoolmanagement.entity.DocumentOwnerType;
 import com.schoolmanagement.entity.Student;
 import com.schoolmanagement.entity.StudentStatus;
+import com.schoolmanagement.entity.User;
 import com.schoolmanagement.exception.DuplicateResourceException;
 import com.schoolmanagement.exception.ResourceNotFoundException;
+import com.schoolmanagement.repository.DocumentAttachmentRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -13,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,6 +26,9 @@ import java.util.stream.Collectors;
 public class StudentService {
 
     private StudentRepository studentRepository;
+    private AuditLogService auditLogService;
+    private DocumentAttachmentRepository documentAttachmentRepository;
+    private FileStorageService fileStorageService;
 
     public StudentDTO createStudent(Student student) {
         if (studentRepository.existsByRollNumber(student.getRollNumber())) {
@@ -120,10 +128,24 @@ public class StudentService {
                 .collect(Collectors.toList());
     }
 
-    public void deleteStudent(Long id) {
+    public void deleteStudent(Long id, User actor) {
         Student student = studentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + id));
+        String rollNumber = student.getRollNumber();
+
+        // document_attachments.owner_id has no FK to students (it's polymorphic
+        // - see DocumentOwnerType) so nothing at the DB level would catch this:
+        // without cleaning these up first, deleting the student would silently
+        // leave orphaned DocumentAttachment rows and their files on disk with
+        // no owner and no code path that will ever remove them.
+        List<DocumentAttachment> documents = documentAttachmentRepository
+                .findByOwnerTypeAndOwnerIdOrderByUploadedAtDesc(DocumentOwnerType.STUDENT, id);
+        documentAttachmentRepository.deleteAll(documents);
+        documents.forEach(doc -> fileStorageService.delete(doc.getStoredFileName()));
+
         studentRepository.delete(student);
+
+        auditLogService.log(actor, "DELETE", "Student", id, Map.of("rollNumber", rollNumber));
     }
 
     private StudentDTO mapToDTO(Student student) {
