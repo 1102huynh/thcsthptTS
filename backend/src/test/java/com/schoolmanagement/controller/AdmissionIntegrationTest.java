@@ -286,8 +286,16 @@ class AdmissionIntegrationTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void approveAndCreate_duplicateUsername_returns409() throws Exception {
+        // Own dedicated User, not a hardcoded seeded username ("admin") - this
+        // test previously assumed TEST_DATA_CORRECTED.sql had already been run
+        // against the DB, which broke on a schema-only fresh install (e.g. via
+        // create_database_from_scratch.sql) where no such seed data exists.
+        userRepository.save(User.builder()
+                .username("itest.existing.username").email("itest.existing.username@school.com")
+                .password("{noop}Str0ngPassw0rd!")
+                .firstName("Existing").lastName("User").role(Role.ADMIN).enabled(true).build());
         AdmissionApplication application = admissionApplicationRepository.save(approvedApplication("ITEST DupUser"));
-        ApproveAndCreateRequest request = approveRequest("admin"); // seeded username, already exists
+        ApproveAndCreateRequest request = approveRequest("itest.existing.username");
 
         mockMvc.perform(post("/v1/admissions/{id}/approve-and-create", application.getId())
                         .contentType(MediaType.APPLICATION_JSON)
