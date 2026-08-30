@@ -16,8 +16,7 @@ import {
 } from './pages/ManagementPages';
 
 // Layout
-import Navbar from './components/Navbar';
-import Sidebar from './components/Sidebar';
+import AppShell from './components/layout/AppShell';
 
 // Services
 import { getCurrentUser } from './services/authService';
@@ -26,7 +25,6 @@ import { getCurrentUser } from './services/authService';
 function App() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     // Check if user is already logged in
@@ -60,24 +58,18 @@ function App() {
   return (
     <Router>
       {user ? (
-        <div className="app-container">
-          <Navbar user={user} onLogout={handleLogout} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-          <div className="app-body">
-            <Sidebar isOpen={isSidebarOpen} userRole={user.role} />
-            <div className="main-content">
-              <Routes>
-                <Route path="/" element={<Dashboard user={user} />} />
-                <Route path="/staff" element={<StaffManagement />} />
-                <Route path="/students" element={<StudentManagement />} />
-                <Route path="/library" element={<LibraryManagement />} />
-                <Route path="/attendance" element={<AttendanceManagement />} />
-                <Route path="/grades" element={<GradeManagement />} />
-                <Route path="/fees" element={<FeeManagement />} />
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            </div>
-          </div>
-        </div>
+        <AppShell user={user} onLogout={handleLogout}>
+          <Routes>
+            <Route path="/" element={<Dashboard user={user} />} />
+            <Route path="/staff" element={<StaffManagement />} />
+            <Route path="/students" element={<StudentManagement />} />
+            <Route path="/library" element={<LibraryManagement />} />
+            <Route path="/attendance" element={<AttendanceManagement />} />
+            <Route path="/grades" element={<GradeManagement />} />
+            <Route path="/fees" element={<FeeManagement />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </AppShell>
       ) : (
         <Routes>
           <Route path="/" element={<LoginPage onLogin={handleLogin} />} />
