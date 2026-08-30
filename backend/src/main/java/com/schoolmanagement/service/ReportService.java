@@ -15,7 +15,10 @@ import com.schoolmanagement.dto.SubjectYearAverageDTO;
 import com.schoolmanagement.entity.AcademicYear;
 import com.schoolmanagement.entity.Attendance;
 import com.schoolmanagement.entity.AttendanceStatus;
+import com.schoolmanagement.entity.ConductRating;
 import com.schoolmanagement.entity.ConductRecord;
+import com.schoolmanagement.entity.FeeStatus;
+import com.schoolmanagement.entity.PromotionDecision;
 import com.schoolmanagement.entity.PromotionRecord;
 import com.schoolmanagement.entity.SchoolClass;
 import com.schoolmanagement.entity.Semester;
@@ -30,7 +33,6 @@ import com.schoolmanagement.repository.PromotionRecordRepository;
 import com.schoolmanagement.repository.SchoolClassRepository;
 import com.schoolmanagement.repository.SemesterRepository;
 import com.schoolmanagement.repository.StudentRepository;
-import com.schoolmanagement.security.StudentAccessGuard;
 import com.schoolmanagement.util.VietnamesePdfFonts;
 import lombok.AllArgsConstructor;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -80,7 +82,6 @@ public class ReportService {
     private PromotionRecordRepository promotionRecordRepository;
     private SchoolClassRepository schoolClassRepository;
     private AttendanceRepository attendanceRepository;
-    private StudentAccessGuard studentAccessGuard;
     private VietnamesePdfFonts fonts;
 
     // ---------------------------------------------------------------
@@ -88,17 +89,19 @@ public class ReportService {
     // ---------------------------------------------------------------
 
     public byte[] generateStudentTranscriptPdf(Long studentId, Long academicYearId, User requester) {
-        // Same object-level check every other per-student endpoint uses; also
-        // re-enforced (harmlessly) inside getStudentYearSummary below.
-        studentAccessGuard.enforceCanAccessStudent(studentId, requester);
+        // getStudentYearSummary below already runs the same
+        // studentAccessGuard.enforceCanAccessStudent object-level check this
+        // method would otherwise duplicate - no separate call here. Nothing
+        // is added to the response before that check runs, so calling it
+        // first (rather than after the findById calls below) isn't required
+        // for correctness, just tidiness.
+        List<SubjectYearAverageDTO> subjectAverages =
+                gradeRecordService.getStudentYearSummary(studentId, academicYearId, requester);
 
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + studentId));
         AcademicYear academicYear = academicYearRepository.findById(academicYearId)
                 .orElseThrow(() -> new ResourceNotFoundException("Academic year not found with id: " + academicYearId));
-
-        List<SubjectYearAverageDTO> subjectAverages =
-                gradeRecordService.getStudentYearSummary(studentId, academicYearId, requester);
 
         Optional<Semester> hk1 = semesterRepository.findByAcademicYearAndName(academicYear, SemesterName.HK1);
         Optional<Semester> hk2 = semesterRepository.findByAcademicYearAndName(academicYear, SemesterName.HK2);
@@ -153,7 +156,12 @@ public class ReportService {
         addPlainRow(table, "Họ tên học sinh", studentDisplayName(student));
         addPlainRow(table, "Mã học sinh", student.getRollNumber());
         addPlainRow(table, "Ngày sinh", student.getDateOfBirth() != null ? VN_DATE.format(student.getDateOfBirth()) : "—");
-        addPlainRow(table, "Lớp", (student.getClassName() != null ? student.getClassName() : "—")
+        // "hiện tại" (current), not "as of the requested academic year" - Student
+        // has no per-year class-history record, only its current className/
+        // section, so a transcript pulled for a past year can't show which
+        // class the student was actually in back then. Labelled explicitly
+        // rather than silently implying this is accurate for academicYear.
+        addPlainRow(table, "Lớp (hiện tại)", (student.getClassName() != null ? student.getClassName() : "—")
                 + (student.getSection() != null ? " - " + student.getSection() : ""));
         addPlainRow(table, "Năm học", academicYear.getName());
         return table;
@@ -191,13 +199,13 @@ public class ReportService {
 
         addHeaderCell(table, "Học kỳ 1");
         addHeaderCell(table, "Học kỳ 2");
-        addPlainCell(table, hk1.map(c -> vietnameseConductLabel(c.getRating().name())).orElse("Chưa đánh giá"));
-        addPlainCell(table, hk2.map(c -> vietnameseConductLabel(c.getRating().name())).orElse("Chưa đánh giá"));
+        addPlainCell(table, hk1.map(c -> vietnameseConductLabel(c.getRating())).orElse("Chưa đánh giá"));
+        addPlainCell(table, hk2.map(c -> vietnameseConductLabel(c.getRating())).orElse("Chưa đánh giá"));
         return table;
     }
 
     private Paragraph promotionParagraph(PromotionRecord promotion) {
-        String decisionLabel = vietnamesePromotionLabel(promotion.getDecision().name());
+        String decisionLabel = vietnamesePromotionLabel(promotion.getDecision());
         String text = decisionLabel
                 + (promotion.getDecisionDate() != null ? " — ngày " + VN_DATE.format(promotion.getDecisionDate()) : "");
         Paragraph p = new Paragraph(text, fonts.regular(11));
@@ -220,16 +228,29 @@ public class ReportService {
      * className/section reused across years would over-match. Pre-existing
      * limitation of that roster convention, not new to this endpoint.
      */
+    private static final long MAX_ATTENDANCE_REPORT_DAYS = 366;
+
     public byte[] generateClassAttendanceExcel(Long classId, LocalDate from, LocalDate to) {
         if (from == null || to == null || to.isBefore(from)) {
             throw new IllegalArgumentException("'from' phải có giá trị và không được sau 'to'");
+        }
+        // One Excel column per calendar day - without a cap, an accidental wide
+        // range (e.g. a typo'd year) would push the column count past XSSF's
+        // 16,384-column limit and throw deep inside POI, uncaught by this
+        // method's own catch block below, surfacing as an opaque 500 instead
+        // of a clean 400. 366 covers the realistic max use case (one full
+        // academic year) with room to spare.
+        long spanDays = java.time.temporal.ChronoUnit.DAYS.between(from, to) + 1;
+        if (spanDays > MAX_ATTENDANCE_REPORT_DAYS) {
+            throw new IllegalArgumentException(
+                    "Khoảng thời gian tối đa cho báo cáo điểm danh là " + MAX_ATTENDANCE_REPORT_DAYS + " ngày (khoảng 1 năm học)");
         }
 
         SchoolClass schoolClass = schoolClassRepository.findById(classId)
                 .orElseThrow(() -> new ResourceNotFoundException("Class not found with id: " + classId));
 
         List<Student> roster = studentRepository
-                .findByClassNameAndSection(schoolClass.getClassName(), schoolClass.getSection())
+                .findByClassNameAndSectionWithUser(schoolClass.getClassName(), schoolClass.getSection())
                 .stream()
                 .sorted((a, b) -> a.getRollNumber().compareToIgnoreCase(b.getRollNumber()))
                 .toList();
@@ -322,11 +343,33 @@ public class ReportService {
                 row.createCell(col++).setCellValue(absent);
                 row.createCell(col++).setCellValue(leaveOrSick);
                 row.createCell(col++).setCellValue(recorded);
-                row.createCell(col).setCellValue(recorded > 0 ? Math.round(present * 10000.0 / recorded) / 100.0 : 0);
+                // "0%" and "no data at all" (e.g. a student who transferred in
+                // partway through [from, to]) must not look identical - a real
+                // 0% would mean absent every single recorded day, not "nothing
+                // recorded yet". Written as text specifically so it can't be
+                // misread as the number zero.
+                if (recorded > 0) {
+                    row.createCell(col).setCellValue(Math.round(present * 10000.0 / recorded) / 100.0);
+                } else {
+                    row.createCell(col).setCellValue("—");
+                }
             }
 
-            for (int c = 0; c <= lastColIndex; c++) {
-                sheet.autoSizeColumn(c);
+            // Fixed widths instead of sheet.autoSizeColumn(): autoSizeColumn
+            // renders every cell via java.awt.Font/FontRenderContext to measure
+            // it, which is both needless work for a layout this predictable
+            // (fixed-width day labels and counts) and a known source of a
+            // runtime Error on headless JRE images with no fontconfig bundled -
+            // a risk with no upside here since these column contents don't
+            // vary enough to need real measurement.
+            sheet.setColumnWidth(0, 14 * 256);
+            sheet.setColumnWidth(1, 24 * 256);
+            int dateColumnsEnd = 2 + dates.size();
+            for (int c = 2; c < dateColumnsEnd; c++) {
+                sheet.setColumnWidth(c, 6 * 256);
+            }
+            for (int c = dateColumnsEnd; c <= lastColIndex; c++) {
+                sheet.setColumnWidth(c, 13 * 256);
             }
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -371,9 +414,16 @@ public class ReportService {
     }
 
     private String studentDisplayName(Student student) {
-        return student.getUser() != null
-                ? student.getUser().getFirstName() + " " + student.getUser().getLastName()
-                : "(chưa liên kết tài khoản)";
+        if (student.getUser() == null) {
+            return "(chưa liên kết tài khoản)";
+        }
+        // firstName/lastName are plain nullable columns (no @NotBlank on User) -
+        // guarding against just user == null isn't enough to keep the literal
+        // text "null" off an official document if either name is missing.
+        String firstName = student.getUser().getFirstName();
+        String lastName = student.getUser().getLastName();
+        String fullName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
+        return fullName.isEmpty() ? "(chưa có tên)" : fullName;
     }
 
     // ---------------------------------------------------------------
@@ -419,7 +469,7 @@ public class ReportService {
             addPlainRow(table, "Ngày thu", fee.getPaidDate() != null ? VN_DATE.format(fee.getPaidDate()) : "—");
             addPlainRow(table, "Phương thức", fee.getPaymentMethod() != null ? fee.getPaymentMethod() : "—");
             addPlainRow(table, "Mã giao dịch", fee.getTransactionId() != null ? fee.getTransactionId() : "—");
-            addPlainRow(table, "Trạng thái", vietnameseFeeStatusLabel(fee.getStatus().name()));
+            addPlainRow(table, "Trạng thái", vietnameseFeeStatusLabel(fee.getStatus()));
             document.add(table);
 
             if (fee.getRemarks() != null && !fee.getRemarks().isBlank()) {
@@ -476,35 +526,37 @@ public class ReportService {
         return amount != null ? String.format("%,.0f đ", amount) : "—";
     }
 
-    private String vietnameseConductLabel(String rating) {
+    // Switched on the enum constant itself, not .name(), so the compiler
+    // forces every one of these to be updated (or fails the build) the moment
+    // a new constant is added to ConductRating/PromotionDecision/FeeStatus -
+    // a .name()-keyed String switch's silent `default -> rawValue` would
+    // otherwise print an unmapped enum name straight onto an official PDF.
+    private String vietnameseConductLabel(ConductRating rating) {
         return switch (rating) {
-            case "TOT" -> "Tốt";
-            case "KHA" -> "Khá";
-            case "TRUNG_BINH" -> "Trung bình";
-            case "YEU" -> "Yếu";
-            default -> rating;
+            case TOT -> "Tốt";
+            case KHA -> "Khá";
+            case TRUNG_BINH -> "Trung bình";
+            case YEU -> "Yếu";
         };
     }
 
-    private String vietnamesePromotionLabel(String decision) {
+    private String vietnamesePromotionLabel(PromotionDecision decision) {
         return switch (decision) {
-            case "LEN_LOP" -> "Được lên lớp";
-            case "O_LAI" -> "Ở lại lớp";
-            case "TOT_NGHIEP" -> "Tốt nghiệp";
-            case "RA_TRUONG" -> "Rời trường";
-            default -> decision;
+            case LEN_LOP -> "Được lên lớp";
+            case O_LAI -> "Ở lại lớp";
+            case TOT_NGHIEP -> "Tốt nghiệp";
+            case RA_TRUONG -> "Rời trường";
         };
     }
 
-    private String vietnameseFeeStatusLabel(String status) {
+    private String vietnameseFeeStatusLabel(FeeStatus status) {
         return switch (status) {
-            case "PENDING" -> "Chưa thu";
-            case "PARTIAL_PAID" -> "Thu một phần";
-            case "PAID" -> "Đã thu đủ";
-            case "OVERDUE" -> "Quá hạn";
-            case "EXEMPTED" -> "Miễn giảm";
-            case "CANCELLED" -> "Đã huỷ";
-            default -> status;
+            case PENDING -> "Chưa thu";
+            case PARTIAL_PAID -> "Thu một phần";
+            case PAID -> "Đã thu đủ";
+            case OVERDUE -> "Quá hạn";
+            case EXEMPTED -> "Miễn giảm";
+            case CANCELLED -> "Đã huỷ";
         };
     }
 }

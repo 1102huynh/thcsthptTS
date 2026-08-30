@@ -116,6 +116,7 @@ class ReportIntegrationTest {
     private User studentUser;
     private User otherStudentUser;
     private User adminUser;
+    private User principalUser;
 
     @BeforeEach
     void setUp() {
@@ -179,6 +180,10 @@ class ReportIntegrationTest {
                 .username("itest.rpt.admin").email("itest.rpt.admin@school.com")
                 .password(passwordEncoder.encode("Str0ngPassw0rd!"))
                 .firstName("Integration").lastName("Admin").role(Role.ADMIN).enabled(true).build());
+        principalUser = userRepository.save(User.builder()
+                .username("itest.rpt.principal").email("itest.rpt.principal@school.com")
+                .password(passwordEncoder.encode("Str0ngPassw0rd!"))
+                .firstName("Integration").lastName("Principal").role(Role.PRINCIPAL).enabled(true).build());
     }
 
     private RequestPostProcessor asUser(User user, String role) {
@@ -230,6 +235,19 @@ class ReportIntegrationTest {
                         .param("academicYearId", "9999999")
                         .with(asUser(adminUser, "ADMIN")))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void studentTranscript_asPrincipal_returns403() throws Exception {
+        // Deliberately the SAME role set as GradeRecordController.getStudentYearSummary
+        // (ADMIN/TEACHER/STUDENT/PARENT, no PRINCIPAL) - a report is a different
+        // *shape* of that same data, not a different access policy. Regression
+        // test for a self-review finding: this endpoint originally granted
+        // PRINCIPAL access the underlying grades endpoint never has.
+        mockMvc.perform(get("/v1/reports/student/{id}/transcript", student.getId())
+                        .param("academicYearId", academicYear.getId().toString())
+                        .with(asUser(principalUser, "PRINCIPAL")))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -316,12 +334,55 @@ class ReportIntegrationTest {
     }
 
     @Test
+    void classAttendance_asPrincipal_returns403() throws Exception {
+        // Same role set as ConductController.getClassSemesterRoster (ADMIN/TEACHER
+        // only) - regression test for the PRINCIPAL-widening self-review finding.
+        mockMvc.perform(get("/v1/reports/class/{id}/attendance", schoolClass.getId())
+                        .param("from", "2099-09-01")
+                        .param("to", "2099-09-05")
+                        .with(asUser(principalUser, "PRINCIPAL")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @WithMockUser(roles = "ADMIN")
     void classAttendance_nonexistentClass_returns404() throws Exception {
         mockMvc.perform(get("/v1/reports/class/{id}/attendance", 9_999_999L)
                         .param("from", "2099-09-01")
                         .param("to", "2099-09-05"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void classAttendance_dateRangeTooWide_returns400() throws Exception {
+        mockMvc.perform(get("/v1/reports/class/{id}/attendance", schoolClass.getId())
+                        .param("from", "2099-01-01")
+                        .param("to", "2101-01-01"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void classAttendance_noDataForStudent_showsDashNotZeroPercent() throws Exception {
+        // No attendance rows saved for `student` in this range at all - the
+        // "Chuyên cần (%)" cell must not render as the number 0 (which would
+        // look identical to a genuine 0% attendance record).
+        byte[] excel = mockMvc.perform(get("/v1/reports/class/{id}/attendance", schoolClass.getId())
+                        .param("from", "2099-09-01")
+                        .param("to", "2099-09-02"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
+
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook =
+                     new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(excel))) {
+            org.apache.poi.ss.usermodel.Row dataRow = workbook.getSheetAt(0).getRow(3);
+            // columns: 0=Mã HS, 1=Họ tên, 2-3=dates, 4=Có mặt, 5=Vắng, 6=Phép/Ốm, 7=Tổng ghi nhận, 8=Chuyên cần(%)
+            Assertions.assertEquals(0.0, dataRow.getCell(7).getNumericCellValue(), "Tổng ghi nhận");
+            Assertions.assertEquals(org.apache.poi.ss.usermodel.CellType.STRING, dataRow.getCell(8).getCellType(),
+                    "Chuyên cần (%) must be text (\"—\"), not the number 0, when there's no data");
+            Assertions.assertEquals("—", dataRow.getCell(8).getStringCellValue());
+        }
     }
 
     // ---------------------------------------------------------------
@@ -365,6 +426,21 @@ class ReportIntegrationTest {
 
         mockMvc.perform(get("/v1/reports/fees/receipt/{feeId}", fee.getId())
                         .with(asUser(otherStudentUser, "STUDENT")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void feeReceipt_asPrincipal_returns403() throws Exception {
+        // Same role set as FeeController.getFeeById (ADMIN/ACCOUNTANT/STUDENT/
+        // PARENT, no PRINCIPAL) - regression test for the PRINCIPAL-widening
+        // self-review finding on financial data specifically.
+        Fee fee = feeRepository.save(Fee.builder()
+                .student(student).academicYear("2099-2100").feeType("Học phí học kỳ 1")
+                .amount(500000.0).paidAmount(500000.0).remainingAmount(0.0)
+                .status(FeeStatus.PAID).build());
+
+        mockMvc.perform(get("/v1/reports/fees/receipt/{feeId}", fee.getId())
+                        .with(asUser(principalUser, "PRINCIPAL")))
                 .andExpect(status().isForbidden());
     }
 

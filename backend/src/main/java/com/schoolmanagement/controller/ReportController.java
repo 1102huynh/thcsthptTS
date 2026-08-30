@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,15 @@ import java.time.LocalDate;
  * access (a STUDENT/PARENT only reaching their own/child's data) is enforced
  * inside {@link ReportService}, reusing the same guards the underlying data's
  * own endpoints already use — see the Javadoc on each ReportService method.
+ *
+ * <p>Each endpoint's role list is deliberately kept identical to the
+ * equivalent existing endpoint for the same underlying data (see the
+ * per-method comments below) rather than independently deciding who should
+ * see it — a report is a different *shape* of the same data, not a different
+ * *policy*. If PRINCIPAL (or any other role) should see more than the
+ * existing grades/fees/conduct endpoints already allow, that's a deliberate
+ * access-policy change to make consistently across all of them, not a
+ * side effect of adding an export endpoint.
  */
 @RestController
 @RequestMapping("/v1/reports")
@@ -35,50 +45,53 @@ public class ReportController {
     private ReportService reportService;
 
     @GetMapping("/student/{id}/transcript")
-    @PreAuthorize("hasAnyRole('ADMIN','PRINCIPAL','TEACHER','STUDENT','PARENT')")
+    // Same role set as GradeRecordController.getStudentYearSummary
+    // (/v1/grade-records/student/{id}/year-summary), the endpoint this
+    // transcript is built from.
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER','STUDENT','PARENT')")
     @Operation(summary = "Xuất bảng điểm/học bạ PDF cho một học sinh trong một năm học",
             description = "STUDENT/PARENT chỉ xem được của chính mình/con mình — xem StudentAccessGuard.")
     public ResponseEntity<byte[]> studentTranscript(
             @PathVariable Long id, @RequestParam Long academicYearId, Authentication authentication) {
         User requester = (User) authentication.getPrincipal();
         byte[] pdf = reportService.generateStudentTranscriptPdf(id, academicYearId, requester);
-        return pdfResponse(pdf, "hoc-ba-hs" + id + "-nam" + academicYearId + ".pdf");
+        return fileResponse(pdf, "hoc-ba-hs" + id + "-nam" + academicYearId + ".pdf", "application/pdf");
     }
 
     @GetMapping("/class/{id}/attendance")
-    @PreAuthorize("hasAnyRole('ADMIN','PRINCIPAL','TEACHER')")
-    @Operation(summary = "Xuất bảng điểm danh Excel cho một lớp trong khoảng ngày [from, to]")
+    // Same role set as ConductController.getClassSemesterRoster
+    // (/v1/conduct/class/{classId}/semester/{semesterId}), the closest
+    // existing "whole-class roster export" endpoint.
+    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
+    @Operation(summary = "Xuất bảng điểm danh Excel cho một lớp trong khoảng ngày [from, to]",
+            description = "Khoảng [from, to] tối đa 366 ngày (một năm học) — mỗi ngày là một cột trong file Excel.")
     public ResponseEntity<byte[]> classAttendance(
             @PathVariable Long id,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         byte[] excel = reportService.generateClassAttendanceExcel(id, from, to);
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentDisposition(org.springframework.http.ContentDisposition
-                .attachment().filename("diem-danh-lop" + id + ".xlsx").build());
-        return ResponseEntity.ok()
-                .headers(headers)
-                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                .body(excel);
+        return fileResponse(excel, "diem-danh-lop" + id + ".xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     }
 
     @GetMapping("/fees/receipt/{feeId}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT','PRINCIPAL','STUDENT','PARENT')")
+    // Same role set as FeeController.getFeeById (/v1/fees/{id}), the
+    // endpoint this receipt's data comes from.
+    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT','STUDENT','PARENT')")
     @Operation(summary = "Xuất biên lai thu học phí PDF cho một khoản thu đã có thanh toán",
             description = "Trả về 400 nếu khoản thu chưa ghi nhận thanh toán nào (paidAmount rỗng/0).")
     public ResponseEntity<byte[]> feeReceipt(@PathVariable Long feeId, Authentication authentication) {
         User requester = (User) authentication.getPrincipal();
         byte[] pdf = reportService.generateFeeReceiptPdf(feeId, requester);
-        return pdfResponse(pdf, "bien-lai-hp" + feeId + ".pdf");
+        return fileResponse(pdf, "bien-lai-hp" + feeId + ".pdf", "application/pdf");
     }
 
-    private ResponseEntity<byte[]> pdfResponse(byte[] pdf, String filename) {
+    private ResponseEntity<byte[]> fileResponse(byte[] body, String filename, String contentType) {
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentDisposition(org.springframework.http.ContentDisposition
-                .attachment().filename(filename).build());
+        headers.setContentDisposition(ContentDisposition.attachment().filename(filename).build());
         return ResponseEntity.ok()
                 .headers(headers)
-                .contentType(MediaType.parseMediaType("application/pdf"))
-                .body(pdf);
+                .contentType(MediaType.parseMediaType(contentType))
+                .body(body);
     }
 }
