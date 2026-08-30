@@ -264,6 +264,41 @@ class ReportIntegrationTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
+    void classAttendance_leavePendingExcludedFromRecordedAndPercentage() throws Exception {
+        // A pending (unresolved) leave request is neither a confirmed absence
+        // nor a confirmed excused day - it must not count toward "recorded" or
+        // move the chuyên cần % in either direction until it's actually decided.
+        LocalDate day1 = LocalDate.of(2099, 9, 1);
+        LocalDate day2 = LocalDate.of(2099, 9, 2);
+        attendanceRepository.save(Attendance.builder()
+                .student(student).attendanceDate(day1).status(AttendanceStatus.PRESENT).build());
+        attendanceRepository.save(Attendance.builder()
+                .student(student).attendanceDate(day2).status(AttendanceStatus.LEAVE_PENDING).build());
+
+        byte[] excel = mockMvc.perform(get("/v1/reports/class/{id}/attendance", schoolClass.getId())
+                        .param("from", day1.toString())
+                        .param("to", day2.toString()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
+
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook =
+                     new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(excel))) {
+            org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(0);
+            // row 0 = legend, row 1 = blank separator, row 2 = header, row 3 = this student.
+            org.apache.poi.ss.usermodel.Row dataRow = sheet.getRow(3);
+            // columns: 0=Mã HS, 1=Họ tên, 2-3=the two dates, 4=Có mặt, 5=Vắng, 6=Phép/Ốm, 7=Tổng ghi nhận, 8=Chuyên cần(%)
+            Assertions.assertEquals("CM", dataRow.getCell(2).getStringCellValue());
+            Assertions.assertEquals("CD", dataRow.getCell(3).getStringCellValue());
+            Assertions.assertEquals(1.0, dataRow.getCell(4).getNumericCellValue(), "Có mặt");
+            Assertions.assertEquals(0.0, dataRow.getCell(5).getNumericCellValue(), "Vắng");
+            Assertions.assertEquals(0.0, dataRow.getCell(6).getNumericCellValue(), "Phép/Ốm - LEAVE_PENDING must not count here");
+            Assertions.assertEquals(1.0, dataRow.getCell(7).getNumericCellValue(), "Tổng ghi nhận - LEAVE_PENDING excluded");
+            Assertions.assertEquals(100.0, dataRow.getCell(8).getNumericCellValue(), "Chuyên cần % - based only on the 1 resolved day");
+        }
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
     void classAttendance_toBeforeFrom_returns400() throws Exception {
         mockMvc.perform(get("/v1/reports/class/{id}/attendance", schoolClass.getId())
                         .param("from", "2099-09-05")

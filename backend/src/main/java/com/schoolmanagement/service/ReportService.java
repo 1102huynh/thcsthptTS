@@ -46,10 +46,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * PDF/Excel exports per IMPLEMENTATION_PLAN.md 3.8. Read-only — every method
@@ -150,11 +150,7 @@ public class ReportService {
         table.setWidthPercentage(100);
         table.setWidths(new float[]{1, 1});
 
-        String studentName = student.getUser() != null
-                ? student.getUser().getFirstName() + " " + student.getUser().getLastName()
-                : "(chưa liên kết tài khoản)";
-
-        addPlainRow(table, "Họ tên học sinh", studentName);
+        addPlainRow(table, "Họ tên học sinh", studentDisplayName(student));
         addPlainRow(table, "Mã học sinh", student.getRollNumber());
         addPlainRow(table, "Ngày sinh", student.getDateOfBirth() != null ? VN_DATE.format(student.getDateOfBirth()) : "—");
         addPlainRow(table, "Lớp", (student.getClassName() != null ? student.getClassName() : "—")
@@ -216,6 +212,14 @@ public class ReportService {
     // 2) Điểm danh theo lớp (Excel)
     // ---------------------------------------------------------------
 
+    /**
+     * Roster membership is matched on the same (deprecated) className/section
+     * pair {@link com.schoolmanagement.service.SchoolClassService#getStudentsInClass}
+     * and {@link com.schoolmanagement.service.ConductRecordService#getClassSemesterRoster}
+     * already use codebase-wide — not scoped by academic year, so a
+     * className/section reused across years would over-match. Pre-existing
+     * limitation of that roster convention, not new to this endpoint.
+     */
     public byte[] generateClassAttendanceExcel(Long classId, LocalDate from, LocalDate to) {
         if (from == null || to == null || to.isBefore(from)) {
             throw new IllegalArgumentException("'from' phải có giá trị và không được sau 'to'");
@@ -231,6 +235,22 @@ public class ReportService {
                 .toList();
 
         List<LocalDate> dates = from.datesUntil(to.plusDays(1)).toList();
+
+        // One query for the whole roster instead of one per student - a 40-student
+        // class would otherwise mean 40 round trips for what's fundamentally a
+        // single (studentId IN (...), date BETWEEN ...) query.
+        Map<Long, Map<LocalDate, AttendanceStatus>> attendanceByStudentId = roster.isEmpty()
+                ? Map.of()
+                : attendanceRepository.findByStudentInAndAttendanceDateBetween(roster, from, to).stream()
+                        .collect(Collectors.groupingBy(
+                                a -> a.getStudent().getId(),
+                                Collectors.toMap(Attendance::getAttendanceDate, Attendance::getStatus,
+                                        // Two records on the same day for the same student shouldn't
+                                        // happen in practice (nothing enforces it at the DB level
+                                        // though) - last one encountered wins, same "don't crash on
+                                        // unexpected duplicates" tolerance as the rest of this
+                                        // read-only report.
+                                        (first, second) -> second)));
 
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Điểm danh");
@@ -265,12 +285,13 @@ public class ReportService {
             header.createCell(col++).setCellValue("Phép/Ốm");
             header.createCell(col++).setCellValue("Tổng ghi nhận");
             header.createCell(col).setCellValue("Chuyên cần (%)");
-            for (int c = 0; c < col + 1; c++) {
+            for (int c = 0; c <= lastColIndex; c++) {
                 header.getCell(c).setCellStyle(headerStyle);
             }
 
             for (Student student : roster) {
-                Map<LocalDate, AttendanceStatus> byDate = attendanceStatusByDate(student, from, to);
+                Map<LocalDate, AttendanceStatus> byDate = attendanceByStudentId
+                        .getOrDefault(student.getId(), Map.of());
 
                 Row row = sheet.createRow(rowIdx++);
                 col = 0;
@@ -281,12 +302,19 @@ public class ReportService {
                 for (LocalDate date : dates) {
                     AttendanceStatus status = byDate.get(date);
                     row.createCell(col++).setCellValue(attendanceCode(status));
-                    if (status != null) {
+                    // LEAVE_PENDING is an unresolved request - not yet an actual
+                    // absence or a confirmed excused day - so it's shown in its own
+                    // day cell (code "CD") but deliberately left out of every
+                    // summary count below, "recorded" (and thus the % chuyên cần
+                    // denominator) included. Counting it either way would bake in
+                    // an outcome the school hasn't decided yet.
+                    if (status != null && status != AttendanceStatus.LEAVE_PENDING) {
                         recorded++;
                         switch (status) {
                             case PRESENT, LATE -> present++;
                             case ABSENT -> absent++;
-                            case SICK_LEAVE, LEAVE_APPROVED, LEAVE_PENDING -> leaveOrSick++;
+                            case SICK_LEAVE, LEAVE_APPROVED -> leaveOrSick++;
+                            default -> { /* LEAVE_PENDING excluded above - unreachable here */ }
                         }
                     }
                 }
@@ -297,7 +325,7 @@ public class ReportService {
                 row.createCell(col).setCellValue(recorded > 0 ? Math.round(present * 10000.0 / recorded) / 100.0 : 0);
             }
 
-            for (int c = 0; c < col + 1; c++) {
+            for (int c = 0; c <= lastColIndex; c++) {
                 sheet.autoSizeColumn(c);
             }
 
@@ -307,18 +335,6 @@ public class ReportService {
         } catch (java.io.IOException ex) {
             throw new IllegalStateException("Failed to generate attendance Excel for class " + classId, ex);
         }
-    }
-
-    private Map<LocalDate, AttendanceStatus> attendanceStatusByDate(Student student, LocalDate from, LocalDate to) {
-        Map<LocalDate, AttendanceStatus> byDate = new LinkedHashMap<>();
-        for (Attendance a : attendanceRepository.findByStudentAndAttendanceDateBetween(student, from, to)) {
-            // Two records on the same day for the same student shouldn't happen in
-            // practice (nothing enforces it at the DB level though) — last one
-            // encountered wins, same "don't crash on unexpected duplicates"
-            // tolerance as the rest of this read-only report.
-            byDate.put(a.getAttendanceDate(), a.getStatus());
-        }
-        return byDate;
     }
 
     private String attendanceCode(AttendanceStatus status) {
