@@ -1,26 +1,19 @@
 /* App.css - Global Professional Styling */
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* The old *{margin/padding/box-sizing} reset, html{scroll-behavior}, and
+   body/code font-family rules that used to live here were exact duplicates
+   of (and, worse, loaded AFTER and so silently overrode) index.css's -
+   removed now that index.css/Tailwind Preflight is the one source of truth
+   for those, per Ngày 3 (Tailwind + shadcn/ui setup). Only this file's own
+   actual layout classes (.app-container, .app-body, ...) remain. */
 
 html {
   scroll-behavior: smooth;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   background-color: #f5f7fa;
   color: #1a1a1a;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
 /* App Container */

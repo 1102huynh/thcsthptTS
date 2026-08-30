@@ -1,5 +1,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+// Bootstrap (and App's own legacy layout CSS) load first, index.css
+// (Tailwind + the new design tokens/font) loads last - so as pages migrate
+// off Bootstrap, the new global styles win any tag-level conflict (body,
+// headings, ...) while Bootstrap's own scoped component classes (.btn,
+// .card, .modal, ...) stay fully usable by whatever hasn't been migrated
+// yet. Moved here from App.jsx specifically to guarantee this load order -
+// see index.css's own comment on the Be Vietnam Pro font for what this fixed.
+import 'bootstrap/dist/css/bootstrap.min.css';
+import './App.css';
 import './index.css';
 import App from './App';
 

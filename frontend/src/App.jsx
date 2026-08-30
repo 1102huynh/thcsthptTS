@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import './App.css';
+// bootstrap.min.css / App.css are imported from main.jsx now, before
+// index.css - see its comment for why the load order matters.
 
 // Pages
 import LoginPage from './pages/LoginPage';
