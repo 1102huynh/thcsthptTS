@@ -50,6 +50,7 @@ http://localhost:8080/api/swagger-ui.html
 | Parents (Phụ huynh) | `/v1/parents/*` | Links a PARENT-role account to their children (ADMIN-managed); a PARENT may only list their own children |
 | Notifications (Sổ liên lạc điện tử) | `/v1/notifications/*` | Created and sent in the same request. `APP`/`EMAIL` channels are live; `SMS`/`ZALO` return 501 pending a vendor/Zalo OA decision. `GET /my` + `PUT /{id}/read` for any recipient (PARENT or staff) |
 | Admissions (Tuyển sinh) | `/v1/admissions/*` | `POST` is public (no login), rate-limited per IP (see AdmissionRateLimitFilter). ADMIN reviews (`PUT /{id}/status`) then `POST /{id}/approve-and-create` turns an APPROVED application into a real STUDENT account without retyping name/DOB/phone |
+| Reports (Báo cáo) | `/v1/reports/*` | PDF/Excel exports — `GET /student/{id}/transcript?academicYearId=` (bảng điểm/học bạ PDF), `GET /class/{id}/attendance?from=&to=` (điểm danh Excel), `GET /fees/receipt/{feeId}` (biên lai PDF, 400 if the fee has no payment recorded yet). Every endpoint requires login; STUDENT/PARENT are limited to their own/child's data (same `StudentAccessGuard`/`FeeService` checks the underlying data's own endpoints use) |
 | Fees | `/v1/fees/*` | Student fees & payments |
 | Library | `/v1/library/*` | Book catalog & borrowing |
 | Dashboard | `/v1/dashboard/stats` | Admin summary stats |
@@ -172,7 +173,9 @@ Runs against your local MySQL (via the `test` Spring profile — see `src/test/r
 
 ## 📦 Key dependencies
 
-Spring Boot Starter Web/Security/Data JPA/Validation/Mail, MySQL Connector/J, Flyway (`flyway-core` + `flyway-mysql`), JWT (`jjwt`), Lombok, SpringDoc OpenAPI.
+Spring Boot Starter Web/Security/Data JPA/Validation/Mail, MySQL Connector/J, Flyway (`flyway-core` + `flyway-mysql`), JWT (`jjwt`), Lombok, SpringDoc OpenAPI, **OpenPDF** (PDF reports, 3.8 — LGPL/MPL, chosen over iText7 specifically because iText7 is AGPL and would require either open-sourcing this app or a commercial iText license), **Apache POI** (`poi-ooxml`, Excel reports, 3.8).
+
+PDF reports embed **DejaVu Sans** (`src/main/resources/fonts/`, Bitstream Vera license — see `DejaVuSans-LICENSE.txt` alongside it) so Vietnamese diacritics render correctly; OpenPDF's built-in fonts only cover Latin-1 and silently mangle them otherwise.
 
 ## 📁 Project structure
 
@@ -205,7 +208,9 @@ backend/
 
 ## 🚀 Future enhancements
 
-See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — PDF/Excel reports, audit log/forgot-password. (3.1 Năm học/Học kỳ/Môn học, 3.2 Phân công giảng dạy & Thời khoá biểu, 3.3 Điểm theo TT22, 3.4 Hạnh kiểm/Rèn luyện, 3.5 Xét lên lớp/Ở lại/Tốt nghiệp, 3.6 Phụ huynh & Sổ liên lạc điện tử, and 3.7 Tuyển sinh đầu cấp are done, above.)
+See the "Giai đoạn 3" section of [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) for the full roadmap — hạ tầng dùng chung (document attachments, audit log, forgot-password). (3.1 Năm học/Học kỳ/Môn học, 3.2 Phân công giảng dạy & Thời khoá biểu, 3.3 Điểm theo TT22, 3.4 Hạnh kiểm/Rèn luyện, 3.5 Xét lên lớp/Ở lại/Tốt nghiệp, 3.6 Phụ huynh & Sổ liên lạc điện tử, 3.7 Tuyển sinh đầu cấp, and 3.8 Xuất báo cáo PDF/Excel are done, above.)
+
+**Note on 3.8**: the transcript PDF shows raw điểm trung bình (per the same formulas as `/v1/grade-records`) and hạnh kiểm per semester — it never shows xếp loại học lực, since that classification still isn't implemented (see the 3.3 note below). Its "Lớp" line is labelled "Lớp (hiện tại)" deliberately — `Student` has no per-academic-year class history, only the student's *current* class, so a transcript pulled for a past year can't show which class they were actually in back then. The class attendance Excel has one column per calendar day in the requested range — fine for a week/month; `[from, to]` is capped at 366 days (one academic year) and returns 400 past that, both to keep the sheet from exceeding Excel's column limit and because that's already far past any realistic use of this report. `GET /fees/receipt/{feeId}` rejects (400) a fee with no `paidAmount` recorded yet — a receipt only makes sense as proof of an actual payment. Every `/v1/reports/*` endpoint's role list deliberately matches the equivalent existing endpoint for the same data (e.g. the transcript matches `/v1/grade-records/student/{id}/year-summary`'s ADMIN/TEACHER/STUDENT/PARENT, not PRINCIPAL) — a report is a different shape of the same data, not a different access policy, so it doesn't unilaterally decide PRINCIPAL should see more than the underlying API already allows.
 
 **Note on 3.7**: `POST /v1/admissions/{id}/approve-and-create` requires the ADMIN to supply `username`/`email`/`password`/`rollNumber`/`admissionNumber` explicitly — nothing in `AdmissionApplication` can populate those (no login was ever collected from a public applicant, and roll/admission numbers follow the school's own numbering scheme, not something to invent). Everything else (name, DOB, phone, priorSchool) is pulled from the application automatically. The application row is optimistic-locked (`@Version`) specifically to prevent a double-click/concurrent-request race from creating two separate accounts from the same application — a second concurrent call gets a clean 409, not a duplicate account.
 
