@@ -32,14 +32,28 @@ public class AttendanceService {
         return attendanceRepository.save(attendance);
     }
 
-    public void markAttendanceForClass(String className, String section, LocalDate date, List<Long> presentStudentIds, AttendanceStatus status) {
+    public void markAttendanceForClass(String className, String section, LocalDate date, List<Long> presentStudentIds,
+                                        AttendanceStatus status, User marker) {
         List<Student> students = studentRepository.findByClassNameAndSection(className, section);
+
+        // Re-marking the same class+date used to just insert a second batch
+        // of rows on top of the first (no unique constraint on
+        // student+date), silently duplicating records and skewing every %
+        // calculation that counts rows. Deleting this class's existing rows
+        // for this exact date first makes a re-submit a real correction
+        // instead - matches the frontend's "đã điểm danh, sửa lại?" flow
+        // (AttendanceManagement, Tuần 4 Ngày 2).
+        List<Attendance> existing = attendanceRepository.findByStudentInAndAttendanceDate(students, date);
+        if (!existing.isEmpty()) {
+            attendanceRepository.deleteAll(existing);
+        }
 
         for (Student student : students) {
             Attendance attendance = Attendance.builder()
                     .student(student)
                     .attendanceDate(date)
                     .status(presentStudentIds.contains(student.getId()) ? AttendanceStatus.PRESENT : status)
+                    .markedBy(marker)
                     .build();
             attendanceRepository.save(attendance);
         }

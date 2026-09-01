@@ -31,7 +31,7 @@ export const staffService = {
 export const studentService = {
   getAll: () => api.get('/v1/students'),
   getById: (id) => api.get(`/v1/students/${id}`),
-  getByClass: (className, section) => api.get(`/v1/students/class/${className}?section=${section}`),
+  getByClass: (className, section) => api.get(`/v1/students/class/${className}/section/${section}`),
   create: (data) => api.post('/v1/students', data),
   update: (id, data) => api.put(`/v1/students/${id}`, data),
   delete: (id) => api.delete(`/v1/students/${id}`),
@@ -64,12 +64,37 @@ export const libraryService = {
 // Attendance Service
 export const attendanceService = {
   getByStudent: (studentId) => api.get(`/v1/attendance/student/${studentId}`),
-  getByClass: (className, section) => api.get(`/v1/attendance/class/${className}?section=${section}`),
+  // GET /v1/attendance/class/... never existed on the backend - only a
+  // POST at that path (mark, see markClass below). School-wide-by-date is
+  // the only "list" endpoint available; AttendanceManagement filters it to
+  // one class's roster client-side.
+  getByDate: (date) => api.get(`/v1/attendance/date/${date}`),
   getBetweenDates: (startDate, endDate) =>
     api.get('/v1/attendance/between', { params: { startDate, endDate } }),
   markAttendance: (data) => api.post('/v1/attendance', data),
   updateAttendance: (id, data) => api.put(`/v1/attendance/${id}`, data),
-  getPercentage: (studentId) => api.get(`/v1/attendance/student/${studentId}/percentage`),
+  deleteAttendance: (id) => api.delete(`/v1/attendance/${id}`),
+  getPercentage: (studentId, startDate, endDate) =>
+    api.get(`/v1/attendance/student/${studentId}/percentage`, { params: { startDate, endDate } }),
+  // Bulk mark for a whole class - re-submitting the same class+date
+  // replaces the previous rows (backend fix, Tuần 4 Ngày 2) rather than
+  // duplicating them. presentStudentIds must be a repeated query param
+  // (Spring's @RequestParam List<Long> expects `?presentStudentIds=1&
+  // presentStudentIds=2`), not a JSON body - axios's *default* array param
+  // serialization instead produces `presentStudentIds[]=1&...`, which
+  // Spring silently binds to an EMPTY list (different param name) rather
+  // than erroring, so this needs `paramsSerializer: { indexes: null }` to
+  // suppress the brackets. Confirmed empirically via axios.getUri(), not
+  // assumed.
+  markClass: ({ className, section, date, presentStudentIds, status = 'ABSENT' }) =>
+    api.post('/v1/attendance/class', null, {
+      params: { className, section, date, presentStudentIds, status },
+      paramsSerializer: { indexes: null },
+    }),
+};
+
+export const schoolClassService = {
+  getAll: () => api.get('/v1/classes'),
 };
 
 // Grade Service

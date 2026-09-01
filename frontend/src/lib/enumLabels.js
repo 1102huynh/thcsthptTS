@@ -78,6 +78,15 @@ export const BOOK_STATUS_LABELS = {
   RESERVED: 'Đã đặt trước',
 };
 
+export const ATTENDANCE_STATUS_LABELS = {
+  PRESENT: 'Có mặt',
+  ABSENT: 'Vắng',
+  LATE: 'Đi muộn',
+  SICK_LEAVE: 'Nghỉ ốm',
+  LEAVE_APPROVED: 'Nghỉ có phép',
+  LEAVE_PENDING: 'Chờ duyệt nghỉ',
+};
+
 export function toOptions(labelMap, keys = Object.keys(labelMap)) {
   return keys.map((value) => ({ value, label: labelMap[value] ?? value }));
 }

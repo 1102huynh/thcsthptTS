@@ -16,7 +16,12 @@ export const NAV_ITEMS = [
   { label: 'Staff Management', href: '/staff', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL'] },
   { label: 'Student Management', href: '/students', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
   { label: 'Library', href: '/library', icon: FiBook, roles: ['ADMIN', 'LIBRARIAN', 'STUDENT', 'TEACHER'] },
-  { label: 'Attendance', href: '/attendance', icon: FiClipboard, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+  // PRINCIPAL deliberately excluded: AttendanceController's endpoints -
+  // including the GET ones - are all hasAnyRole('ADMIN', 'TEACHER', ...)
+  // with no PRINCIPAL, so a PRINCIPAL session would land on a page that
+  // 403s on every single request. Found while building the page itself
+  // (Tuần 4 Ngày 2), same root cause as the Dashboard stats bug (Tuần 3).
+  { label: 'Attendance', href: '/attendance', icon: FiClipboard, roles: ['ADMIN', 'TEACHER'] },
   { label: 'Grades', href: '/grades', icon: FiAward, roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
   { label: 'Fees', href: '/fees', icon: FiDollarSign, roles: ['ADMIN', 'ACCOUNTANT', 'STUDENT'] },
 ];

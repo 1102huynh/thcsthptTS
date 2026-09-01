@@ -9,8 +9,8 @@ import Dashboard from './pages/Dashboard';
 import StaffManagement from './pages/StaffManagement';
 import StudentManagement from './pages/StudentManagement';
 import LibraryManagement from './pages/LibraryManagement';
+import AttendanceManagement from './pages/AttendanceManagement';
 import {
-  AttendanceManagement,
   GradeManagement,
   FeeManagement,
 } from './pages/ManagementPages';

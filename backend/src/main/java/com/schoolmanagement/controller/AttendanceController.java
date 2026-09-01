@@ -37,14 +37,17 @@ public class AttendanceController {
 
     @PostMapping("/class")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
-    @Operation(summary = "Mark attendance for entire class")
+    @Operation(summary = "Mark attendance for entire class",
+            description = "Re-marking the same class+date replaces the previous rows rather than duplicating them.")
     public ResponseEntity<String> markClassAttendance(
             @RequestParam String className,
             @RequestParam String section,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam List<Long> presentStudentIds,
-            @RequestParam(defaultValue = "ABSENT") AttendanceStatus status) {
-        attendanceService.markAttendanceForClass(className, section, date, presentStudentIds, status);
+            @RequestParam(defaultValue = "ABSENT") AttendanceStatus status,
+            Authentication authentication) {
+        User marker = (User) authentication.getPrincipal();
+        attendanceService.markAttendanceForClass(className, section, date, presentStudentIds, status, marker);
         return new ResponseEntity<>("Attendance marked successfully", HttpStatus.OK);
     }
 
