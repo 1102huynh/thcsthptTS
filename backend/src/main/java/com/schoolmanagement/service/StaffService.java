@@ -1,6 +1,7 @@
 package com.schoolmanagement.service;
 
 import com.schoolmanagement.dto.StaffDTO;
+import com.schoolmanagement.dto.UserDTO;
 import com.schoolmanagement.entity.Staff;
 import com.schoolmanagement.entity.EmploymentStatus;
 import com.schoolmanagement.entity.StaffPosition;
@@ -118,6 +119,7 @@ public class StaffService {
         return StaffDTO.builder()
                 .id(staff.getId())
                 .employeeId(staff.getEmployeeId())
+                .user(fetchUserDTO(staff.getUser()))
                 .position(staff.getPosition())
                 .department(staff.getDepartment())
                 .dateOfBirth(staff.getDateOfBirth())
@@ -134,6 +136,45 @@ public class StaffService {
                 .emergencyContactPhone(staff.getEmergencyContactPhone())
                 .createdAt(staff.getCreatedAt())
                 .updatedAt(staff.getUpdatedAt())
+                .build();
+    }
+
+    // StaffDTO.user was never populated before this - UserDTO.builder() was
+    // called nowhere in the whole backend (StudentService has the exact
+    // same gap, fixed there too). Found live: the frontend's Staff
+    // Management table showed every name/email cell blank because there
+    // was genuinely nothing there to read.
+    //
+    // Re-fetches by id rather than mapping staff.getUser() directly:
+    // right after createStaff's staffRepository.save(staff), staff.getUser()
+    // is still the SAME transient stub Jackson built from the request body
+    // ({"id": 23}, every other field left at its Java default) - Hibernate
+    // uses its id as the FK on insert but never swaps in a hydrated entity,
+    // so mapping it directly serialized firstName/lastName/email as null
+    // (caught by an integration test asserting on the create response, not
+    // by the frontend - queryClient.invalidateQueries masked it there by
+    // refetching the list, where a freshly-queried Staff's user IS a real
+    // lazy-loaded proxy that hydrates correctly on first access).
+    private UserDTO fetchUserDTO(User userRef) {
+        if (userRef == null || userRef.getId() == null) {
+            return null;
+        }
+        return userRepository.findById(userRef.getId()).map(this::toUserDTO).orElse(null);
+    }
+
+    private UserDTO toUserDTO(User user) {
+        return UserDTO.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phoneNumber(user.getPhoneNumber())
+                .role(user.getRole())
+                .enabled(user.getEnabled())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .lastLogin(user.getLastLogin())
                 .build();
     }
 }

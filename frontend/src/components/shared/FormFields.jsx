@@ -62,23 +62,40 @@ export function TextareaField({ control, name, label, description, ...props }) {
 }
 
 export function SelectField({ control, name, label, description, options, placeholder = 'Chọn...' }) {
+  // Doesn't go through FieldShell/FormControl the same way as the other
+  // fields: shadcn's Select is a Radix Root (renders no DOM node of its
+  // own) wrapping a Trigger + a portaled Content, so FormControl has to
+  // wrap only the Trigger - wrapping the whole <Select> (as the generic
+  // FieldShell does for every other field) sends FormControl's Slot-merged
+  // id/aria-* props to a component with nothing to attach them to, which
+  // silently breaks the label association (caught via Playwright's
+  // getByLabel failing to find the field at all).
   return (
-    <FieldShell control={control} name={name} label={label} description={description}>
-      {(field) => (
-        <Select value={field.value ?? ''} onValueChange={field.onChange}>
-          <SelectTrigger>
-            <SelectValue placeholder={placeholder} />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          {label && <FormLabel>{label}</FormLabel>}
+          <Select value={field.value ?? ''} onValueChange={field.onChange}>
+            <FormControl>
+              <SelectTrigger>
+                <SelectValue placeholder={placeholder} />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              {options.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {description && <FormDescription>{description}</FormDescription>}
+          <FormMessage />
+        </FormItem>
       )}
-    </FieldShell>
+    />
   );
 }
 

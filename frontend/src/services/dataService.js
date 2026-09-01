@@ -9,6 +9,15 @@ import api from './api';
 // statistics" on the Dashboard and (silently) every list page in the app.
 // Found while wiring the Dashboard to real data (Tuần 3 Ngày 1-2).
 
+// User Service (ADMIN-only account creation - POST /v1/users, see
+// UserController/CreateUserRequest. StaffController's createStaff expects
+// an existing user.id, not inline account fields, so creating a new staff
+// member is a 2-step flow: create the account here first, then create the
+// Staff record pointing at the returned userId.)
+export const userService = {
+  create: (data) => api.post('/v1/users', data),
+};
+
 // Staff Service
 export const staffService = {
   getAll: () => api.get('/v1/staff'),
@@ -87,6 +96,7 @@ export const auditLogService = {
 };
 
 export default {
+  userService,
   staffService,
   studentService,
   libraryService,

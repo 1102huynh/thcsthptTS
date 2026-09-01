@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { forwardRef, useState } from 'react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { FiCalendar } from 'react-icons/fi';
@@ -17,14 +17,25 @@ const DATE_FORMAT = 'dd/MM/yyyy';
  * Controlled: `value` is a Date or undefined/null, `onChange(date)` fires
  * on pick - the popover closes itself right after, matching how a native
  * `<input type="date">` behaves.
+ *
+ * forwardRef + spreads `...props` onto the trigger Button so FormControl's
+ * Slot (FormFields.jsx's DateField) can merge id/aria-describedby/
+ * aria-invalid straight onto the actual interactive element, same as any
+ * plain shadcn Input would get - without this, those props land on this
+ * component instead of a DOM node and silently do nothing (caught via
+ * Playwright's getByLabel failing to find the field at all).
  */
-function DatePicker({ value, onChange, placeholder = 'Chọn ngày', disabled, className }) {
+const DatePicker = forwardRef(function DatePicker(
+  { value, onChange, placeholder = 'Chọn ngày', disabled, className, ...props },
+  ref
+) {
   const [open, setOpen] = useState(false);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          ref={ref}
           type="button"
           variant="outline"
           disabled={disabled}
@@ -33,6 +44,7 @@ function DatePicker({ value, onChange, placeholder = 'Chọn ngày', disabled, c
             !value && 'text-muted-foreground',
             className
           )}
+          {...props}
         >
           <FiCalendar className="mr-2 h-4 w-4 shrink-0" />
           {value ? format(value, DATE_FORMAT, { locale: vi }) : placeholder}
@@ -52,6 +64,6 @@ function DatePicker({ value, onChange, placeholder = 'Chọn ngày', disabled, c
       </PopoverContent>
     </Popover>
   );
-}
+});
 
 export default DatePicker;

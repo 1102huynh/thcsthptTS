@@ -1,6 +1,7 @@
 package com.schoolmanagement.service;
 
 import com.schoolmanagement.dto.StudentDTO;
+import com.schoolmanagement.dto.UserDTO;
 import com.schoolmanagement.entity.DocumentAttachment;
 import com.schoolmanagement.entity.DocumentOwnerType;
 import com.schoolmanagement.entity.Student;
@@ -10,6 +11,7 @@ import com.schoolmanagement.exception.DuplicateResourceException;
 import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.DocumentAttachmentRepository;
 import com.schoolmanagement.repository.StudentRepository;
+import com.schoolmanagement.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +31,7 @@ public class StudentService {
     private AuditLogService auditLogService;
     private DocumentAttachmentRepository documentAttachmentRepository;
     private FileStorageService fileStorageService;
+    private UserRepository userRepository;
 
     public StudentDTO createStudent(Student student) {
         if (studentRepository.existsByRollNumber(student.getRollNumber())) {
@@ -153,6 +156,7 @@ public class StudentService {
                 .id(student.getId())
                 .rollNumber(student.getRollNumber())
                 .admissionNumber(student.getAdmissionNumber())
+                .user(fetchUserDTO(student.getUser()))
                 .dateOfBirth(student.getDateOfBirth())
                 .gender(student.getGender())
                 .bloodGroup(student.getBloodGroup())
@@ -175,6 +179,34 @@ public class StudentService {
                 .emergencyContactRelation(student.getEmergencyContactRelation())
                 .createdAt(student.getCreatedAt())
                 .updatedAt(student.getUpdatedAt())
+                .build();
+    }
+
+    // StudentDTO.user was never populated before this - same gap as
+    // StaffService.mapToDTO, fixed there too, see its comment for how it
+    // was found. Re-fetches by id for the same reason as StaffService's
+    // fetchUserDTO: right after a fresh create, student.getUser() is still
+    // the transient request-body stub, not a hydrated entity.
+    private UserDTO fetchUserDTO(User userRef) {
+        if (userRef == null || userRef.getId() == null) {
+            return null;
+        }
+        return userRepository.findById(userRef.getId()).map(this::toUserDTO).orElse(null);
+    }
+
+    private UserDTO toUserDTO(User user) {
+        return UserDTO.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phoneNumber(user.getPhoneNumber())
+                .role(user.getRole())
+                .enabled(user.getEnabled())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .lastLogin(user.getLastLogin())
                 .build();
     }
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { forwardRef, useState } from 'react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { FiCalendar } from 'react-icons/fi';
@@ -27,8 +27,14 @@ function formatRange(range) {
  * popover after one click and make picking an actual multi-day range
  * impossible. Closing on outside click (Radix Popover's default) is the
  * same pattern most range pickers use (Airbnb, Google Flights, ...).
+ *
+ * forwardRef + spreads `...props` onto the trigger Button, same reason as
+ * DatePicker.jsx - lets FormControl's Slot reach the real DOM node.
  */
-function DateRangePicker({ value, onChange, placeholder = 'Chọn khoảng ngày', disabled, className }) {
+const DateRangePicker = forwardRef(function DateRangePicker(
+  { value, onChange, placeholder = 'Chọn khoảng ngày', disabled, className, ...props },
+  ref
+) {
   const [open, setOpen] = useState(false);
   const label = formatRange(value);
 
@@ -36,6 +42,7 @@ function DateRangePicker({ value, onChange, placeholder = 'Chọn khoảng ngày
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          ref={ref}
           type="button"
           variant="outline"
           disabled={disabled}
@@ -44,6 +51,7 @@ function DateRangePicker({ value, onChange, placeholder = 'Chọn khoảng ngày
             !label && 'text-muted-foreground',
             className
           )}
+          {...props}
         >
           <FiCalendar className="mr-2 h-4 w-4 shrink-0" />
           {label ?? placeholder}
@@ -61,6 +69,6 @@ function DateRangePicker({ value, onChange, placeholder = 'Chọn khoảng ngày
       </PopoverContent>
     </Popover>
   );
-}
+});
 
 export default DateRangePicker;
