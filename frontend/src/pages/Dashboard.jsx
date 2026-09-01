@@ -223,8 +223,13 @@ function Dashboard({ user }) {
             </div>
           )}
 
-          {/* Stat cards - real values from GET /v1/dashboard/stats */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+          {/* Stat cards - real values from GET /v1/dashboard/stats.
+              1 column below sm: at 2-per-row on a 375px phone, a longer
+              value like the currency-formatted "còn nợ" figure had no room
+              and truncated to an unreadable "135…" (caught on a mobile
+              responsive pass, Tuần 5 Ngày 3) - full card width fixes it,
+              same reasoning as the stacked icon/label layout below. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard
               icon={FiUsers}
               title="Nhân viên"

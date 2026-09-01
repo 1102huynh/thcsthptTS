@@ -127,8 +127,18 @@ function DataTable({
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   const canSort = header.column.getCanSort();
+                  // The row-actions column (every *Management page names it
+                  // id: 'actions') gets pinned to the right edge of the
+                  // table's own horizontal scroll area. Without this, on a
+                  // narrow phone the edit/delete buttons scroll out of view
+                  // with no visual hint the row even has more to it - caught
+                  // during the Tuần 5 Ngày 3 responsive/mobile audit.
+                  const isActions = header.column.id === 'actions';
                   return (
-                    <TableHead key={header.id}>
+                    <TableHead
+                      key={header.id}
+                      className={cn(isActions && 'sticky right-0 z-10 bg-background shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]')}
+                    >
                       {header.isPlaceholder ? null : canSort ? (
                         <button
                           type="button"
@@ -164,7 +174,13 @@ function DataTable({
               rows.map((row) => (
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        cell.column.id === 'actions' &&
+                          'sticky right-0 z-10 bg-background shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]'
+                      )}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
