@@ -117,9 +117,14 @@ function StatCard({ icon: Icon, title, value, iconClassName }) {
               truncated to unreadable fragments ("Ch...") in a side-by-side
               layout with this little width; full card width fixes it. */}
           <p className="text-sm leading-snug text-muted-foreground">{title}</p>
-          <p className="truncate text-xl font-semibold tabular-nums" title={String(value)}>
-            {value}
-          </p>
+          {/* `truncate` used to live here too, forcing the value onto one
+              line - fine for short counts, but the currency-formatted "còn
+              nợ" figure still got cut to "135…" even at 5 columns on a full
+              1400px desktop (grid-cols-1 on mobile, Tuần 5 Ngày 3, only
+              fixed the narrowest case). Wrapping instead of truncating is
+              breakpoint-proof: the value is always fully readable, just
+              taller when it doesn't fit one line. */}
+          <p className="break-words text-xl font-semibold tabular-nums">{value}</p>
         </div>
       </CardContent>
     </Card>

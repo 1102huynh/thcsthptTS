@@ -148,6 +148,14 @@ function DataTable({
                           {flexRender(header.column.columnDef.header, header.getContext())}
                           <SortIcon sorted={header.column.getIsSorted()} />
                         </button>
+                      ) : isActions ? (
+                        // Every *Management page defines this column as
+                        // header: '' (there's no label to show visually -
+                        // the column is just icon buttons), which left the
+                        // <th> completely empty for screen readers (axe's
+                        // empty-table-header check). sr-only text names it
+                        // without changing the visual header row.
+                        <span className="sr-only">Thao tác</span>
                       ) : (
                         flexRender(header.column.columnDef.header, header.getContext())
                       )}
@@ -202,9 +210,15 @@ function DataTable({
           <div className="flex items-center gap-4">
             {onPageSizeChange && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="hidden sm:inline">Số dòng/trang</span>
+                {/* The visible label is hidden below sm: and was never
+                    linked to the trigger anyway (no htmlFor/id, no
+                    aria-labelledby) - axe's button-name check flagged it as
+                    a combobox with no accessible name at all on every
+                    DataTable page. aria-label carries the name regardless
+                    of viewport. */}
+                <span className="hidden sm:inline" aria-hidden="true">Số dòng/trang</span>
                 <Select value={String(pageSize)} onValueChange={(v) => onPageSizeChange(Number(v))}>
-                  <SelectTrigger className="h-8 w-[70px]">
+                  <SelectTrigger className="h-8 w-[70px]" aria-label="Số dòng mỗi trang">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

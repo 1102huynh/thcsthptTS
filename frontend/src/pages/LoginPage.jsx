@@ -47,7 +47,16 @@ function LoginPage({ onLogin }) {
   const submitting = form.formState.isSubmitting;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/90 via-primary to-purple-700 p-4">
+    // Every authenticated page sits inside AppShell's <main>, which is
+    // where they get their landmark-one-main/page-has-heading-one/region
+    // compliance from "for free" - this is the one page rendered outside
+    // AppShell, so it needs its own <main>/<h1> (axe-core sweep, Tuần 5
+    // Ngày 4). CardTitle below stays a plain styled <div> (shadcn's
+    // default, shared by every other Card on the app) so the visible h1
+    // is a separate sr-only element rather than changing that shared
+    // component's semantics.
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/90 via-primary to-purple-700 p-4">
+      <h1 className="sr-only">Đăng nhập - Hệ thống Quản lý Trường học</h1>
       <Card className="w-full max-w-sm shadow-xl">
         <CardHeader className="items-center space-y-3 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
@@ -79,12 +88,17 @@ function LoginPage({ onLogin }) {
                 disabled={submitting}
                 className="pr-10"
               />
+              {/* tabIndex={-1} used to sit here, taking this button out of
+                  keyboard tab order entirely - a mouse-only convenience
+                  with no keyboard equivalent (Tuần 5 Ngày 4 accessibility
+                  audit). It's a real, labelled, type="button" control, so
+                  it belongs in the natural tab order between the password
+                  field and Submit like any other button. */}
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-[34px] text-muted-foreground hover:text-foreground"
+                className="absolute right-3 top-[34px] rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                tabIndex={-1}
               >
                 {showPassword ? <FiEyeOff className="h-4 w-4" /> : <FiEye className="h-4 w-4" />}
               </button>
@@ -97,7 +111,7 @@ function LoginPage({ onLogin }) {
           </AppForm>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }
 

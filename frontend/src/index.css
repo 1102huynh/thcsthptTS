@@ -19,12 +19,22 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 229 76% 66%;
+    /* Lightness darkened from the original 66% to 56% (same 229/76 hue/sat,
+       so the brand color reads the same) - at 66% it was #667fea, which
+       only hits 3.47:1 contrast against --primary-foreground, failing WCAG
+       AA's 4.5:1 for normal text on every primary Button/Badge. 56% (#3a59e4)
+       clears it at 5.38:1. Caught by an axe-core sweep of every page, Tuần
+       5 Ngày 4. */
+    --primary: 229 76% 56%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Darkened from 46.9% to 44% for the same reason as --primary above -
+       4.34:1 against --muted-foreground's usual light background just
+       missed the 4.5:1 AA floor (this token backs most secondary text in
+       the app: card subtitles, table headers, pagination captions). */
+    --muted-foreground: 215.4 16.3% 44%;
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
@@ -42,7 +52,7 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 229 76% 66%;
+    --primary: 229 76% 56%;
     /* Kept near-white (not shadcn's default dark-navy) - unlike shadcn's
        stock dark theme, --primary itself deliberately stays the same
        brand blue in dark mode instead of inverting to a lighter shade, so
@@ -62,6 +72,32 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 229 76% 66%;
   }
+}
+
+/* Bootstrap ships its own `.bg-primary`/`.text-primary`/`.bg-secondary`/
+   `.text-secondary` utility classes, all with `!important`, and Tailwind
+   independently generates classes with those exact same names for the
+   theme tokens above. Since Bootstrap's CSS loads first (main.jsx) but its
+   rules carry `!important` and Tailwind's plain `background-color`/`color`
+   declarations don't, Bootstrap silently wins every time - every shadcn
+   Button/Badge/Avatar using bg-primary, and Sidebar's active-link
+   text-primary, was actually rendering Bootstrap's #0d6efd blue instead of
+   the theme's --primary token, undetected until an axe-core contrast sweep
+   flagged the wrong color's ratio (Tuần 5 Ngày 4). Reclaim these 4 names
+   for the design tokens the same way App.css already reclaims
+   .btn/.card/.badge - only these 4 collide (checked every other shadcn
+   token name against Bootstrap's utility list; nothing else matches). */
+.bg-primary {
+  background-color: hsl(var(--primary)) !important;
+}
+.text-primary {
+  color: hsl(var(--primary)) !important;
+}
+.bg-secondary {
+  background-color: hsl(var(--secondary)) !important;
+}
+.text-secondary {
+  color: hsl(var(--secondary)) !important;
 }
 
 body {
