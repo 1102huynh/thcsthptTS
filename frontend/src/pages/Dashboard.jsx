@@ -1,341 +1,386 @@
-import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Alert, Badge } from 'react-bootstrap';
-import {
-  FiUsers, FiBook, FiClipboard, FiTrendingUp,
-  FiArrowRight, FiCheckCircle, FiClock, FiAward, FiDollarSign,
-  FiCalendar, FiPercent
-} from 'react-icons/fi';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { staffService, studentService, libraryService } from '../services/dataService';
-import './Dashboard.css';
+import { useQuery } from '@tanstack/react-query';
+import { formatDistanceToNow, subDays, format as formatDate } from 'date-fns';
+import { vi } from 'date-fns/locale';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from 'recharts';
+import {
+  FiUsers,
+  FiBook,
+  FiClipboard,
+  FiPercent,
+  FiDollarSign,
+  FiAward,
+  FiArrowRight,
+  FiCalendar,
+} from 'react-icons/fi';
+import {
+  dashboardService,
+  attendanceService,
+  feeService,
+  academicYearService,
+  auditLogService,
+} from '../services/dataService';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 
-function Dashboard({ user }) {
-  const [stats, setStats] = useState({
-    staffCount: 0,
-    studentCount: 0,
-    bookCount: 0,
-    attendanceRate: 85,
-    totalRevenue: 0,
-    loading: true,
-    error: null,
-  });
+const ISO_DATE = 'yyyy-MM-dd';
+const CHART_DAYS = 14;
 
-  const [recentActivity] = useState([
-    { id: 1, type: 'student', message: 'New student registered', time: '2 hours ago', icon: '👤' },
-    { id: 2, type: 'book', message: 'Book borrowed from library', time: '4 hours ago', icon: '📚' },
-    { id: 3, type: 'attendance', message: 'Attendance marked for class 10A', time: '6 hours ago', icon: '✓' },
-    { id: 4, type: 'fee', message: 'Fee payment received', time: '1 day ago', icon: '💰' },
-  ]);
+function currencyVND(n) {
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(
+    n ?? 0
+  );
+}
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
+/**
+ * Aggregates the raw AttendanceDTO list (from GET /v1/attendance/between)
+ * into one { date, rate } point per day covering the last CHART_DAYS days -
+ * days with zero records still get an explicit 0-row point instead of a
+ * gap, so the line doesn't visually skip weekends/holidays.
+ */
+function buildAttendanceChartData(records, startDate, endDate) {
+  const byDate = new Map();
+  for (const r of records ?? []) {
+    const bucket = byDate.get(r.attendanceDate) ?? { total: 0, present: 0 };
+    bucket.total += 1;
+    if (r.status === 'PRESENT') bucket.present += 1;
+    byDate.set(r.attendanceDate, bucket);
+  }
 
-  const fetchStats = async () => {
-    try {
-      setStats(prev => ({ ...prev, loading: true }));
+  const days = [];
+  let cursor = new Date(startDate);
+  const end = new Date(endDate);
+  while (cursor <= end) {
+    const key = formatDate(cursor, ISO_DATE);
+    const bucket = byDate.get(key);
+    days.push({
+      date: key,
+      label: formatDate(cursor, 'dd/MM'),
+      rate: bucket && bucket.total > 0 ? Math.round((bucket.present / bucket.total) * 1000) / 10 : null,
+    });
+    cursor = new Date(cursor.getTime() + 86_400_000);
+  }
+  return days;
+}
 
-      const staffRes = await staffService.getAll();
-      const studentRes = await studentService.getAll();
-      const bookRes = await libraryService.getBooks();
+/** Aggregates FeeDTO[] (from GET /v1/fees/year/{year}) into one row per
+ * month (by dueDate), summing paidAmount vs remainingAmount. */
+function buildFeeChartData(fees) {
+  const byMonth = new Map();
+  for (const f of fees ?? []) {
+    if (!f.dueDate) continue;
+    const monthKey = f.dueDate.slice(0, 7); // yyyy-MM
+    const bucket = byMonth.get(monthKey) ?? { paid: 0, remaining: 0 };
+    bucket.paid += f.paidAmount ?? 0;
+    bucket.remaining += f.remainingAmount ?? 0;
+    byMonth.set(monthKey, bucket);
+  }
+  return [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, { paid, remaining }]) => ({
+      month: formatDate(new Date(`${month}-01`), 'MM/yyyy'),
+      'Đã thu': Math.round(paid),
+      'Còn nợ': Math.round(remaining),
+    }));
+}
 
-      setStats({
-        staffCount: staffRes.data.length || 0,
-        studentCount: studentRes.data.length || 0,
-        bookCount: bookRes.data.length || 0,
-        attendanceRate: 85,
-        totalRevenue: 125000,
-        loading: false,
-        error: null,
-      });
-    } catch (err) {
-      setStats(prev => ({
-        ...prev,
-        loading: false,
-        error: 'Failed to load statistics',
-      }));
-    }
-  };
+const AUDIT_ACTION_LABELS = {
+  CREATE: 'tạo mới',
+  UPDATE: 'cập nhật',
+  DELETE: 'xóa',
+  APPROVE: 'duyệt',
+  REJECT: 'từ chối',
+};
 
-  const StatCard = ({ icon: Icon, title, count, color, trend = null, trendLabel = null }) => (
-    <Card className="stat-card professional">
-      <Card.Body>
-        <div className="stat-card-header">
-          <div className={`stat-icon ${color}`}>
-            <Icon size={24} />
-          </div>
-          {trend && (
-            <Badge className={`trend-badge ${trend > 0 ? 'positive' : 'negative'}`}>
-              <FiTrendingUp size={14} /> {Math.abs(trend)}%
-            </Badge>
-          )}
+function StatCard({ icon: Icon, title, value, iconClassName }) {
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-5">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${iconClassName}`}>
+          <Icon className="h-5 w-5" />
         </div>
-        <div className="stat-card-body">
-          <h6 className="text-muted mb-1">{title}</h6>
-          <h2 className="mb-0">{count}</h2>
-          {trendLabel && <p className="trend-label">{trendLabel}</p>}
+        <div>
+          {/* Stacked (icon above text) rather than side-by-side - at 5
+              cards per row, Vietnamese labels like "Chuyên cần (30 ngày)"
+              truncated to unreadable fragments ("Ch...") in a side-by-side
+              layout with this little width; full card width fixes it. */}
+          <p className="text-sm leading-snug text-muted-foreground">{title}</p>
+          <p className="truncate text-xl font-semibold tabular-nums" title={String(value)}>
+            {value}
+          </p>
         </div>
-      </Card.Body>
+      </CardContent>
     </Card>
   );
+}
 
-  const QuickActionButton = ({ icon: Icon, label, color, to }) => (
-    <Link to={to} className={`quick-action-btn ${color}`}>
-      <Icon size={20} />
-      <span>{label}</span>
-      <FiArrowRight size={16} />
+function QuickAction({ icon: Icon, label, to, className }) {
+  return (
+    <Link
+      to={to}
+      className={`group flex items-center gap-3 rounded-lg p-4 text-white transition-transform hover:-translate-y-0.5 ${className}`}
+    >
+      <Icon className="h-5 w-5" />
+      <span className="flex-1 font-medium">{label}</span>
+      <FiArrowRight className="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100" />
     </Link>
   );
+}
+
+function Dashboard({ user }) {
+  const isAdmin = user?.role === 'ADMIN';
+
+  const { startDate, endDate } = useMemo(() => {
+    const end = new Date();
+    return { startDate: formatDate(subDays(end, CHART_DAYS - 1), ISO_DATE), endDate: formatDate(end, ISO_DATE) };
+  }, []);
+
+  const statsQuery = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: () => dashboardService.getStats().then((r) => r.data),
+  });
+
+  // The charts/activity feed below need endpoints only ADMIN can call
+  // (AttendanceController's /between, FeeController's /year/{}, and
+  // AuditLogController are all ADMIN-only or ADMIN+TEACHER/ACCOUNTANT -
+  // PRINCIPAL, who can otherwise view this Dashboard per
+  // DashboardController's own @PreAuthorize, can't) - gated with `enabled`
+  // so a PRINCIPAL session never fires (and 403s on) these calls.
+  const attendanceQuery = useQuery({
+    queryKey: ['dashboard-attendance-trend', startDate, endDate],
+    queryFn: () => attendanceService.getBetweenDates(startDate, endDate).then((r) => r.data),
+    enabled: isAdmin,
+  });
+
+  const academicYearsQuery = useQuery({
+    queryKey: ['academic-years'],
+    queryFn: () => academicYearService.getAll().then((r) => r.data),
+    enabled: isAdmin,
+  });
+  const activeAcademicYear = academicYearsQuery.data?.find((y) => y.status === 'ACTIVE')?.name;
+
+  const feesQuery = useQuery({
+    queryKey: ['dashboard-fees-by-year', activeAcademicYear],
+    queryFn: () => feeService.getByYear(activeAcademicYear).then((r) => r.data),
+    enabled: isAdmin && Boolean(activeAcademicYear),
+  });
+
+  const activityQuery = useQuery({
+    queryKey: ['dashboard-recent-activity'],
+    queryFn: () => auditLogService.getRecent(5).then((r) => r.data.content),
+    enabled: isAdmin,
+  });
+
+  const attendanceChartData = useMemo(
+    () => buildAttendanceChartData(attendanceQuery.data, startDate, endDate),
+    [attendanceQuery.data, startDate, endDate]
+  );
+  const feeChartData = useMemo(() => buildFeeChartData(feesQuery.data), [feesQuery.data]);
+
+  const stats = statsQuery.data;
 
   return (
-    <div className="dashboard-container">
-      {/* Header Section */}
-      <div className="dashboard-header">
-        <div className="header-content">
-          <div>
-            <h1 className="header-title">Welcome back, <span className="highlight">{user?.firstName}!</span></h1>
-            <p className="header-subtitle">Here's what's happening in your school today</p>
-          </div>
-          <div className="header-badge">
-            <Badge bg="primary" className="role-badge">{user?.role}</Badge>
-            <span className="user-email">{user?.email}</span>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col justify-between gap-3 rounded-xl bg-gradient-to-r from-primary to-purple-600 p-6 text-primary-foreground sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-2xl font-bold">
+            Chào mừng trở lại, <span className="opacity-90">{user?.firstName}!</span>
+          </h1>
+          <p className="text-primary-foreground/80">Đây là tình hình trường học hôm nay</p>
+        </div>
+        <div className="flex items-center gap-2 sm:flex-col sm:items-end">
+          <Badge className="border-white/30 bg-white/15 text-white hover:bg-white/15">{user?.role}</Badge>
+          <span className="text-sm text-primary-foreground/80">{user?.email}</span>
         </div>
       </div>
 
-      {stats.error && <Alert variant="danger" className="mt-3">{stats.error}</Alert>}
-
-      {stats.loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
+      {statsQuery.isError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Không tải được số liệu thống kê. Vui lòng thử lại sau.
         </div>
-      ) : (
+      )}
+
+      {/* Stat cards - real values from GET /v1/dashboard/stats */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <StatCard
+          icon={FiUsers}
+          title="Nhân viên"
+          value={statsQuery.isLoading ? '…' : stats?.activeStaffCount ?? 0}
+          iconClassName="bg-primary/10 text-primary"
+        />
+        <StatCard
+          icon={FiUsers}
+          title="Học sinh"
+          value={statsQuery.isLoading ? '…' : stats?.activeStudentCount ?? 0}
+          iconClassName="bg-green-500/10 text-green-600"
+        />
+        <StatCard
+          icon={FiBook}
+          title="Sách đang mượn"
+          value={statsQuery.isLoading ? '…' : stats?.booksBorrowedCount ?? 0}
+          iconClassName="bg-blue-500/10 text-blue-600"
+        />
+        <StatCard
+          icon={FiPercent}
+          title="Chuyên cần (30 ngày)"
+          value={statsQuery.isLoading ? '…' : `${(stats?.averageAttendanceRate ?? 0).toFixed(1)}%`}
+          iconClassName="bg-amber-500/10 text-amber-600"
+        />
+        <StatCard
+          icon={FiDollarSign}
+          title="Học phí còn nợ"
+          value={statsQuery.isLoading ? '…' : currencyVND(stats?.totalOutstandingFees)}
+          iconClassName="bg-rose-500/10 text-rose-600"
+        />
+      </div>
+
+      {/* Quick actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Truy cập nhanh</CardTitle>
+          <CardDescription>Các chức năng thường dùng</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <QuickAction icon={FiUsers} label="Nhân viên" to="/staff" className="bg-gradient-to-br from-indigo-500 to-purple-600" />
+          <QuickAction icon={FiUsers} label="Học sinh" to="/students" className="bg-gradient-to-br from-emerald-500 to-teal-600" />
+          <QuickAction icon={FiClipboard} label="Điểm danh" to="/attendance" className="bg-gradient-to-br from-sky-500 to-blue-600" />
+          <QuickAction icon={FiAward} label="Điểm số" to="/grades" className="bg-gradient-to-br from-amber-500 to-orange-600" />
+          <QuickAction icon={FiBook} label="Thư viện" to="/library" className="bg-gradient-to-br from-violet-500 to-fuchsia-600" />
+          <QuickAction icon={FiDollarSign} label="Học phí" to="/fees" className="bg-gradient-to-br from-rose-500 to-red-600" />
+        </CardContent>
+      </Card>
+
+      {isAdmin ? (
         <>
-          {/* Stats Row */}
-          <Row className="stats-row">
-            <Col lg={3} md={6} className="mb-3">
-              <StatCard
-                icon={FiUsers}
-                title="Total Staff"
-                count={stats.staffCount}
-                color="primary"
-                trend={12}
-                trendLabel="vs last month"
-              />
-            </Col>
-            <Col lg={3} md={6} className="mb-3">
-              <StatCard
-                icon={FiUsers}
-                title="Total Students"
-                count={stats.studentCount}
-                color="success"
-                trend={5}
-                trendLabel="vs last month"
-              />
-            </Col>
-            <Col lg={3} md={6} className="mb-3">
-              <StatCard
-                icon={FiBook}
-                title="Library Books"
-                count={stats.bookCount}
-                color="info"
-                trend={-2}
-                trendLabel="vs last month"
-              />
-            </Col>
-            <Col lg={3} md={6} className="mb-3">
-              <StatCard
-                icon={FiPercent}
-                title="Attendance Rate"
-                count={`${stats.attendanceRate}%`}
-                color="warning"
-                trend={3}
-                trendLabel="vs last month"
-              />
-            </Col>
-          </Row>
+          {/* Charts - real data aggregated client-side from list endpoints
+              (no dedicated trend-aggregation endpoint exists on the backend
+              yet, see commit message for why this approach was chosen). */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Tỷ lệ chuyên cần</CardTitle>
+                <CardDescription>{CHART_DAYS} ngày gần nhất, toàn trường</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {attendanceQuery.isLoading ? (
+                  <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">Đang tải...</div>
+                ) : attendanceChartData.every((d) => d.rate == null) ? (
+                  <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+                    Chưa có dữ liệu điểm danh trong {CHART_DAYS} ngày gần nhất.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <LineChart data={attendanceChartData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                      <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} unit="%" width={40} />
+                      <Tooltip
+                        formatter={(v) => (v == null ? 'Không có dữ liệu' : `${v}%`)}
+                        labelFormatter={(label) => `Ngày ${label}`}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="rate"
+                        name="Chuyên cần"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        connectNulls
+                        dot={{ r: 3 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
 
-          {/* Main Content Row */}
-          <Row className="mt-4">
-            {/* Quick Actions */}
-            <Col lg={7} className="mb-4">
-              <Card className="professional-card">
-                <Card.Header className="card-header-professional">
-                  <div>
-                    <Card.Title className="mb-0">Quick Actions</Card.Title>
-                    <p className="mb-0 text-muted small">Frequently used features</p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Thu học phí theo tháng</CardTitle>
+                <CardDescription>
+                  {activeAcademicYear ? `Năm học ${activeAcademicYear}` : 'Theo năm học đang hoạt động'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {feesQuery.isLoading || academicYearsQuery.isLoading ? (
+                  <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">Đang tải...</div>
+                ) : academicYearsQuery.isSuccess && !activeAcademicYear ? (
+                  <div className="flex h-64 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                    Chưa thiết lập năm học đang hoạt động (ACTIVE) trong hệ thống.
                   </div>
-                </Card.Header>
-                <Card.Body>
-                  <div className="quick-actions-grid">
-                    <QuickActionButton
-                      icon={FiUsers}
-                      label="Manage Staff"
-                      color="primary"
-                      to="/staff"
-                    />
-                    <QuickActionButton
-                      icon={FiUsers}
-                      label="Manage Students"
-                      color="success"
-                      to="/students"
-                    />
-                    <QuickActionButton
-                      icon={FiClipboard}
-                      label="Attendance"
-                      color="info"
-                      to="/attendance"
-                    />
-                    <QuickActionButton
-                      icon={FiAward}
-                      label="Manage Grades"
-                      color="warning"
-                      to="/grades"
-                    />
-                    <QuickActionButton
-                      icon={FiBook}
-                      label="Library"
-                      color="secondary"
-                      to="/library"
-                    />
-                    <QuickActionButton
-                      icon={FiDollarSign}
-                      label="Manage Fees"
-                      color="danger"
-                      to="/fees"
-                    />
+                ) : feeChartData.length === 0 ? (
+                  <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+                    Chưa có dữ liệu học phí cho năm học này.
                   </div>
-                </Card.Body>
-              </Card>
-            </Col>
+                ) : (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={feeChartData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                      <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} width={60} tickFormatter={(v) => `${Math.round(v / 1_000_000)}tr`} />
+                      <Tooltip formatter={(v) => currencyVND(v)} />
+                      <Legend />
+                      <Bar dataKey="Đã thu" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="Còn nợ" stackId="a" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
-            {/* System Stats */}
-            <Col lg={5} className="mb-4">
-              <Card className="professional-card">
-                <Card.Header className="card-header-professional">
-                  <Card.Title className="mb-0">System Overview</Card.Title>
-                </Card.Header>
-                <Card.Body>
-                  <div className="system-stats">
-                    <div className="stat-row">
-                      <div className="stat-label">
-                        <FiCalendar size={18} />
-                        <span>Current Academic Year</span>
-                      </div>
-                      <span className="stat-value">2024-2025</span>
-                    </div>
-                    <div className="stat-row">
-                      <div className="stat-label">
-                        <FiCheckCircle size={18} />
-                        <span>System Status</span>
-                      </div>
-                      <Badge bg="success">Operational</Badge>
-                    </div>
-                    <div className="stat-row">
-                      <div className="stat-label">
-                        <FiClock size={18} />
-                        <span>Last Backup</span>
-                      </div>
-                      <span className="stat-value">Today 3:00 PM</span>
-                    </div>
-                    <div className="stat-row">
-                      <div className="stat-label">
-                        <FiUsers size={18} />
-                        <span>Active Users</span>
-                      </div>
-                      <Badge bg="primary">24</Badge>
-                    </div>
-                    <div className="stat-row">
-                      <div className="stat-label">
-                        <FiDollarSign size={18} />
-                        <span>Total Revenue</span>
-                      </div>
-                      <span className="stat-value">₹{stats.totalRevenue.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-
-          {/* Recent Activity & Performance */}
-          <Row className="mt-4">
-            <Col lg={6} className="mb-4">
-              <Card className="professional-card">
-                <Card.Header className="card-header-professional">
-                  <div>
-                    <Card.Title className="mb-0">Recent Activity</Card.Title>
-                    <p className="mb-0 text-muted small">Latest updates from your system</p>
-                  </div>
-                </Card.Header>
-                <Card.Body className="p-0">
-                  <div className="activity-list">
-                    {recentActivity.map((activity) => (
-                      <div key={activity.id} className="activity-item">
-                        <div className="activity-icon">{activity.icon}</div>
-                        <div className="activity-content">
-                          <p className="mb-0">{activity.message}</p>
-                          <small className="text-muted">{activity.time}</small>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-
-            <Col lg={6} className="mb-4">
-              <Card className="professional-card">
-                <Card.Header className="card-header-professional">
-                  <div>
-                    <Card.Title className="mb-0">Performance Metrics</Card.Title>
-                    <p className="mb-0 text-muted small">This month overview</p>
-                  </div>
-                </Card.Header>
-                <Card.Body>
-                  <div className="metrics-container">
-                    <div className="metric-item">
-                      <div className="metric-header">
-                        <span>Student Enrollment</span>
-                        <span className="badge-sm success">+15%</span>
-                      </div>
-                      <div className="progress-bar">
-                        <div className="progress-fill" style={{ width: '75%', backgroundColor: '#52c41a' }}></div>
-                      </div>
-                      <small className="text-muted">{stats.studentCount} students</small>
-                    </div>
-                    <div className="metric-item">
-                      <div className="metric-header">
-                        <span>Attendance</span>
-                        <span className="badge-sm success">+3%</span>
-                      </div>
-                      <div className="progress-bar">
-                        <div className="progress-fill" style={{ width: '85%', backgroundColor: '#1890ff' }}></div>
-                      </div>
-                      <small className="text-muted">85% average</small>
-                    </div>
-                    <div className="metric-item">
-                      <div className="metric-header">
-                        <span>Fee Collection</span>
-                        <span className="badge-sm danger">-5%</span>
-                      </div>
-                      <div className="progress-bar">
-                        <div className="progress-fill" style={{ width: '60%', backgroundColor: '#faad14' }}></div>
-                      </div>
-                      <small className="text-muted">60% collected</small>
-                    </div>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
+          {/* Recent activity - real audit log entries (ADMIN only) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Hoạt động gần đây</CardTitle>
+              <CardDescription>5 thao tác nhạy cảm gần nhất trong hệ thống</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {activityQuery.isLoading ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">Đang tải...</p>
+              ) : !activityQuery.data?.length ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">Chưa có hoạt động nào được ghi nhận.</p>
+              ) : (
+                <ul className="divide-y">
+                  {activityQuery.data.map((entry) => (
+                    <li key={entry.id} className="flex items-center justify-between gap-3 py-3 text-sm">
+                      <span>
+                        <span className="font-medium">{entry.actorName ?? 'Hệ thống'}</span>{' '}
+                        {AUDIT_ACTION_LABELS[entry.action] ?? entry.action?.toLowerCase()} {entry.entityType}
+                        {entry.entityId != null && ` #${entry.entityId}`}
+                      </span>
+                      <span className="shrink-0 text-muted-foreground">
+                        {formatDistanceToNow(new Date(entry.occurredAt), { addSuffix: true, locale: vi })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
         </>
+      ) : (
+        <Card>
+          <CardContent className="flex items-center gap-3 p-5 text-sm text-muted-foreground">
+            <FiCalendar className="h-5 w-5 shrink-0" />
+            Biểu đồ chuyên cần, thu học phí và hoạt động gần đây chỉ dành cho tài khoản ADMIN.
+          </CardContent>
+        </Card>
       )}
     </div>
   );
 }
 
 export default Dashboard;
-
