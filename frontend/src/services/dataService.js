@@ -100,7 +100,11 @@ export const schoolClassService = {
 // Grade Service
 export const gradeService = {
   getByStudent: (studentId) => api.get(`/v1/grades/student/${studentId}`),
-  getByClass: (className, section) => api.get(`/v1/grades/class/${className}?section=${section}`),
+  // GET /v1/grades/class/... never existed on the backend (GradeController
+  // only has per-student and school-wide-by-year queries) - getByYear is
+  // what GradeManagement actually filters client-side to build a
+  // by-class-and-subject view.
+  getByYear: (academicYear) => api.get(`/v1/grades/year/${academicYear}`),
   createGrade: (data) => api.post('/v1/grades', data),
   updateGrade: (id, data) => api.put(`/v1/grades/${id}`, data),
   deleteGrade: (id) => api.delete(`/v1/grades/${id}`),

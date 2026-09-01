@@ -22,7 +22,13 @@ export const NAV_ITEMS = [
   // 403s on every single request. Found while building the page itself
   // (Tuần 4 Ngày 2), same root cause as the Dashboard stats bug (Tuần 3).
   { label: 'Attendance', href: '/attendance', icon: FiClipboard, roles: ['ADMIN', 'TEACHER'] },
-  { label: 'Grades', href: '/grades', icon: FiAward, roles: ['ADMIN', 'TEACHER', 'STUDENT'] },
+  // STUDENT excluded for the same reason as PRINCIPAL was on Attendance
+  // above: the only thing at /grades right now is a grade-entry table
+  // (Tuần 4 Ngày 3-4) built on GET /v1/grades/year/{year}, which is
+  // hasAnyRole('ADMIN', 'TEACHER') only - a STUDENT has their own
+  // /v1/grades/student/{id} endpoint, but nothing in the frontend routes
+  // to it yet, so there's no page here for them to land on today.
+  { label: 'Grades', href: '/grades', icon: FiAward, roles: ['ADMIN', 'TEACHER'] },
   { label: 'Fees', href: '/fees', icon: FiDollarSign, roles: ['ADMIN', 'ACCOUNTANT', 'STUDENT'] },
 ];
 

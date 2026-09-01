@@ -10,10 +10,8 @@ import StaffManagement from './pages/StaffManagement';
 import StudentManagement from './pages/StudentManagement';
 import LibraryManagement from './pages/LibraryManagement';
 import AttendanceManagement from './pages/AttendanceManagement';
-import {
-  GradeManagement,
-  FeeManagement,
-} from './pages/ManagementPages';
+import GradeManagement from './pages/GradeManagement';
+import { FeeManagement } from './pages/ManagementPages';
 
 // Layout
 import AppShell from './components/layout/AppShell';
