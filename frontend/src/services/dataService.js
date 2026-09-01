@@ -95,6 +95,11 @@ export const attendanceService = {
 
 export const schoolClassService = {
   getAll: () => api.get('/v1/classes'),
+  create: (data) => api.post('/v1/classes', data),
+  update: (id, data) => api.put(`/v1/classes/${id}`, data),
+  delete: (id) => api.delete(`/v1/classes/${id}`),
+  assignTeacher: (classId, staffId) => api.put(`/v1/classes/${classId}/teacher/${staffId}`),
+  getStudents: (classId) => api.get(`/v1/classes/${classId}/students`),
 };
 
 // Grade Service

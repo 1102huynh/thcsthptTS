@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import StaffManagement from './pages/StaffManagement';
 import StudentManagement from './pages/StudentManagement';
+import ClassManagement from './pages/ClassManagement';
 import LibraryManagement from './pages/LibraryManagement';
 import AttendanceManagement from './pages/AttendanceManagement';
 import GradeManagement from './pages/GradeManagement';
@@ -61,6 +62,7 @@ function App() {
             <Route path="/" element={<Dashboard user={user} />} />
             <Route path="/staff" element={<StaffManagement />} />
             <Route path="/students" element={<StudentManagement />} />
+            <Route path="/classes" element={<ClassManagement />} />
             <Route path="/library" element={<LibraryManagement user={user} />} />
             <Route path="/attendance" element={<AttendanceManagement />} />
             <Route path="/grades" element={<GradeManagement />} />

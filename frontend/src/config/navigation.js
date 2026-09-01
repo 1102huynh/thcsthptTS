@@ -5,6 +5,7 @@ import {
   FiClipboard,
   FiAward,
   FiDollarSign,
+  FiGrid,
 } from 'react-icons/fi';
 
 // Shared between Sidebar (nav links) and Navbar (page title lookup by
@@ -15,6 +16,11 @@ export const NAV_ITEMS = [
   { label: 'Dashboard', href: '/', icon: FiHome, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'LIBRARIAN', 'ACCOUNTANT'] },
   { label: 'Staff Management', href: '/staff', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL'] },
   { label: 'Student Management', href: '/students', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+  // TEACHER can view (SchoolClassController's GET is ADMIN/PRINCIPAL/
+  // TEACHER) but not manage (create/update/delete/assign are ADMIN/
+  // PRINCIPAL only) - excluded here since this page is full CRUD, same
+  // scoping choice as Staff Management just above.
+  { label: 'Class Management', href: '/classes', icon: FiGrid, roles: ['ADMIN', 'PRINCIPAL'] },
   { label: 'Library', href: '/library', icon: FiBook, roles: ['ADMIN', 'LIBRARIAN', 'STUDENT', 'TEACHER'] },
   // PRINCIPAL deliberately excluded: AttendanceController's endpoints -
   // including the GET ones - are all hasAnyRole('ADMIN', 'TEACHER', ...)
