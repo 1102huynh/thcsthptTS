@@ -60,6 +60,14 @@
 
 body {
   margin: 0;
+  /* hsl(var(--background))/hsl(var(--foreground)) (not App.css's hardcoded
+     #f5f7fa/#1a1a1a) so both flip with the `dark` class - this file loads
+     after App.css, so it wins the cascade. Without the color rule, text
+     anywhere that doesn't set its own color (e.g. Navbar's <h1> page title)
+     fell back to the browser's default near-black, invisible against a
+     dark background - caught via a live dark-mode screenshot. */
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
   font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;

@@ -11,6 +11,19 @@
   <body>
     <noscript>Bạn cần bật JavaScript để chạy ứng dụng này.</noscript>
     <div id="root"></div>
+    <!-- Applies the dark class before React mounts/paints, mirroring
+         src/providers/ThemeProvider.jsx's own logic (same localStorage key,
+         same system-preference fallback) - without this, a dark-mode user
+         would see a flash of the light theme on every load. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme');
+          var dark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

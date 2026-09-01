@@ -33,7 +33,7 @@ function AppShell({ user, onLogout, children }) {
   }, [setSidebarOpen]);
 
   return (
-    <div className="flex min-h-screen bg-muted/30">
+    <div className="flex min-h-screen bg-muted">
       <Sidebar
         userRole={user?.role}
         mobileOpen={sidebarOpen}

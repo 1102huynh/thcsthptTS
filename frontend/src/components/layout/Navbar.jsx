@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiMenu, FiBell, FiLogOut, FiSettings, FiUser } from 'react-icons/fi';
+import { FiMenu, FiBell, FiLogOut, FiSettings, FiUser, FiSun, FiMoon } from 'react-icons/fi';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { pageTitleForPath } from '@/config/navigation';
+import { useTheme } from '@/providers/ThemeProvider';
 
 // Placeholder data - a real notifications feed isn't wired up yet (no
 // backend endpoint for it exists); kept here only so the bell's dropdown
@@ -31,6 +32,7 @@ function initials(user) {
 function Navbar({ user, onLogout, onToggleSidebar }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
 
   const handleLogout = () => {
     onLogout();
@@ -48,6 +50,15 @@ function Navbar({ user, onLogout, onToggleSidebar }) {
       </h1>
 
       <div className="ml-auto flex items-center gap-1 sm:gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+        >
+          {theme === 'dark' ? <FiSun className="h-5 w-5" /> : <FiMoon className="h-5 w-5" />}
+        </Button>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
