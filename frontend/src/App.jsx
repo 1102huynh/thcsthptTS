@@ -1,20 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// Pages
-import LoginPage from './pages/LoginPage';
-import Dashboard from './pages/Dashboard';
-import StaffManagement from './pages/StaffManagement';
-import StudentManagement from './pages/StudentManagement';
-import ClassManagement from './pages/ClassManagement';
-import LibraryManagement from './pages/LibraryManagement';
-import AttendanceManagement from './pages/AttendanceManagement';
-import GradeManagement from './pages/GradeManagement';
-import FeeManagement from './pages/FeeManagement';
+// Pages - lazy-loaded per route (Tuần 6 Ngày 2) so a session only ever
+// downloads the page(s) it actually visits instead of one bundle with
+// every page (Dashboard's recharts, every *Management page's forms/dialogs,
+// ...) upfront. React.lazy()'s default export requirement is why every
+// page module still needs `export default` (already true for all of them).
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const StaffManagement = lazy(() => import('./pages/StaffManagement'));
+const StudentManagement = lazy(() => import('./pages/StudentManagement'));
+const ClassManagement = lazy(() => import('./pages/ClassManagement'));
+const LibraryManagement = lazy(() => import('./pages/LibraryManagement'));
+const AttendanceManagement = lazy(() => import('./pages/AttendanceManagement'));
+const GradeManagement = lazy(() => import('./pages/GradeManagement'));
+const FeeManagement = lazy(() => import('./pages/FeeManagement'));
 
 // Layout
 import AppShell from './components/layout/AppShell';
-import { AppShellSkeleton } from './components/shared/Skeleton';
+import { AppShellSkeleton, RoutePageSkeleton } from './components/shared/Skeleton';
 
 // Services
 import { getCurrentUser } from './services/authService';
@@ -57,23 +61,27 @@ function App() {
     <Router>
       {user ? (
         <AppShell user={user} onLogout={handleLogout}>
-          <Routes>
-            <Route path="/" element={<Dashboard user={user} />} />
-            <Route path="/staff" element={<StaffManagement />} />
-            <Route path="/students" element={<StudentManagement />} />
-            <Route path="/classes" element={<ClassManagement />} />
-            <Route path="/library" element={<LibraryManagement user={user} />} />
-            <Route path="/attendance" element={<AttendanceManagement />} />
-            <Route path="/grades" element={<GradeManagement />} />
-            <Route path="/fees" element={<FeeManagement />} />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
+          <Suspense fallback={<RoutePageSkeleton />}>
+            <Routes>
+              <Route path="/" element={<Dashboard user={user} />} />
+              <Route path="/staff" element={<StaffManagement />} />
+              <Route path="/students" element={<StudentManagement />} />
+              <Route path="/classes" element={<ClassManagement />} />
+              <Route path="/library" element={<LibraryManagement user={user} />} />
+              <Route path="/attendance" element={<AttendanceManagement />} />
+              <Route path="/grades" element={<GradeManagement />} />
+              <Route path="/fees" element={<FeeManagement />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </Suspense>
         </AppShell>
       ) : (
-        <Routes>
-          <Route path="/" element={<LoginPage onLogin={handleLogin} />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<LoginPage onLogin={handleLogin} />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </Suspense>
       )}
     </Router>
   );

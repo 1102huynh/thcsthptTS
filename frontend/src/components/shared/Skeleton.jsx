@@ -74,6 +74,34 @@ export function ListRowsSkeleton({ rows = 4 }) {
   );
 }
 
+/** Generic page-content placeholder - title/subtitle bar over a card of
+ * table-shaped rows. Used as the <Suspense> fallback for each
+ * React.lazy()-loaded route (Tuần 6 Ngày 2): AppShell itself (sidebar +
+ * topbar) isn't lazy, only the routed page inside it is, so the fallback
+ * only needs to fill the content area - not the full-shell shape
+ * AppShellSkeleton below is for. Generic enough for any page since most
+ * routes are a heading over one table/list. */
+export function RoutePageSkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden="true">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <Skeleton className="h-9 w-32" />
+      </div>
+      <div className="rounded-md border">
+        <table className="w-full">
+          <tbody>
+            <TableRowsSkeleton rows={6} columns={4} />
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /** Full-page skeleton shaped like AppShell (sidebar strip + topbar +
  * content blocks) - stands in for App.jsx's brief initial auth-check
  * frame, the one true "spinner toàn trang" in the app before this pass. */
