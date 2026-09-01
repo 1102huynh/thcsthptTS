@@ -26,7 +26,17 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Only treat a 401 as "session expired, force back to login" when the
+    // failed request actually carried a token (an authenticated call got
+    // rejected mid-session). A 401 from an anonymous request - most
+    // notably POST /v1/auth/login itself on a wrong password - just means
+    // "invalid credentials", not an expired session; redirecting on that
+    // too (the previous behavior) hard-reloaded the page on every failed
+    // login attempt, wiping the form before the caller's own error
+    // handling (LoginPage's toast) ever got a chance to render. Found live
+    // via Playwright, not by inspection - the toast simply never appeared.
+    const hadToken = Boolean(error.config?.headers?.Authorization);
+    if (error.response?.status === 401 && hadToken) {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('user');
       window.location.href = '/';

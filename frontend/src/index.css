@@ -43,7 +43,13 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
     --primary: 229 76% 66%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Kept near-white (not shadcn's default dark-navy) - unlike shadcn's
+       stock dark theme, --primary itself deliberately stays the same
+       brand blue in dark mode instead of inverting to a lighter shade, so
+       pairing it with a dark foreground here left button/badge text
+       nearly unreadable on the still-medium-blue background. Caught via a
+       live dark-mode screenshot, not by inspection. */
+    --primary-foreground: 210 40% 98%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
