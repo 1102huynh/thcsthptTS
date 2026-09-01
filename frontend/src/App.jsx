@@ -8,8 +8,8 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import StaffManagement from './pages/StaffManagement';
 import StudentManagement from './pages/StudentManagement';
+import LibraryManagement from './pages/LibraryManagement';
 import {
-  LibraryManagement,
   AttendanceManagement,
   GradeManagement,
   FeeManagement,
@@ -63,7 +63,7 @@ function App() {
             <Route path="/" element={<Dashboard user={user} />} />
             <Route path="/staff" element={<StaffManagement />} />
             <Route path="/students" element={<StudentManagement />} />
-            <Route path="/library" element={<LibraryManagement />} />
+            <Route path="/library" element={<LibraryManagement user={user} />} />
             <Route path="/attendance" element={<AttendanceManagement />} />
             <Route path="/grades" element={<GradeManagement />} />
             <Route path="/fees" element={<FeeManagement />} />

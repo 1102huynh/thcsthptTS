@@ -44,9 +44,21 @@ export const libraryService = {
   createBook: (data) => api.post('/v1/library/books', data),
   updateBook: (id, data) => api.put(`/v1/library/books/${id}`, data),
   deleteBook: (id) => api.delete(`/v1/library/books/${id}`),
-  borrowBook: (bookId, userId) => api.post(`/v1/library/books/${bookId}/borrow`, { userId }),
-  returnBook: (bookId, userId) => api.post(`/v1/library/books/${bookId}/return`, { userId }),
+  // Self-service only (LibraryController: hasAnyRole('TEACHER', 'STUDENT'))
+  // - the backend reads the borrower from the JWT principal, not a body
+  // field, and there is no "librarian lends book to student X" endpoint.
+  // borrowDays is a query param, not a body field.
+  borrowBook: (bookId, borrowDays = 14) =>
+    api.post(`/v1/library/books/${bookId}/borrow`, null, { params: { borrowDays } }),
+  returnBook: (bookId) => api.post(`/v1/library/books/${bookId}/return`),
+  // ADMIN/LIBRARIAN: every currently-outstanding borrow, for circulation
+  // visibility. Added alongside GET /v1/library/transactions{,/me} - see
+  // LibraryController's own comment for why (nothing exposed
+  // BookTransaction at all before).
   getTransactions: () => api.get('/v1/library/transactions'),
+  // TEACHER/STUDENT: the caller's own borrow/return history, used to know
+  // which books they currently have out (drives the Mượn/Trả button state).
+  getMyTransactions: () => api.get('/v1/library/transactions/me'),
 };
 
 // Attendance Service

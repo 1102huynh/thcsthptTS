@@ -13,7 +13,6 @@ const ManagementPage = ({ title, description }) => (
   </Container>
 );
 
-export const LibraryManagement = () => <ManagementPage title="Library Management" description="Manage books and library transactions" />;
 export const AttendanceManagement = () => <ManagementPage title="Attendance Management" description="Track student attendance" />;
 export const GradeManagement = () => <ManagementPage title="Grade Management" description="Manage student grades" />;
 export const FeeManagement = () => <ManagementPage title="Fee Management" description="Manage student fees and payments" />;

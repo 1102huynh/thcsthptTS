@@ -53,6 +53,31 @@ export const GENDER_LABELS = {
   OTHER: 'Khác',
 };
 
+export const BOOK_CATEGORY_LABELS = {
+  FICTION: 'Tiểu thuyết',
+  NON_FICTION: 'Phi hư cấu',
+  REFERENCE: 'Tham khảo',
+  ACADEMIC: 'Học thuật',
+  BIOGRAPHY: 'Tiểu sử',
+  HISTORY: 'Lịch sử',
+  SCIENCE: 'Khoa học',
+  MATHEMATICS: 'Toán học',
+  LITERATURE: 'Văn học',
+  LANGUAGE: 'Ngôn ngữ',
+  ARTS: 'Nghệ thuật',
+  SPORTS: 'Thể thao',
+  OTHER: 'Khác',
+};
+
+export const BOOK_STATUS_LABELS = {
+  AVAILABLE: 'Còn sách',
+  BORROWED: 'Đã cho mượn hết',
+  DAMAGED: 'Hư hỏng',
+  LOST: 'Thất lạc',
+  ARCHIVED: 'Lưu trữ',
+  RESERVED: 'Đã đặt trước',
+};
+
 export function toOptions(labelMap, keys = Object.keys(labelMap)) {
   return keys.map((value) => ({ value, label: labelMap[value] ?? value }));
 }

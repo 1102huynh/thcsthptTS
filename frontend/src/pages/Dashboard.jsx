@@ -141,6 +141,13 @@ function QuickAction({ icon: Icon, label, to, className }) {
 
 function Dashboard({ user }) {
   const isAdmin = user?.role === 'ADMIN';
+  // DashboardController's GET /v1/dashboard/stats is ADMIN/PRINCIPAL only -
+  // every other role that can land on this page (STUDENT, TEACHER,
+  // LIBRARIAN, ACCOUNTANT all reach "/") got an unconditional 403 + console
+  // error on every single login, and a permanently-broken stats section,
+  // because this query used to fire regardless of role. Caught live while
+  // testing LibraryManagement as a STUDENT account, not by inspection.
+  const isAdminOrPrincipal = isAdmin || user?.role === 'PRINCIPAL';
 
   const { startDate, endDate } = useMemo(() => {
     const end = new Date();
@@ -150,6 +157,7 @@ function Dashboard({ user }) {
   const statsQuery = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: () => dashboardService.getStats().then((r) => r.data),
+    enabled: isAdminOrPrincipal,
   });
 
   // The charts/activity feed below need endpoints only ADMIN can call
@@ -207,45 +215,49 @@ function Dashboard({ user }) {
         </div>
       </div>
 
-      {statsQuery.isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Không tải được số liệu thống kê. Vui lòng thử lại sau.
-        </div>
-      )}
+      {isAdminOrPrincipal && (
+        <>
+          {statsQuery.isError && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              Không tải được số liệu thống kê. Vui lòng thử lại sau.
+            </div>
+          )}
 
-      {/* Stat cards - real values from GET /v1/dashboard/stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatCard
-          icon={FiUsers}
-          title="Nhân viên"
-          value={statsQuery.isLoading ? '…' : stats?.activeStaffCount ?? 0}
-          iconClassName="bg-primary/10 text-primary"
-        />
-        <StatCard
-          icon={FiUsers}
-          title="Học sinh"
-          value={statsQuery.isLoading ? '…' : stats?.activeStudentCount ?? 0}
-          iconClassName="bg-green-500/10 text-green-600"
-        />
-        <StatCard
-          icon={FiBook}
-          title="Sách đang mượn"
-          value={statsQuery.isLoading ? '…' : stats?.booksBorrowedCount ?? 0}
-          iconClassName="bg-blue-500/10 text-blue-600"
-        />
-        <StatCard
-          icon={FiPercent}
-          title="Chuyên cần (30 ngày)"
-          value={statsQuery.isLoading ? '…' : `${(stats?.averageAttendanceRate ?? 0).toFixed(1)}%`}
-          iconClassName="bg-amber-500/10 text-amber-600"
-        />
-        <StatCard
-          icon={FiDollarSign}
-          title="Học phí còn nợ"
-          value={statsQuery.isLoading ? '…' : currencyVND(stats?.totalOutstandingFees)}
-          iconClassName="bg-rose-500/10 text-rose-600"
-        />
-      </div>
+          {/* Stat cards - real values from GET /v1/dashboard/stats */}
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+            <StatCard
+              icon={FiUsers}
+              title="Nhân viên"
+              value={statsQuery.isLoading ? '…' : stats?.activeStaffCount ?? 0}
+              iconClassName="bg-primary/10 text-primary"
+            />
+            <StatCard
+              icon={FiUsers}
+              title="Học sinh"
+              value={statsQuery.isLoading ? '…' : stats?.activeStudentCount ?? 0}
+              iconClassName="bg-green-500/10 text-green-600"
+            />
+            <StatCard
+              icon={FiBook}
+              title="Sách đang mượn"
+              value={statsQuery.isLoading ? '…' : stats?.booksBorrowedCount ?? 0}
+              iconClassName="bg-blue-500/10 text-blue-600"
+            />
+            <StatCard
+              icon={FiPercent}
+              title="Chuyên cần (30 ngày)"
+              value={statsQuery.isLoading ? '…' : `${(stats?.averageAttendanceRate ?? 0).toFixed(1)}%`}
+              iconClassName="bg-amber-500/10 text-amber-600"
+            />
+            <StatCard
+              icon={FiDollarSign}
+              title="Học phí còn nợ"
+              value={statsQuery.isLoading ? '…' : currencyVND(stats?.totalOutstandingFees)}
+              iconClassName="bg-rose-500/10 text-rose-600"
+            />
+          </div>
+        </>
+      )}
 
       {/* Quick actions */}
       <Card>

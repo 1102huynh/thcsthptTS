@@ -166,7 +166,14 @@ function StudentManagement() {
         searchPlaceholder="Tìm theo tên, số báo danh, email, lớp..."
       />
 
-      <StudentFormDialog open={dialogOpen} onOpenChange={setDialogOpen} student={editingStudent} />
+      {/* key forces a remount whenever the target record changes - see
+          LibraryManagement's BookFormDialog comment for why. */}
+      <StudentFormDialog
+        key={editingStudent?.id ?? 'create'}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        student={editingStudent}
+      />
 
       <AlertDialog open={Boolean(deletingStudent)} onOpenChange={(open) => !open && setDeletingStudent(null)}>
         <AlertDialogContent>

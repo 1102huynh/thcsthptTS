@@ -166,7 +166,17 @@ function StaffManagement() {
         searchPlaceholder="Tìm theo tên, mã NV, email, phòng ban..."
       />
 
-      <StaffFormDialog open={dialogOpen} onOpenChange={setDialogOpen} staff={editingStaff} />
+      {/* key forces a remount whenever the target record changes -
+          react-hook-form only applies defaultValues once per component
+          instance, so without this, editing staff B right after staff A
+          would keep showing A's values (same class of bug found live in
+          LibraryManagement's create->edit flow - see its comment). */}
+      <StaffFormDialog
+        key={editingStaff?.id ?? 'create'}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        staff={editingStaff}
+      />
 
       <AlertDialog open={Boolean(deletingStaff)} onOpenChange={(open) => !open && setDeletingStaff(null)}>
         <AlertDialogContent>

@@ -1,5 +1,6 @@
 package com.schoolmanagement.controller;
 
+import com.schoolmanagement.dto.BookTransactionDTO;
 import com.schoolmanagement.dto.LibraryBookDTO;
 import com.schoolmanagement.entity.BookCategory;
 import com.schoolmanagement.entity.LibraryBook;
@@ -128,6 +129,25 @@ public class LibraryController {
     public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
         libraryService.deleteBook(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    // Added alongside the frontend Library Management page (Tuần 4 Ngày 1) -
+    // borrowBook/returnBook above wrote BookTransaction rows from the start,
+    // but nothing ever exposed them, so a caller (frontend or otherwise) had
+    // no way to know which books a user currently has borrowed.
+    @GetMapping("/transactions/me")
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    @Operation(summary = "Get the current user's own borrow/return history")
+    public ResponseEntity<List<BookTransactionDTO>> getMyTransactions(Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        return new ResponseEntity<>(libraryService.getMyTransactions(user), HttpStatus.OK);
+    }
+
+    @GetMapping("/transactions")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('LIBRARIAN')")
+    @Operation(summary = "Get all currently outstanding (not yet returned) borrows")
+    public ResponseEntity<List<BookTransactionDTO>> getActiveBorrows() {
+        return new ResponseEntity<>(libraryService.getActiveBorrows(), HttpStatus.OK);
     }
 }
 

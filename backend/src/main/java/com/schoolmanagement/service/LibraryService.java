@@ -1,5 +1,6 @@
 package com.schoolmanagement.service;
 
+import com.schoolmanagement.dto.BookTransactionDTO;
 import com.schoolmanagement.dto.LibraryBookDTO;
 import com.schoolmanagement.entity.*;
 import com.schoolmanagement.exception.DuplicateResourceException;
@@ -165,6 +166,44 @@ public class LibraryService {
 
         bookRepository.save(book);
         transactionRepository.save(transaction);
+    }
+
+    /**
+     * The caller's own borrow/return history - drives the frontend's
+     * per-book "Mượn"/"Trả" button state for a STUDENT/TEACHER (they can't
+     * otherwise know which books they currently have out; see
+     * LibraryController for why this and getActiveBorrows were added -
+     * there was previously no endpoint exposing BookTransaction at all).
+     */
+    public List<BookTransactionDTO> getMyTransactions(User user) {
+        return transactionRepository.findByUser(user)
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    /** All currently-outstanding (not yet returned) borrows - ADMIN/LIBRARIAN circulation view. */
+    public List<BookTransactionDTO> getActiveBorrows() {
+        return transactionRepository.findByTransactionTypeAndReturnDateIsNull(TransactionType.BORROW)
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    private BookTransactionDTO mapToDTO(BookTransaction transaction) {
+        return BookTransactionDTO.builder()
+                .id(transaction.getId())
+                .bookId(transaction.getBook().getId())
+                .bookTitle(transaction.getBook().getTitle())
+                .userId(transaction.getUser().getId())
+                .userName(transaction.getUser().getFirstName() + " " + transaction.getUser().getLastName())
+                .transactionType(transaction.getTransactionType())
+                .borrowDate(transaction.getBorrowDate())
+                .dueDate(transaction.getDueDate())
+                .returnDate(transaction.getReturnDate())
+                .fineAmount(transaction.getFineAmount())
+                .finePaid(transaction.getFinePaid())
+                .build();
     }
 
     private LibraryBookDTO mapToDTO(LibraryBook book) {
