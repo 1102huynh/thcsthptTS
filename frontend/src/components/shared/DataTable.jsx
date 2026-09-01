@@ -28,6 +28,15 @@ import { TableRowsSkeleton } from '@/components/shared/Skeleton';
 
 const DEFAULT_PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
+// bg-muted, not bg-background: neither <table> nor <TableRow> paints an
+// opaque surface of its own (DataTable never wraps the table in a Card),
+// so every "non-sticky" cell is actually just showing AppShell's bg-muted
+// page background through. bg-background looked fine in light mode
+// (--background and --muted are 100% vs 96% lightness - barely different)
+// but was a visibly mismatched darker box in dark mode (4.9% vs 17.5%) -
+// caught in the Tuần 6 Ngày 3-4 dark-mode QA sweep; light mode alone hid it.
+const STICKY_ACTIONS_CLASS = 'sticky right-0 z-10 bg-muted shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]';
+
 function SortIcon({ sorted }) {
   if (sorted === 'asc') return <FiChevronUp className="h-3.5 w-3.5" />;
   if (sorted === 'desc') return <FiChevronDown className="h-3.5 w-3.5" />;
@@ -138,7 +147,7 @@ function DataTable({
                   return (
                     <TableHead
                       key={header.id}
-                      className={cn(isActions && 'sticky right-0 z-10 bg-background shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]')}
+                      className={cn(isActions && STICKY_ACTIONS_CLASS)}
                     >
                       {header.isPlaceholder ? null : canSort ? (
                         <button
@@ -186,10 +195,7 @@ function DataTable({
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      className={cn(
-                        cell.column.id === 'actions' &&
-                          'sticky right-0 z-10 bg-background shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]'
-                      )}
+                      className={cn(cell.column.id === 'actions' && STICKY_ACTIONS_CLASS)}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>

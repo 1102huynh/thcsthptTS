@@ -39,14 +39,22 @@ function NavList({ userRole, onNavigate }) {
             className={cn(
               'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
               active
-                ? 'bg-primary/10 text-primary'
+                ? // dark:text-primary-foreground - --primary was darkened for
+                  // AA text contrast against a *light* background (Tuần 5
+                  // Ngày 4, buttons/badges), but that same darker blue on
+                  // this tinted-dark-navy sidebar background in dark mode
+                  // only hit 3.32:1 (axe-core, Tuần 6 Ngày 3-4 QA pass -
+                  // light mode alone was checked before, not dark). Swap to
+                  // the near-white --primary-foreground for dark mode,
+                  // 17.9:1 against this background.
+                  'bg-primary/10 text-primary dark:text-primary-foreground'
                 : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
             )}
           >
             {active && (
               <span className="absolute inset-y-1 left-0 w-1 rounded-full bg-primary" aria-hidden="true" />
             )}
-            <Icon className={cn('h-[18px] w-[18px] shrink-0', active && 'text-primary')} />
+            <Icon className={cn('h-[18px] w-[18px] shrink-0', active && 'text-primary dark:text-primary-foreground')} />
             <span className="truncate">{label}</span>
           </Link>
         );

@@ -41,7 +41,16 @@ function AppShell({ user, onLogout, children }) {
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <Navbar user={user} onLogout={onLogout} onToggleSidebar={toggleSidebar} />
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="flex-1 p-4 sm:p-6">
+          {/* Capped and centered rather than stretching edge-to-edge - at
+              1920px+ (Tuần 6 Ngày 3-4 wide-desktop QA pass) an unconstrained
+              table left a large awkward gap between the last data column
+              and the sticky actions column, with nothing to fill it.
+              1600px keeps every current page's content comfortably within
+              it while still using noticeably more space than a laptop
+              screen would. */}
+          <div className="mx-auto max-w-[1600px]">{children}</div>
+        </main>
       </div>
     </div>
   );
