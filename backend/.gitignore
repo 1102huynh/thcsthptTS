@@ -91,6 +91,10 @@ gradle/
 # Node modules (if applicable)
 node_modules/
 npm-debug.log
+
+# scripts/seed-full-rosters output - specific to whoever ran it locally
+scripts/seed-full-rosters/created-students.json
+scripts/seed-full-rosters/package-lock.json
 yarn-error.log
 
 # Python (if applicable)

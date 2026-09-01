@@ -1,0 +1,10 @@
+{
+  "name": "seed-full-rosters",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "One-off seed script: fills classes with realistic Vietnamese student rosters plus matching attendance/fee/grade data. See README.md.",
+  "dependencies": {
+    "mysql2": "^3.11.0"
+  }
+}
