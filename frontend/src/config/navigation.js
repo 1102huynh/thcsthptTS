@@ -29,7 +29,15 @@ export const NAV_ITEMS = [
   // /v1/grades/student/{id} endpoint, but nothing in the frontend routes
   // to it yet, so there's no page here for them to land on today.
   { label: 'Grades', href: '/grades', icon: FiAward, roles: ['ADMIN', 'TEACHER'] },
-  { label: 'Fees', href: '/fees', icon: FiDollarSign, roles: ['ADMIN', 'ACCOUNTANT', 'STUDENT'] },
+  // STUDENT excluded for now, same reasoning pattern as Attendance/Grades
+  // above: unlike those two, FeeController genuinely does let a STUDENT
+  // view/pay their *own* fees (GET .../student/{id}, POST .../payment both
+  // allow it) - but the page built today (Tuần 4 Ngày 5) is the
+  // ADMIN/ACCOUNTANT-facing "danh sách khoản thu" management view (GET
+  // .../year/{year}, ADMIN/ACCOUNTANT only), matching every other page
+  // this week. A student self-service "my fees" view is a real, valid
+  // future addition, just not this one.
+  { label: 'Fees', href: '/fees', icon: FiDollarSign, roles: ['ADMIN', 'ACCOUNTANT'] },
 ];
 
 export function navItemsForRole(role) {

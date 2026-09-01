@@ -87,6 +87,26 @@ export const ATTENDANCE_STATUS_LABELS = {
   LEAVE_PENDING: 'Chờ duyệt nghỉ',
 };
 
+export const FEE_STATUS_LABELS = {
+  PENDING: 'Chưa nộp',
+  PARTIAL_PAID: 'Nộp một phần',
+  PAID: 'Đã nộp đủ',
+  OVERDUE: 'Quá hạn',
+  EXEMPTED: 'Miễn giảm',
+  CANCELLED: 'Đã hủy',
+};
+
+// Fee.feeType is a free-text column, not a backend enum - these are just
+// the presets offered when creating a fee, any string is otherwise valid.
+export const FEE_TYPE_PRESETS = ['Học phí', 'Bảo hiểm y tế', 'Đồng phục', 'Sách vở', 'Ăn bán trú', 'Khác'];
+
+export const PAYMENT_METHOD_LABELS = {
+  CASH: 'Tiền mặt',
+  BANK_TRANSFER: 'Chuyển khoản',
+  CARD: 'Thẻ',
+  ONLINE: 'Thanh toán online',
+};
+
 export function toOptions(labelMap, keys = Object.keys(labelMap)) {
   return keys.map((value) => ({ value, label: labelMap[value] ?? value }));
 }

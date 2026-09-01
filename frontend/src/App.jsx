@@ -11,7 +11,7 @@ import StudentManagement from './pages/StudentManagement';
 import LibraryManagement from './pages/LibraryManagement';
 import AttendanceManagement from './pages/AttendanceManagement';
 import GradeManagement from './pages/GradeManagement';
-import { FeeManagement } from './pages/ManagementPages';
+import FeeManagement from './pages/FeeManagement';
 
 // Layout
 import AppShell from './components/layout/AppShell';

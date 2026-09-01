@@ -92,6 +92,15 @@ function DataTable({
       setSorting(typeof updater === 'function' ? updater(sorting) : updater),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    // Without this, TanStack's default row id is just the row's position
+    // within `data` (0, 1, 2, ...) - React then keys <TableRow> by
+    // position instead of identity, which both mis-reconciles rows with
+    // any internal state across a refetch/mutation AND produces real
+    // "duplicate key" warnings whenever a page's row count changes (caught
+    // live on FeeManagement, Tuần 4 Ngày 5, but this affected every page
+    // built on DataTable up to now). Every current caller's rows carry a
+    // real `id` (Staff/Student/LibraryBook/Fee), so use that instead.
+    getRowId: (row) => String(row.id),
   });
 
   const paginated = typeof pageCount === 'number' && pageCount >= 0;

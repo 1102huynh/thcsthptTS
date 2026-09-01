@@ -113,11 +113,19 @@ export const gradeService = {
 // Fee Service
 export const feeService = {
   getByStudent: (studentId) => api.get(`/v1/fees/student/${studentId}`),
-  getByClass: (className) => api.get(`/v1/fees/class/${className}`),
+  // GET /v1/fees/class/... never existed on the backend - getByYear is the
+  // real school-wide list endpoint FeeManagement uses.
   getByYear: (academicYear) => api.get(`/v1/fees/year/${academicYear}`),
+  getByStatus: (status) => api.get(`/v1/fees/status/${status}`),
   createFee: (data) => api.post('/v1/fees', data),
   updateFee: (id, data) => api.put(`/v1/fees/${id}`, data),
-  procesPayment: (feeId, amount) => api.post(`/v1/fees/${feeId}/payment`, { amount }),
+  deleteFee: (id) => api.delete(`/v1/fees/${id}`),
+  // processPayment's amount/paymentMethod are query params
+  // (@RequestParam), not a JSON body - the old procesPayment (also
+  // misspelled) sent `{ amount }` as a body, which Spring would just
+  // ignore, leaving amount as null and 400ing.
+  processPayment: (feeId, amount, paymentMethod = 'ONLINE') =>
+    api.post(`/v1/fees/${feeId}/payment`, null, { params: { amount, paymentMethod } }),
   getTotalDues: (studentId) => api.get(`/v1/fees/student/${studentId}/total-dues`),
 };
 
