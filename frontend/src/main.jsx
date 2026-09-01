@@ -1,15 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
-// Bootstrap (and App's own legacy layout CSS) load first, index.css
-// (Tailwind + the new design tokens/font) loads last - so as pages migrate
-// off Bootstrap, the new global styles win any tag-level conflict (body,
-// headings, ...) while Bootstrap's own scoped component classes (.btn,
-// .card, .modal, ...) stay fully usable by whatever hasn't been migrated
-// yet. Moved here from App.jsx specifically to guarantee this load order -
-// see index.css's own comment on the Be Vietnam Pro font for what this fixed.
-import 'bootstrap/dist/css/bootstrap.min.css';
-import './App.css';
+// Bootstrap and App.css (its own legacy layout/component-override CSS) used
+// to load here, before index.css, so Bootstrap's scoped component classes
+// (.btn, .card, .modal, ...) stayed usable by whatever page hadn't migrated
+// off react-bootstrap yet. The last page migrated back in Tuần 4, and Tuần
+// 6 Ngày 1 confirmed nothing in src/ references react-bootstrap or a raw
+// Bootstrap class anymore, so both are gone now - index.css (Tailwind +
+// the design tokens/font) is the only global stylesheet left.
 import './index.css';
 import App from './App';
 import ThemeProvider from './providers/ThemeProvider';
