@@ -37,6 +37,22 @@ export const ROLE_LABELS = {
 // go through the admissions flow, not "add staff").
 export const STAFF_ROLE_OPTIONS = ['ADMIN', 'PRINCIPAL', 'TEACHER', 'LIBRARIAN', 'ACCOUNTANT'];
 
+export const STUDENT_STATUS_LABELS = {
+  ACTIVE: 'Đang học',
+  INACTIVE: 'Tạm nghỉ',
+  TRANSFERRED: 'Đã chuyển trường',
+  EXPELLED: 'Đã bị đuổi học',
+  GRADUATED: 'Đã tốt nghiệp',
+};
+
+// Student.gender is a free-text column, not a backend enum - these are
+// just the options offered in the form, not values validated server-side.
+export const GENDER_LABELS = {
+  MALE: 'Nam',
+  FEMALE: 'Nữ',
+  OTHER: 'Khác',
+};
+
 export function toOptions(labelMap, keys = Object.keys(labelMap)) {
   return keys.map((value) => ({ value, label: labelMap[value] ?? value }));
 }

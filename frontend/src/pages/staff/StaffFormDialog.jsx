@@ -22,16 +22,11 @@ import {
   STAFF_ROLE_OPTIONS,
   toOptions,
 } from '@/lib/enumLabels';
+import { parseLocalDate } from '@/lib/dates';
 
 const POSITION_OPTIONS = toOptions(STAFF_POSITION_LABELS);
 const STATUS_OPTIONS = toOptions(EMPLOYMENT_STATUS_LABELS);
 const ROLE_OPTIONS = toOptions(ROLE_LABELS, STAFF_ROLE_OPTIONS);
-
-// 'yyyy-MM-dd' -> Date, parsed as local midnight (not UTC) so the day
-// shown never shifts depending on the viewer's timezone offset direction.
-function parseLocalDate(value) {
-  return value ? new Date(`${value}T00:00:00`) : undefined;
-}
 
 const staffFieldsShape = {
   employeeId: z.string().min(1, 'Vui lòng nhập mã nhân viên'),
