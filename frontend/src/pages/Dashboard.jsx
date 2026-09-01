@@ -34,6 +34,7 @@ import {
 } from '../services/dataService';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { StatCardsSkeleton, ChartSkeleton, ListRowsSkeleton } from '../components/shared/Skeleton';
 
 const ISO_DATE = 'yyyy-MM-dd';
 const CHART_DAYS = 14;
@@ -228,44 +229,48 @@ function Dashboard({ user }) {
             </div>
           )}
 
-          {/* Stat cards - real values from GET /v1/dashboard/stats.
-              1 column below sm: at 2-per-row on a 375px phone, a longer
-              value like the currency-formatted "còn nợ" figure had no room
-              and truncated to an unreadable "135…" (caught on a mobile
-              responsive pass, Tuần 5 Ngày 3) - full card width fixes it,
-              same reasoning as the stacked icon/label layout below. */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <StatCard
-              icon={FiUsers}
-              title="Nhân viên"
-              value={statsQuery.isLoading ? '…' : stats?.activeStaffCount ?? 0}
-              iconClassName="bg-primary/10 text-primary"
-            />
-            <StatCard
-              icon={FiUsers}
-              title="Học sinh"
-              value={statsQuery.isLoading ? '…' : stats?.activeStudentCount ?? 0}
-              iconClassName="bg-green-500/10 text-green-600"
-            />
-            <StatCard
-              icon={FiBook}
-              title="Sách đang mượn"
-              value={statsQuery.isLoading ? '…' : stats?.booksBorrowedCount ?? 0}
-              iconClassName="bg-blue-500/10 text-blue-600"
-            />
-            <StatCard
-              icon={FiPercent}
-              title="Chuyên cần (30 ngày)"
-              value={statsQuery.isLoading ? '…' : `${(stats?.averageAttendanceRate ?? 0).toFixed(1)}%`}
-              iconClassName="bg-amber-500/10 text-amber-600"
-            />
-            <StatCard
-              icon={FiDollarSign}
-              title="Học phí còn nợ"
-              value={statsQuery.isLoading ? '…' : currencyVND(stats?.totalOutstandingFees)}
-              iconClassName="bg-rose-500/10 text-rose-600"
-            />
-          </div>
+          {statsQuery.isLoading ? (
+            <StatCardsSkeleton count={5} />
+          ) : (
+            /* Stat cards - real values from GET /v1/dashboard/stats.
+               1 column below sm: at 2-per-row on a 375px phone, a longer
+               value like the currency-formatted "còn nợ" figure had no room
+               and truncated to an unreadable "135…" (caught on a mobile
+               responsive pass, Tuần 5 Ngày 3) - full card width fixes it,
+               same reasoning as the stacked icon/label layout below. */
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <StatCard
+                icon={FiUsers}
+                title="Nhân viên"
+                value={stats?.activeStaffCount ?? 0}
+                iconClassName="bg-primary/10 text-primary"
+              />
+              <StatCard
+                icon={FiUsers}
+                title="Học sinh"
+                value={stats?.activeStudentCount ?? 0}
+                iconClassName="bg-green-500/10 text-green-600"
+              />
+              <StatCard
+                icon={FiBook}
+                title="Sách đang mượn"
+                value={stats?.booksBorrowedCount ?? 0}
+                iconClassName="bg-blue-500/10 text-blue-600"
+              />
+              <StatCard
+                icon={FiPercent}
+                title="Chuyên cần (30 ngày)"
+                value={`${(stats?.averageAttendanceRate ?? 0).toFixed(1)}%`}
+                iconClassName="bg-amber-500/10 text-amber-600"
+              />
+              <StatCard
+                icon={FiDollarSign}
+                title="Học phí còn nợ"
+                value={currencyVND(stats?.totalOutstandingFees)}
+                iconClassName="bg-rose-500/10 text-rose-600"
+              />
+            </div>
+          )}
         </>
       )}
 
@@ -298,7 +303,7 @@ function Dashboard({ user }) {
               </CardHeader>
               <CardContent>
                 {attendanceQuery.isLoading ? (
-                  <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">Đang tải...</div>
+                  <ChartSkeleton />
                 ) : attendanceChartData.every((d) => d.rate == null) ? (
                   <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
                     Chưa có dữ liệu điểm danh trong {CHART_DAYS} ngày gần nhất.
@@ -337,7 +342,7 @@ function Dashboard({ user }) {
               </CardHeader>
               <CardContent>
                 {feesQuery.isLoading || academicYearsQuery.isLoading ? (
-                  <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">Đang tải...</div>
+                  <ChartSkeleton />
                 ) : academicYearsQuery.isSuccess && !activeAcademicYear ? (
                   <div className="flex h-64 items-center justify-center px-6 text-center text-sm text-muted-foreground">
                     Chưa thiết lập năm học đang hoạt động (ACTIVE) trong hệ thống.
@@ -371,7 +376,7 @@ function Dashboard({ user }) {
             </CardHeader>
             <CardContent>
               {activityQuery.isLoading ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">Đang tải...</p>
+                <ListRowsSkeleton rows={5} />
               ) : !activityQuery.data?.length ? (
                 <p className="py-4 text-center text-sm text-muted-foreground">Chưa có hoạt động nào được ghi nhận.</p>
               ) : (

@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { TableRowsSkeleton } from '@/components/shared/Skeleton';
 
 const DEFAULT_PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
@@ -167,11 +168,12 @@ function DataTable({
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                  Đang tải...
-                </TableCell>
-              </TableRow>
+              // Shaped like the page of rows about to replace it (same
+              // column count, roughly the same row count capped at 8 so a
+              // pageSize=100 table doesn't render a skeleton screen's
+              // worth of rows) instead of a bare "Đang tải..." string -
+              // Tuần 5 Ngày 5.
+              <TableRowsSkeleton rows={Math.min(pageSize, 8)} columns={columns.length} />
             ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">

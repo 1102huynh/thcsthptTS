@@ -16,6 +16,7 @@ import FeeManagement from './pages/FeeManagement';
 
 // Layout
 import AppShell from './components/layout/AppShell';
+import { AppShellSkeleton } from './components/shared/Skeleton';
 
 // Services
 import { getCurrentUser } from './services/authService';
@@ -45,13 +46,13 @@ function App() {
   };
 
   if (isLoading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center vh-100">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
+    // The one true full-page spinner in the app (Bootstrap's
+    // .spinner-border, on a bare centered flex div) - replaced with a
+    // skeleton shaped like the AppShell it's about to become, per Tuần 5
+    // Ngày 5. In practice this frame is near-instant (getCurrentUser()
+    // just reads localStorage synchronously) but it's still the literal
+    // "spinner toàn trang" the plan calls out.
+    return <AppShellSkeleton />;
   }
 
   return (

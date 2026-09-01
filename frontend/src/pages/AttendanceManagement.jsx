@@ -5,6 +5,7 @@ import { format, subDays } from 'date-fns';
 import { FiCheck, FiSave } from 'react-icons/fi';
 import { attendanceService, schoolClassService, studentService } from '../services/dataService';
 import DatePicker from '../components/shared/DatePicker';
+import { TableRowsSkeleton } from '../components/shared/Skeleton';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -192,7 +193,24 @@ function AttendanceManagement() {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Đang tải...</p>
+              // Same header + column shape as the real roster table below,
+              // body rows swapped for shimmering placeholders (Tuần 5
+              // Ngày 5) instead of a bare "Đang tải..." string.
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="w-12 p-2" />
+                      <th className="p-2 text-left font-medium text-muted-foreground">Số báo danh</th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">Họ tên</th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <TableRowsSkeleton rows={6} columns={4} />
+                  </tbody>
+                </table>
+              </div>
             ) : roster.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Lớp này chưa có học sinh nào.</p>
             ) : (

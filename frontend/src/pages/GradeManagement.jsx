@@ -14,6 +14,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { TableRowsSkeleton } from '../components/shared/Skeleton';
 
 const SUBJECTS = ['Toán', 'Ngữ văn', 'Tiếng Anh', 'Vật lý', 'Hóa học', 'Sinh học', 'Lịch sử', 'Địa lý', 'GDCD', 'Tin học', 'Thể dục', 'Công nghệ'];
 const EXAM_TYPES = ['Miệng', '15 phút', '1 tiết', 'Giữa kỳ', 'Cuối kỳ'];
@@ -248,7 +249,23 @@ function GradeManagement() {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Đang tải...</p>
+              // Same header + column shape as the real grade-entry table
+              // below (Tuần 5 Ngày 5), not a bare "Đang tải..." string.
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="p-2 text-left font-medium text-muted-foreground">Số báo danh</th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">Họ tên</th>
+                      <th className="w-32 p-2 text-left font-medium text-muted-foreground">Điểm</th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">Xếp loại</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <TableRowsSkeleton rows={6} columns={4} />
+                  </tbody>
+                </table>
+              </div>
             ) : roster.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Lớp này chưa có học sinh nào.</p>
             ) : (
