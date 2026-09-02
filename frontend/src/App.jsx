@@ -21,6 +21,8 @@ const ConductManagement = lazy(() => import('./pages/ConductManagement'));
 const PromotionManagement = lazy(() => import('./pages/PromotionManagement'));
 const ParentManagement = lazy(() => import('./pages/ParentManagement'));
 const NotificationCenter = lazy(() => import('./pages/NotificationCenter'));
+const AdmissionManagement = lazy(() => import('./pages/AdmissionManagement'));
+const AdmissionApplyPage = lazy(() => import('./pages/AdmissionApplyPage'));
 
 // Layout
 import AppShell from './components/layout/AppShell';
@@ -83,6 +85,7 @@ function App() {
               <Route path="/promotions" element={<PromotionManagement />} />
               <Route path="/parents" element={<ParentManagement />} />
               <Route path="/notifications" element={<NotificationCenter />} />
+              <Route path="/admissions" element={<AdmissionManagement />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </Suspense>
@@ -91,6 +94,11 @@ function App() {
         <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<LoginPage onLogin={handleLogin} />} />
+            {/* Public tuyển sinh đầu cấp form (IMPLEMENTATION_PLAN.md 3.7) -
+                no login required, so it only needs to exist in this
+                unauthenticated branch; a logged-in user manages
+                applications at /admissions instead. */}
+            <Route path="/apply" element={<AdmissionApplyPage />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </Suspense>

@@ -117,6 +117,14 @@ export const SEMESTER_NAME_LABELS = {
   HK2: 'Học kỳ 2',
 };
 
+// AdmissionApplication.status
+export const ADMISSION_STATUS_LABELS = {
+  PENDING: 'Chờ duyệt',
+  REVIEWING: 'Đang xét duyệt',
+  APPROVED: 'Đã duyệt',
+  REJECTED: 'Từ chối',
+};
+
 // ParentStudentRelation.relationship
 export const PARENT_RELATIONSHIP_LABELS = {
   CHA: 'Cha',

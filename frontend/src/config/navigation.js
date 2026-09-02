@@ -12,6 +12,7 @@ import {
   FiTrendingUp,
   FiUserPlus,
   FiBell,
+  FiFileText,
 } from 'react-icons/fi';
 
 // Shared between Sidebar (nav links) and Navbar (page title lookup by
@@ -90,6 +91,11 @@ export const NAV_ITEMS = [
   // target) - a STUDENT account is never a recipient under this design,
   // so STUDENT is excluded here unlike Dashboard/Library.
   { label: 'Notifications', href: '/notifications', icon: FiBell, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER', 'LIBRARIAN', 'ACCOUNTANT', 'PARENT'] },
+  // ADMIN only - every AdmissionController endpoint here (list/review/
+  // approve-and-create) is ADMIN-only; the public submission form lives
+  // at /apply instead (outside AppShell entirely, no nav entry - an
+  // applicant isn't logged in).
+  { label: 'Admissions', href: '/admissions', icon: FiFileText, roles: ['ADMIN'] },
 ];
 
 export function navItemsForRole(role) {

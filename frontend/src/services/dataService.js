@@ -267,6 +267,18 @@ export const notificationService = {
   markAsRead: (recipientId) => api.put(`/v1/notifications/${recipientId}/read`),
 };
 
+// Admission Service (Tuyển sinh đầu cấp) - submit is public (no auth
+// header needed, though `api`'s interceptor attaches one anyway if a
+// session happens to be logged in - harmless, the endpoint ignores it);
+// everything else is ADMIN-only.
+export const admissionService = {
+  submit: (data) => api.post('/v1/admissions', data),
+  getAll: (status) => api.get('/v1/admissions', { params: status ? { status } : {} }),
+  getById: (id) => api.get(`/v1/admissions/${id}`),
+  updateStatus: (id, data) => api.put(`/v1/admissions/${id}/status`, data),
+  approveAndCreate: (id, data) => api.post(`/v1/admissions/${id}/approve-and-create`, data),
+};
+
 // Audit Log Service (ADMIN only - see AuditLogController)
 export const auditLogService = {
   getRecent: (size = 5) => api.get('/v1/audit-logs', { params: { page: 0, size } }),
@@ -293,5 +305,6 @@ export default {
   promotionThresholdService,
   parentService,
   notificationService,
+  admissionService,
   auditLogService,
 };
