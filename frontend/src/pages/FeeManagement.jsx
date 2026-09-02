@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { FiEdit2, FiTrash2, FiPlus, FiDollarSign } from 'react-icons/fi';
-import { feeService, academicYearService } from '../services/dataService';
+import { FiEdit2, FiTrash2, FiPlus, FiDollarSign, FiDownload } from 'react-icons/fi';
+import { feeService, academicYearService, reportService } from '../services/dataService';
+import { triggerBlobDownload } from '../lib/download';
 import DataTable from '../components/shared/DataTable';
 import FeeFormDialog from './fee/FeeFormDialog';
 import PaymentDialog from './fee/PaymentDialog';
@@ -60,6 +61,12 @@ function FeeManagement() {
     onSettled: () => setDeletingFee(null),
   });
 
+  const downloadReceiptMutation = useMutation({
+    mutationFn: (fee) =>
+      triggerBlobDownload(reportService.feeReceipt(fee.id), `bien-lai-${fee.studentName?.replace(/\s+/g, '-') ?? fee.id}-${fee.id}.pdf`),
+    onError: (err) => toast.error(err.message || 'Không thể tải biên lai'),
+  });
+
   const allFees = feesQuery.data ?? [];
   const summary = useMemo(() => {
     const totalCollected = allFees.reduce((sum, f) => sum + (f.paidAmount ?? 0), 0);
@@ -110,6 +117,17 @@ function FeeManagement() {
               {canPay && (
                 <Button variant="ghost" size="icon" onClick={() => setPayingFee(fee)} aria-label="Ghi nhận thanh toán">
                   <FiDollarSign className="h-4 w-4" />
+                </Button>
+              )}
+              {fee.paidAmount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => downloadReceiptMutation.mutate(fee)}
+                  disabled={downloadReceiptMutation.isPending}
+                  aria-label="Tải biên lai"
+                >
+                  <FiDownload className="h-4 w-4" />
                 </Button>
               )}
               <Button variant="ghost" size="icon" onClick={() => openEdit(fee)} aria-label="Sửa">

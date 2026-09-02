@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
-import { FiCheck, FiSave } from 'react-icons/fi';
-import { attendanceService, schoolClassService, studentService } from '../services/dataService';
+import { FiCheck, FiSave, FiDownload } from 'react-icons/fi';
+import { attendanceService, schoolClassService, studentService, reportService } from '../services/dataService';
+import { triggerBlobDownload } from '../lib/download';
 import DatePicker from '../components/shared/DatePicker';
 import { TableRowsSkeleton } from '../components/shared/Skeleton';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
@@ -116,6 +117,15 @@ function AttendanceManagement() {
     onError: (err) => toast.error(err?.response?.data?.message || err?.message || 'Không thể lưu điểm danh'),
   });
 
+  const downloadAttendanceMutation = useMutation({
+    mutationFn: ({ classId, from, to }) =>
+      triggerBlobDownload(
+        reportService.classAttendance(classId, from, to),
+        `diem-danh-${selectedClass.className}-${selectedClass.section}-${from}_${to}.xlsx`
+      ),
+    onError: (err) => toast.error(err.message || 'Không thể xuất file điểm danh'),
+  });
+
   const toggle = (studentId) => {
     setPresentIds((prev) => {
       const next = new Set(prev);
@@ -182,6 +192,20 @@ function AttendanceManagement() {
             </div>
             <div className="flex items-center gap-2">
               {alreadyMarked && <Badge variant="secondary">Đã điểm danh</Badge>}
+              <Button
+                variant="outline"
+                onClick={() =>
+                  downloadAttendanceMutation.mutate({
+                    classId: selectedClass.id,
+                    from: rateStart,
+                    to: rateEnd,
+                  })
+                }
+                disabled={downloadAttendanceMutation.isPending}
+              >
+                <FiDownload className="mr-2 h-4 w-4" />
+                {downloadAttendanceMutation.isPending ? 'Đang tải...' : `Xuất Excel (${RATE_WINDOW_DAYS} ngày qua)`}
+              </Button>
               <Button
                 onClick={() => markMutation.mutate()}
                 disabled={markMutation.isPending || loading || roster.length === 0}

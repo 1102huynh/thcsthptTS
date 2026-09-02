@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { FiSave } from 'react-icons/fi';
+import { FiSave, FiDownload } from 'react-icons/fi';
 import {
   gradeRecordService,
   gradeConfigService,
@@ -11,7 +11,9 @@ import {
   semesterService,
   subjectService,
   staffService,
+  reportService,
 } from '../services/dataService';
+import { triggerBlobDownload } from '../lib/download';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -185,6 +187,15 @@ function GradeManagement() {
     onError: (err) => toast.error(err?.response?.data?.message || err?.message || 'Không thể lưu điểm'),
   });
 
+  const downloadTranscriptMutation = useMutation({
+    mutationFn: ({ studentId, studentName }) =>
+      triggerBlobDownload(
+        reportService.studentTranscript(studentId, selectedSemester.academicYearId),
+        `hoc-ba-${studentName.replace(/\s+/g, '-')}-${selectedSemester.academicYearName}.pdf`
+      ),
+    onError: (err) => toast.error(err.message || 'Không thể tải học bạ'),
+  });
+
   const filledCount = Object.values(scoreInput).filter((v) => v !== '' && v != null).length;
   const configsMissing = Boolean(
     selectedSemester &&
@@ -311,10 +322,11 @@ function GradeManagement() {
                       <th className="p-2 text-left font-medium text-muted-foreground">Họ tên</th>
                       <th className="w-32 p-2 text-left font-medium text-muted-foreground">Điểm</th>
                       <th className="p-2 text-left font-medium text-muted-foreground">TB môn HK</th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">Học bạ</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <TableRowsSkeleton rows={6} columns={4} />
+                    <TableRowsSkeleton rows={6} columns={5} />
                   </tbody>
                 </table>
               </div>
@@ -329,6 +341,7 @@ function GradeManagement() {
                       <th className="p-2 text-left font-medium text-muted-foreground">Họ tên</th>
                       <th className="w-32 p-2 text-left font-medium text-muted-foreground">Điểm</th>
                       <th className="p-2 text-left font-medium text-muted-foreground">TB môn HK</th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">Học bạ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -359,6 +372,22 @@ function GradeManagement() {
                             ) : (
                               <span className="text-muted-foreground">—</span>
                             )}
+                          </td>
+                          <td className="p-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                downloadTranscriptMutation.mutate({
+                                  studentId: s.id,
+                                  studentName: `${s.user?.firstName ?? ''} ${s.user?.lastName ?? ''}`.trim() || `hs${s.id}`,
+                                })
+                              }
+                              disabled={downloadTranscriptMutation.isPending}
+                              aria-label={`Tải học bạ ${s.user?.firstName} ${s.user?.lastName}`}
+                            >
+                              <FiDownload className="h-4 w-4" />
+                            </Button>
                           </td>
                         </tr>
                       );

@@ -279,6 +279,18 @@ export const admissionService = {
   approveAndCreate: (id, data) => api.post(`/v1/admissions/${id}/approve-and-create`, data),
 };
 
+// Report Service (Xuất báo cáo PDF/Excel) - every call needs
+// `responseType: 'blob'` since these endpoints return raw file bytes with a
+// Content-Disposition header, not JSON (see lib/download.js's
+// triggerBlobDownload, which every caller uses instead of `.then(r => r.data)`).
+export const reportService = {
+  studentTranscript: (studentId, academicYearId) =>
+    api.get(`/v1/reports/student/${studentId}/transcript`, { params: { academicYearId }, responseType: 'blob' }),
+  classAttendance: (classId, from, to) =>
+    api.get(`/v1/reports/class/${classId}/attendance`, { params: { from, to }, responseType: 'blob' }),
+  feeReceipt: (feeId) => api.get(`/v1/reports/fees/receipt/${feeId}`, { responseType: 'blob' }),
+};
+
 // Audit Log Service (ADMIN only - see AuditLogController)
 export const auditLogService = {
   getRecent: (size = 5) => api.get('/v1/audit-logs', { params: { page: 0, size } }),
@@ -306,5 +318,6 @@ export default {
   parentService,
   notificationService,
   admissionService,
+  reportService,
   auditLogService,
 };
