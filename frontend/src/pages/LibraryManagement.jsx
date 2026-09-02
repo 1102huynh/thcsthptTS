@@ -1,12 +1,22 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { FiEdit2, FiTrash2, FiPlus, FiBookOpen, FiCornerUpLeft } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiPlus, FiBookOpen, FiCornerUpLeft, FiUserPlus } from 'react-icons/fi';
 import { libraryService } from '../services/dataService';
 import DataTable from '../components/shared/DataTable';
 import BookFormDialog from './library/BookFormDialog';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -41,6 +51,11 @@ function LibraryManagement({ user }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBook, setEditingBook] = useState(null);
   const [deletingBook, setDeletingBook] = useState(null);
+  // "Mượn/trả hộ" (H.2.3) - the book whose desk-lend dialog is open, plus
+  // the typed student id. LIBRARIAN can't browse the student directory, so
+  // this is a plain "mã học sinh" field rather than a picker.
+  const [lendingBook, setLendingBook] = useState(null);
+  const [lendStudentId, setLendStudentId] = useState('');
 
   const booksQuery = useQuery({
     queryKey: ['books'],
@@ -81,6 +96,28 @@ function LibraryManagement({ user }) {
       invalidateLibrary();
     },
     onError: (err) => toast.error(err?.response?.data?.message || err?.message || 'Không thể trả sách'),
+  });
+
+  const lendMutation = useMutation({
+    mutationFn: ({ bookId, studentId }) => libraryService.lendToStudent(bookId, studentId),
+    onSuccess: () => {
+      toast.success('Đã ghi mượn cho học sinh');
+      setLendingBook(null);
+      setLendStudentId('');
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+    },
+    onError: (err) => toast.error(err?.response?.data?.message || err?.message || 'Không thể ghi mượn'),
+  });
+
+  const returnForMutation = useMutation({
+    mutationFn: ({ bookId, studentId }) => libraryService.returnForStudent(bookId, studentId),
+    onSuccess: () => {
+      toast.success('Đã ghi trả cho học sinh');
+      setLendingBook(null);
+      setLendStudentId('');
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+    },
+    onError: (err) => toast.error(err?.response?.data?.message || err?.message || 'Không thể ghi trả'),
   });
 
   const deleteMutation = useMutation({
@@ -151,6 +188,15 @@ function LibraryManagement({ user }) {
         header: '',
         cell: ({ row }) => (
           <div className="flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => { setLendingBook(row.original); setLendStudentId(''); }}
+              aria-label="Ghi mượn/trả hộ"
+              title="Ghi mượn/trả hộ học sinh"
+            >
+              <FiUserPlus className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => openEdit(row.original)} aria-label="Sửa">
               <FiEdit2 className="h-4 w-4" />
             </Button>
@@ -283,6 +329,46 @@ function LibraryManagement({ user }) {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          <Dialog
+            open={Boolean(lendingBook)}
+            onOpenChange={(open) => { if (!open) { setLendingBook(null); setLendStudentId(''); } }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Ghi mượn / trả hộ</DialogTitle>
+                <DialogDescription>
+                  "{lendingBook?.title}" — nhập mã học sinh (ID) để ghi mượn hoặc ghi trả thay cho học sinh tại quầy.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Label htmlFor="lend-student-id">Mã học sinh (ID)</Label>
+                <Input
+                  id="lend-student-id"
+                  type="number"
+                  min="1"
+                  value={lendStudentId}
+                  onChange={(e) => setLendStudentId(e.target.value)}
+                  placeholder="Ví dụ: 42"
+                />
+              </div>
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button
+                  variant="outline"
+                  disabled={!lendStudentId || returnForMutation.isPending}
+                  onClick={() => returnForMutation.mutate({ bookId: lendingBook.id, studentId: Number(lendStudentId) })}
+                >
+                  <FiCornerUpLeft className="mr-2 h-4 w-4" /> Ghi trả
+                </Button>
+                <Button
+                  disabled={!lendStudentId || lendMutation.isPending || (lendingBook?.availableCopies ?? 0) <= 0}
+                  onClick={() => lendMutation.mutate({ bookId: lendingBook.id, studentId: Number(lendStudentId) })}
+                >
+                  <FiBookOpen className="mr-2 h-4 w-4" /> Ghi mượn
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>

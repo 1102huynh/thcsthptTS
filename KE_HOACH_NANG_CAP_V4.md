@@ -1,11 +1,11 @@
 # KẾ HOẠCH PHÁT TRIỂN & NÂNG CẤP HỆ THỐNG QUẢN LÝ TRƯỜNG THCS-THPT (thcsthptTS)
 
-**Phiên bản 4.9 — ngày 02/09/2026**
-*(v4.9: **Mức 2.1 xong** — PRINCIPAL có quyền XEM (chỉ đọc) điểm/điểm danh/hạnh kiểm/học phí/báo cáo/thư viện; 4 trang quản lý render read-only cho PRINCIPAL. v4.8: Giai đoạn D (D2). v4.7: Giai đoạn C. v4.6: Giai đoạn A. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
+**Phiên bản 4.10 — ngày 02/09/2026**
+*(v4.10: **Mức 2 (RBAC nghiệp vụ) xong** — 2.2 (ACCOUNTANT đọc HS, sửa lỗi form thêm khoản thu) + 2.3 (LIBRARIAN ghi mượn/trả hộ). v4.9: Mức 2.1 (PRINCIPAL xem). v4.8: D2. v4.7: C3. v4.6: Giai đoạn A. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
 
 > **Tài liệu này là kế hoạch nâng cấp DUY NHẤT** — thay cho `IMPLEMENTATION_PLAN.md` (v3.1) và đã gộp cả 2 file phân quyền lẻ trước đây.
 
-> **⚡ Việc gấp nhất còn lại (chốt v4.9):** Giai đoạn A + C + D2 + Mức 2.1 đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Không chặn: gỡ `Grade` cũ (Quyết định E.1), Mức 2.2/2.3 (kế toán đọc HS, thư viện mượn/trả hộ), D6 (trang quản lý tài khoản riêng).
+> **⚡ Việc gấp nhất còn lại (chốt v4.10):** Giai đoạn A + C + D2 + **toàn bộ Mức 1–2** (trừ 2.4 gắn cổng thanh toán) đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Không chặn: gỡ `Grade` cũ (Quyết định E.1), D6 (trang quản lý tài khoản riêng), Giai đoạn E/F (cần ngân sách).
 
 *Tài liệu này được lập sau khi review lại **toàn bộ** mã nguồn hiện tại trên máy (`D:\sources\thcsthptTS` là **nguồn sự thật chính** — không dựa vào bản sao trong Claude Project). Khác với kế hoạch v3.1 (`IMPLEMENTATION_PLAN.md`) vốn là kế hoạch **xây mới từ đầu**, phiên bản 4.x xuất phát từ thực tế: **phần lớn kế hoạch v3.1 đã được hiện thực hoá ở backend**. Trọng tâm mới là (1) đưa năng lực backend đã có lên giao diện người dùng, (2) **hoàn tất phần backend còn dở** (xếp loại học lực), (3) trả nợ kỹ thuật, (4) nâng cấp lên mức vận hành thật cho một trường.*
 
@@ -245,8 +245,8 @@ Làm trước tất cả vì mọi trang mới đều dựa trên nền này.
 - **TEACHER (Giáo viên)** — **nhập & sửa** điểm (cũ + TT22), điểm danh, hạnh kiểm; **đọc** cơ cấu (năm học/HK/môn/lớp/HS/nhân sự/phân công/TKB); xem trước xét lên lớp (**chỉ preview**); tạo thông báo; thư viện (tự mượn/trả + xem sách); tài liệu (upload/xem); tải học bạ + Excel điểm danh. **KHÔNG:** tạo/sửa/xoá cơ cấu, học phí, cấu hình điểm, **confirm** xét lên lớp, tuyển sinh, audit, user, dashboard.
 - **STUDENT (Học sinh)** — (đã guard về chính mình) điểm/điểm danh/học phí/hạnh kiểm/học bạ/xét lên lớp **của mình**; **đóng học phí** của mình; thư viện (mượn/trả/tìm/xem sách + lịch sử của mình); tài liệu; thông báo của mình. **⚠️ Bất thường (chưa guard):** đọc được hồ sơ **mọi** học sinh (`GET /v1/students/{id}`, `/roll/...`) và **toàn bộ danh bạ nhân sự** (`GET /v1/staff*`) — G.4 mục 1 & 3.
 - **PARENT (Phụ huynh)** — (đã guard về đúng con) điểm/điểm danh/hạnh kiểm/học phí/học bạ/biên lai/xét lên lớp **của con**; **đóng học phí** cho con; danh sách con; tài liệu; thông báo của mình. **KHÔNG:** mọi quản lý; thư viện; danh bạ HS/nhân sự.
-- **LIBRARIAN (Thư viện)** — CRUD sách + xem **toàn bộ giao dịch đang mượn của trường**. **KHÔNG:** tự mượn/trả (self-service dành cho người mượn thật), **và chưa có luồng "ghi mượn/trả hộ"** (G.4 mục 5); mọi module khác.
-- **ACCOUNTANT (Kế toán)** — CRUD học phí + xử lý thanh toán + danh sách theo năm/trạng thái + công nợ + biên lai. **KHÔNG:** **đọc danh sách học sinh** để biết thu của ai (G.4 mục 6); mọi module khác.
+- **LIBRARIAN (Thư viện)** — CRUD sách + xem **toàn bộ giao dịch đang mượn của trường** + **ghi mượn/trả hộ học sinh** (`POST /v1/library/books/{id}/lend|return-for?studentId=` — từ v4.10, Mức 2.3). **KHÔNG:** tự mượn/trả self-service (dành cho người mượn thật); mọi module khác.
+- **ACCOUNTANT (Kế toán)** — CRUD học phí + xử lý thanh toán + danh sách theo năm/trạng thái + công nợ + biên lai + **đọc danh sách/hồ sơ học sinh** (`GET /v1/students`, `/{id}` — từ v4.10, Mức 2.2, để biết thu của ai). **KHÔNG:** mọi module khác.
 
 *(Ma trận đầy đủ 148 endpoint × 7 vai trò xem **Phụ lục A** cuối tài liệu.)*
 
@@ -260,8 +260,8 @@ Dù bảng phân quyền đánh dấu STUDENT/PARENT được vào endpoint đi�
 2. **✅ [ĐÃ VÁ — v4.9] Hiệu trưởng mù dữ liệu học tập.** Thêm `PRINCIPAL` vào GET của Attendance/Grade/GradeRecord/Conduct/Fee/Report/Library controller (chỉ đọc; POST/PUT/DELETE giữ nguyên TEACHER/ACCOUNTANT). `navigation.js` thêm PRINCIPAL vào Điểm danh/Quản lý điểm/Hạnh kiểm/Học phí; 4 trang render **read-only** (`readOnly = role === 'PRINCIPAL'` — ẩn nút lưu, khoá input). Test `PrincipalReadAccessIntegrationTest` (GET 2xx, DELETE 403) + `navigation.test.js`.
 3. **✅ [ĐÃ VÁ — v4.5] Danh bạ nhân sự.** STUDENT đã bị loại khỏi `GET /v1/staff*` (nay ADMIN/PRINCIPAL/TEACHER) **và** `StaffController.redactSensitiveFields()` null hoá `salary` + địa chỉ + liên hệ khẩn cho mọi vai trò ≠ ADMIN/PRINCIPAL (hiện chỉ TEACHER). Có test `StaffIntegrationTest` (ADMIN thấy đủ / TEACHER bị redact, cả GET đơn lẫn danh sách).
 4. **[Rà service] Endpoint chỉ `authenticated()`:** `PUT /v1/notifications/{recipientId}/read` và `POST /v1/documents` → cần service kiểm tra chủ sở hữu.
-5. **[Chức năng] Thư viện thiếu luồng mượn/trả hộ** (borrow/return chỉ TEACHER,STUDENT). → Thêm endpoint cho LIBRARIAN.
-6. **[Chức năng] Kế toán không đọc được danh sách học sinh.** → Cân nhắc cho ACCOUNTANT đọc (read-only) HS.
+5. **✅ [ĐÃ LÀM — v4.10] Thư viện mượn/trả hộ.** `POST /v1/library/books/{bookId}/lend?studentId=&borrowDays=` + `/return-for?studentId=` (ADMIN, LIBRARIAN) — `LibraryService.lendBookToStudent/returnBookForStudent` resolve borrower qua `student.getUser()`, dùng lại `borrowBook/returnBook`. FE: nút "Ghi mượn/trả hộ" + dialog nhập mã HS trên `LibraryManagement` (vai trò canManage). Test `LibraryIntegrationTest` (lend→me→return-for; STUDENT lend 403).
+6. **✅ [ĐÃ LÀM — v4.10] Kế toán đọc danh sách học sinh.** `GET /v1/students` + `/{id}` thêm ACCOUNTANT — sửa lỗi form "Thêm khoản thu" (dropdown HS gọi `GET /v1/students` vốn 403 với ACCOUNTANT). Test `StudentAccessSecurityTest`.
 7. **[Frontend] Chưa chặn route theo vai trò** (A3) — backend chặn nhưng UI vẫn cho bấm rồi mới 403.
 
 > `Permission` enum + `UserPermission` **đã định nghĩa nhưng chưa dùng** — hệ thống phân quyền theo `Role`. Xem hướng xử lý ở H.3.2.
@@ -284,8 +284,8 @@ Dù bảng phân quyền đánh dấu STUDENT/PARENT được vào endpoint đi�
 ### H.2. MỨC 2 — NÊN SỬA (nghiệp vụ, Giai đoạn B–D)
 
 - **2.1. ✅ XONG (v4.9) — PRINCIPAL thêm quyền XEM (chỉ đọc):** đã thêm `PRINCIPAL` vào GET của điểm danh, điểm (cũ + TT22), hạnh kiểm, học phí, báo cáo, thư viện (kể cả `GET /v1/library/transactions`). POST/PUT/DELETE **không** đổi. FE: 4 trang quản lý render read-only cho PRINCIPAL; nav mở cho PRINCIPAL. *(Audit log: vẫn ADMIN-only — chưa thêm.)*
-- **2.2. ACCOUNTANT — thêm đọc học sinh:** thêm ACCOUNTANT (read-only) vào `GET /v1/students`, `/students/{id}`; tuỳ chọn `GET /v1/classes`.
-- **2.3. LIBRARIAN — luồng mượn/trả hộ:** thêm `POST /v1/library/books/{bookId}/lend?studentId=` và `.../return-for?studentId=` (ADMIN, LIBRARIAN); giữ self-service borrow/return.
+- **2.2. ✅ XONG (v4.10) — ACCOUNTANT đọc học sinh:** ACCOUNTANT (read-only) vào `GET /v1/students`, `/students/{id}`. *(`GET /v1/classes` chưa thêm — chưa cần.)*
+- **2.3. ✅ XONG (v4.10) — LIBRARIAN mượn/trả hộ:** `POST /v1/library/books/{bookId}/lend?studentId=&borrowDays=` + `.../return-for?studentId=` (ADMIN, LIBRARIAN); self-service borrow/return giữ nguyên.
 - **2.4. Tách thanh toán học phí:** `POST /v1/fees/{feeId}/payment` (ghi sổ thủ công) → **chỉ ADMIN, ACCOUNTANT**; thêm `POST /v1/fees/{feeId}/pay-online` (khởi tạo cổng thanh toán, tiền vào qua webhook) → STUDENT, PARENT (gắn E2).
 - **2.5. PARENT — hồ sơ con** (đã gộp ở Mức 1 #1); tuỳ chọn cho PARENT xem sách thư viện.
 
@@ -317,9 +317,9 @@ Dù bảng phân quyền đánh dấu STUDENT/PARENT được vào endpoint đi�
 
 ### H.5. Thứ tự triển khai
 
-1. **Ngay (A9):** Mức 1 #1–#4 + test: STUDENT gọi `GET /v1/students/{idNgườiKhác}` → **403**.
-2. **Giai đoạn B–D:** ~~Mức 2.1 (PRINCIPAL xem)~~ ✅ **v4.9**; 2.2 (kế toán đọc HS), 2.3 (thư viện mượn/trả hộ) — *còn lại*.
-3. **Giai đoạn E2:** Mức 2.4 (tách thanh toán online / ghi sổ).
+1. **Ngay (A9):** ~~Mức 1 #1–#4~~ ✅ **v4.4–v4.5** + test STUDENT IDOR → 403 ✅.
+2. **Giai đoạn B–D:** ~~Mức 2.1 (PRINCIPAL xem)~~ ✅ **v4.9**; ~~2.2 (kế toán đọc HS)~~ ✅ **v4.10**; ~~2.3 (thư viện mượn/trả hộ)~~ ✅ **v4.10**. → **Mức 2 xong** (trừ 2.4).
+3. **Giai đoạn E2:** Mức 2.4 (tách thanh toán online / ghi sổ) — gắn với cổng thanh toán.
 4. **Dài hạn:** Mức 3.
 
 > Mỗi thay đổi `@PreAuthorize` phải **cập nhật đồng thời** integration test tương ứng và `config/navigation.js` (menu theo vai trò) để backend và UI không lệch.
@@ -345,8 +345,8 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 | Lớp học | `POST,PUT,DELETE /v1/classes`, `/{id}/teacher/{s}`, `/year/{y}` | ✅ | ✅ | | | | | |
 | Lớp học | `GET /v1/classes`, `/{id}`, `/{id}/students` | ✅ | ✅ | ✅ | | | | |
 | Học sinh | `POST,PUT,DELETE /v1/students`, `/active`, `/class/**` | ✅ | ✅ | *đọc lớp* | | | | |
-| Học sinh | `GET /v1/students` | ✅ | ✅ | ✅ | | | | |
-| Học sinh | `GET /v1/students/{id}`, `/roll/{roll}` *(guard: STUDENT mình / PARENT con — v4.4)* | ✅ | ✅ | ✅ | *mình* | *con* | | |
+| Học sinh | `GET /v1/students` *(ACCOUNTANT read-only — Mức 2.2)* | ✅ | ✅ | ✅ | | | | ✅ |
+| Học sinh | `GET /v1/students/{id}`, `/roll/{roll}` *(guard STUDENT mình/PARENT con — v4.4; ACCOUNTANT read — v4.10; `/{id}` cũng cho ACCOUNTANT)* | ✅ | ✅ | ✅ | *mình* | *con* | | ✅ |
 | Học sinh | `GET /v1/students/me` *(C3)* | | | | ✅ | | | |
 | Nhân sự | `POST,PUT,DELETE /v1/staff`, `/position/**`, `/department/**`, `/active` | ✅ | ✅ | | | | | |
 | Nhân sự | `GET /v1/staff`, `/{id}`, `/employee/{id}` *(salary/PII redact ≠ ADMIN/PRINCIPAL — v4.5)* | ✅ | ✅ | ✅ | | | | |
@@ -372,6 +372,7 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 | Thư viện | `POST,PUT,DELETE /v1/library/books` | ✅ | | | | | ✅ | |
 | Thư viện | `GET /v1/library/books**` (danh sách/tìm/xem), `GET /transactions` | ✅ | ✅ | ✅ | ✅ | | ✅ | |
 | Thư viện | `POST /v1/library/books/{id}/borrow,return`, `GET /transactions/me` | | | ✅ | ✅ | | | |
+| Thư viện | `POST /v1/library/books/{id}/lend,return-for?studentId=` *(mượn/trả hộ — Mức 2.3)* | ✅ | | | | | ✅ | |
 | Báo cáo | `GET /v1/reports/student/{id}/transcript` | ✅ | ✅ | ✅ | *mình* | *con* | | |
 | Báo cáo | `GET /v1/reports/class/{id}/attendance` | ✅ | ✅ | ✅ | | | | |
 | Báo cáo | `GET /v1/reports/fees/receipt/{feeId}` | ✅ | ✅ | | *mình* | *con* | | ✅ |
@@ -390,6 +391,10 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 
 ## NHẬT KÝ THAY ĐỔI
 
+- **v4.10 (02/09/2026):** **Mức 2.2 + 2.3** — hoàn tất RBAC nghiệp vụ (Mức 1–2 trừ 2.4).
+  - **2.2 — ACCOUNTANT đọc HS:** `StudentController` `GET /v1/students` + `/{id}` thêm `ACCOUNTANT`. Sửa lỗi thực tế: form "Thêm khoản thu" (`FeeFormDialog`) gọi `studentService.getAll()` → `GET /v1/students` vốn 403 với ACCOUNTANT nên dropdown HS rỗng, kế toán không lập được khoản thu. Test `StudentAccessSecurityTest` (+1 ca).
+  - **2.3 — LIBRARIAN mượn/trả hộ:** `POST /v1/library/books/{bookId}/lend?studentId=&borrowDays=` + `/return-for?studentId=` (`hasAnyRole('ADMIN','LIBRARIAN')`). `LibraryService.lendBookToStudent/returnBookForStudent` + `resolveStudentUser` (qua `StudentRepository`), dùng lại `borrowBook/returnBook`. FE: nút "Ghi mượn/trả hộ" (icon) + `Dialog` nhập mã HS trên `LibraryManagement` (cột actions của canManage); `dataService.libraryService.lendToStudent/returnForStudent`. Test `LibraryIntegrationTest` (+2 ca: lend→me→return-for; STUDENT lend 403).
+  - `npm test` **34/34** (6 file); build sạch; backend `test-compile` OK. Cập nhật G.2/G.4 #5-#6, H.2.2/2.3, H.5, Phụ lục A.
 - **v4.9 (02/09/2026):** **Mức 2.1** — PRINCIPAL hết "mù dữ liệu học tập".
   - **Backend** — thêm `PRINCIPAL` vào `@PreAuthorize` của mọi GET trong `AttendanceController`, `GradeController` (cũ), `GradeRecordController`, `ConductController` (student + class roster), `FeeController` (tất cả GET, **không** `POST /{feeId}/payment`), `ReportController` (3 GET), `LibraryController` (catalog GET + `/transactions`). POST/PUT/DELETE không đổi.
   - **Frontend** — `navigation.js`: PRINCIPAL vào Điểm danh/Quản lý điểm/Hạnh kiểm/Học phí. 4 trang thêm `readOnly = getCurrentUser()?.role === 'PRINCIPAL'` → ẩn nút Lưu/Thêm/Sửa/Xóa/Ghi thanh toán, khoá input, banner "Chế độ chỉ xem (Hiệu trưởng)". Nút tải báo cáo/biên lai vẫn hiển thị (chỉ đọc).

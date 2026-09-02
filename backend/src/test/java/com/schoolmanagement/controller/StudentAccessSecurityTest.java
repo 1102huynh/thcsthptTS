@@ -186,6 +186,22 @@ class StudentAccessSecurityTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void accountant_readsStudentDirectoryAndById_returns200() throws Exception {
+        // Mức 2.2: an accountant needs the student list to record whose fee
+        // it is (the create-fee form's student picker calls GET /v1/students).
+        User accountantUser = userRepository.save(User.builder()
+                .username("itest.sas.accountant").email("itest.sas.accountant@school.com")
+                .password(passwordEncoder.encode("Str0ngPassw0rd!"))
+                .firstName("Integration").lastName("Accountant").role(Role.ACCOUNTANT).enabled(true).build());
+
+        mockMvc.perform(get("/v1/students").with(asUser(accountantUser, "ACCOUNTANT")))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/v1/students/{id}", student.getId()).with(asUser(accountantUser, "ACCOUNTANT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rollNumber").value("ITEST-SAS-ROLL"));
+    }
+
     // ---- GET /v1/staff* - STUDENT must no longer see the directory ----
 
     @Test

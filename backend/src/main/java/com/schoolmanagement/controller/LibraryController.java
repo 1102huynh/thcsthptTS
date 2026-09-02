@@ -123,6 +123,32 @@ public class LibraryController {
         return new ResponseEntity<>("Book returned successfully", HttpStatus.OK);
     }
 
+    // "Mượn/trả hộ" (H.2.3 / G.4 mục 5) - a LIBRARIAN records a borrow or
+    // return for a student at the desk. Self-service borrow/return above
+    // reads the borrower from the JWT; these take an explicit studentId
+    // instead. LIBRARIAN-facing (plus ADMIN), unlike the self-service pair
+    // which is TEACHER/STUDENT only.
+    @PostMapping("/books/{bookId}/lend")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    @Operation(summary = "Lend a book to a student (recorded by a librarian, not self-service)")
+    public ResponseEntity<String> lendBookToStudent(
+            @PathVariable Long bookId,
+            @RequestParam Long studentId,
+            @RequestParam(defaultValue = "14") int borrowDays) {
+        libraryService.lendBookToStudent(bookId, studentId, borrowDays);
+        return new ResponseEntity<>("Book lent to student successfully", HttpStatus.OK);
+    }
+
+    @PostMapping("/books/{bookId}/return-for")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    @Operation(summary = "Return a book on a student's behalf (recorded by a librarian)")
+    public ResponseEntity<String> returnBookForStudent(
+            @PathVariable Long bookId,
+            @RequestParam Long studentId) {
+        libraryService.returnBookForStudent(bookId, studentId);
+        return new ResponseEntity<>("Book returned for student successfully", HttpStatus.OK);
+    }
+
     @DeleteMapping("/books/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('LIBRARIAN')")
     @Operation(summary = "Delete book from library")

@@ -7,6 +7,7 @@ import com.schoolmanagement.exception.DuplicateResourceException;
 import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.BookTransactionRepository;
 import com.schoolmanagement.repository.LibraryBookRepository;
+import com.schoolmanagement.repository.StudentRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +25,7 @@ public class LibraryService {
 
     private LibraryBookRepository bookRepository;
     private BookTransactionRepository transactionRepository;
+    private StudentRepository studentRepository;
 
     public LibraryBookDTO addBook(LibraryBook book) {
         if (bookRepository.existsByIsbn(book.getIsbn())) {
@@ -136,6 +138,31 @@ public class LibraryService {
 
         bookRepository.save(book);
         transactionRepository.save(transaction);
+    }
+
+    /**
+     * "Ghi mượn hộ" — a LIBRARIAN (or ADMIN) records a borrow against a
+     * student who isn't the caller (G.4 mục 5 / H.2.3). Reuses
+     * {@link #borrowBook} with the student's linked user account so the
+     * BookTransaction / availableCopies bookkeeping is identical to a
+     * self-service borrow.
+     */
+    public void lendBookToStudent(Long bookId, Long studentId, int borrowDays) {
+        borrowBook(bookId, resolveStudentUser(studentId), borrowDays);
+    }
+
+    /** "Ghi trả hộ" — the return-side counterpart of {@link #lendBookToStudent}. */
+    public void returnBookForStudent(Long bookId, Long studentId) {
+        returnBook(bookId, resolveStudentUser(studentId));
+    }
+
+    private User resolveStudentUser(Long studentId) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + studentId));
+        if (student.getUser() == null) {
+            throw new ResourceNotFoundException("Student " + studentId + " has no linked user account to borrow against");
+        }
+        return student.getUser();
     }
 
     public void returnBook(Long bookId, User user) {

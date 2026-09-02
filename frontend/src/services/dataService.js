@@ -59,6 +59,13 @@ export const libraryService = {
   borrowBook: (bookId, borrowDays = 14) =>
     api.post(`/v1/library/books/${bookId}/borrow`, null, { params: { borrowDays } }),
   returnBook: (bookId) => api.post(`/v1/library/books/${bookId}/return`),
+  // "Mượn/trả hộ" (H.2.3) - ADMIN/LIBRARIAN record a borrow/return against a
+  // student who isn't the caller. studentId is a query param, borrower is
+  // resolved from the Student's linked user account server-side.
+  lendToStudent: (bookId, studentId, borrowDays = 14) =>
+    api.post(`/v1/library/books/${bookId}/lend`, null, { params: { studentId, borrowDays } }),
+  returnForStudent: (bookId, studentId) =>
+    api.post(`/v1/library/books/${bookId}/return-for`, null, { params: { studentId } }),
   // ADMIN/LIBRARIAN: every currently-outstanding borrow, for circulation
   // visibility. Added alongside GET /v1/library/transactions{,/me} - see
   // LibraryController's own comment for why (nothing exposed

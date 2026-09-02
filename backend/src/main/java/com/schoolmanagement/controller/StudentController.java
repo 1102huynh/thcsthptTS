@@ -54,8 +54,13 @@ public class StudentController {
         return new ResponseEntity<>(studentService.getStudentByUserId(requester.getId()), HttpStatus.OK);
     }
 
+    // ACCOUNTANT read-only since Mức 2.2 (v4.10): an accountant needs the
+    // student directory to know whose fee they're recording - the create-fee
+    // form's student picker calls GET /v1/students, which 403'd for
+    // ACCOUNTANT before this. StudentAccessGuard leaves non-STUDENT/PARENT
+    // callers alone, so ACCOUNTANT sees every student like ADMIN/TEACHER do.
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get student by ID",
             description = "A STUDENT caller may only fetch their own record, a PARENT only their child's (403 otherwise) - see StudentAccessGuard.")
     public ResponseEntity<StudentDTO> getStudentById(@PathVariable Long id, Authentication authentication) {
@@ -77,7 +82,7 @@ public class StudentController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'ACCOUNTANT')")
     @Operation(summary = "Get all students",
             description = "Optional page/size query params paginate the result (0-indexed page); omit both to get the full list. Total count is returned in the X-Total-Count header when paginated.")
     public ResponseEntity<List<StudentDTO>> getAllStudents(
