@@ -43,8 +43,14 @@ public class StaffController {
         return new ResponseEntity<>(updatedStaff, HttpStatus.OK);
     }
 
+    // STUDENT deliberately excluded from all 3 GET endpoints below (was
+    // previously included) - StaffDTO carries salary and home
+    // address/emergency-contact PII with no per-field redaction, so any
+    // logged-in student could browse the full staff directory including
+    // every teacher's salary. Caught in a security review (see
+    // KE_HOACH_NANG_CAP_V4.md, Phần G.4 mục 3), not by a bug report.
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
     @Operation(summary = "Get staff member by ID")
     public ResponseEntity<StaffDTO> getStaffById(@PathVariable Long id) {
         StaffDTO staff = staffService.getStaffById(id);
@@ -52,7 +58,7 @@ public class StaffController {
     }
 
     @GetMapping("/employee/{employeeId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
     @Operation(summary = "Get staff member by employee ID")
     public ResponseEntity<StaffDTO> getStaffByEmployeeId(@PathVariable String employeeId) {
         StaffDTO staff = staffService.getStaffByEmployeeId(employeeId);
@@ -60,7 +66,7 @@ public class StaffController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
     @Operation(summary = "Get all staff members",
             description = "Optional page/size query params paginate the result (0-indexed page); omit both to get the full list. Total count is returned in the X-Total-Count header when paginated.")
     public ResponseEntity<List<StaffDTO>> getAllStaff(

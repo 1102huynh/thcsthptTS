@@ -3,6 +3,7 @@ package com.schoolmanagement.controller;
 import com.schoolmanagement.dto.StudentDTO;
 import com.schoolmanagement.entity.Student;
 import com.schoolmanagement.entity.User;
+import com.schoolmanagement.security.StudentAccessGuard;
 import com.schoolmanagement.service.StudentService;
 import com.schoolmanagement.util.PaginationUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,6 +27,7 @@ import java.util.List;
 public class StudentController {
 
     private StudentService studentService;
+    private StudentAccessGuard studentAccessGuard;
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('PRINCIPAL')")
@@ -44,18 +46,24 @@ public class StudentController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT')")
-    @Operation(summary = "Get student by ID")
-    public ResponseEntity<StudentDTO> getStudentById(@PathVariable Long id) {
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
+    @Operation(summary = "Get student by ID",
+            description = "A STUDENT caller may only fetch their own record, a PARENT only their child's (403 otherwise) - see StudentAccessGuard.")
+    public ResponseEntity<StudentDTO> getStudentById(@PathVariable Long id, Authentication authentication) {
+        User requester = (User) authentication.getPrincipal();
+        studentAccessGuard.enforceCanAccessStudent(id, requester);
         StudentDTO student = studentService.getStudentById(id);
         return new ResponseEntity<>(student, HttpStatus.OK);
     }
 
     @GetMapping("/roll/{rollNumber}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT')")
-    @Operation(summary = "Get student by roll number")
-    public ResponseEntity<StudentDTO> getStudentByRollNumber(@PathVariable String rollNumber) {
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
+    @Operation(summary = "Get student by roll number",
+            description = "A STUDENT caller may only fetch their own record, a PARENT only their child's (403 otherwise) - see StudentAccessGuard.")
+    public ResponseEntity<StudentDTO> getStudentByRollNumber(@PathVariable String rollNumber, Authentication authentication) {
+        User requester = (User) authentication.getPrincipal();
         StudentDTO student = studentService.getStudentByRollNumber(rollNumber);
+        studentAccessGuard.enforceCanAccessStudent(student.getId(), requester);
         return new ResponseEntity<>(student, HttpStatus.OK);
     }
 
