@@ -30,6 +30,7 @@ const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 // Layout
 import AppShell from './components/layout/AppShell';
 import { AppShellSkeleton, RoutePageSkeleton } from './components/shared/Skeleton';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Services
 import { getCurrentUser } from './services/authService';
@@ -56,7 +57,17 @@ function App() {
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
   };
+
+  // Wraps a routed page in the role gate (A3). `path` must match the route's
+  // own `path` so ProtectedRoute can look up its allow-list in
+  // config/navigation.js.
+  const guarded = (path, element) => (
+    <ProtectedRoute user={user} path={path}>
+      {element}
+    </ProtectedRoute>
+  );
 
   if (isLoading) {
     // The one true full-page spinner in the app (Bootstrap's
@@ -74,22 +85,22 @@ function App() {
         <AppShell user={user} onLogout={handleLogout}>
           <Suspense fallback={<RoutePageSkeleton />}>
             <Routes>
-              <Route path="/" element={<Dashboard user={user} />} />
-              <Route path="/staff" element={<StaffManagement />} />
-              <Route path="/students" element={<StudentManagement />} />
-              <Route path="/classes" element={<ClassManagement />} />
-              <Route path="/library" element={<LibraryManagement user={user} />} />
-              <Route path="/attendance" element={<AttendanceManagement />} />
-              <Route path="/grades" element={<GradeManagement />} />
-              <Route path="/fees" element={<FeeManagement />} />
-              <Route path="/academic-config" element={<AcademicConfig />} />
-              <Route path="/timetable" element={<TimetableManagement />} />
-              <Route path="/conduct" element={<ConductManagement />} />
-              <Route path="/promotions" element={<PromotionManagement />} />
-              <Route path="/parents" element={<ParentManagement />} />
-              <Route path="/notifications" element={<NotificationCenter />} />
-              <Route path="/admissions" element={<AdmissionManagement />} />
-              <Route path="/audit-log" element={<AuditLogManagement />} />
+              <Route path="/" element={guarded('/', <Dashboard user={user} />)} />
+              <Route path="/staff" element={guarded('/staff', <StaffManagement />)} />
+              <Route path="/students" element={guarded('/students', <StudentManagement />)} />
+              <Route path="/classes" element={guarded('/classes', <ClassManagement />)} />
+              <Route path="/library" element={guarded('/library', <LibraryManagement user={user} />)} />
+              <Route path="/attendance" element={guarded('/attendance', <AttendanceManagement />)} />
+              <Route path="/grades" element={guarded('/grades', <GradeManagement />)} />
+              <Route path="/fees" element={guarded('/fees', <FeeManagement />)} />
+              <Route path="/academic-config" element={guarded('/academic-config', <AcademicConfig />)} />
+              <Route path="/timetable" element={guarded('/timetable', <TimetableManagement />)} />
+              <Route path="/conduct" element={guarded('/conduct', <ConductManagement />)} />
+              <Route path="/promotions" element={guarded('/promotions', <PromotionManagement />)} />
+              <Route path="/parents" element={guarded('/parents', <ParentManagement />)} />
+              <Route path="/notifications" element={guarded('/notifications', <NotificationCenter />)} />
+              <Route path="/admissions" element={guarded('/admissions', <AdmissionManagement />)} />
+              <Route path="/audit-log" element={guarded('/audit-log', <AuditLogManagement />)} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </Suspense>

@@ -4,20 +4,17 @@ import jwtDecode from 'jwt-decode';
 const AUTH_ENDPOINT = '/v1/auth';
 
 export const authService = {
-  // Login user
+  // Login user. Deliberately logs nothing: the response body carries the
+  // access token + refresh token + user profile, and the old
+  // console.log('Login response', ...) / console.error('Error response', ...)
+  // calls dumped all of that into the browser console (A2 in
+  // KE_HOACH_NANG_CAP_V4.md - the clearest remaining frontend security gap).
   login: async (username, password) => {
     try {
-      const loginUrl = `${AUTH_ENDPOINT}/login`;
-      console.log('API Base URL:', api.defaults.baseURL);
-      console.log('Login endpoint:', loginUrl);
-      console.log('Full URL:', api.defaults.baseURL + loginUrl);
-
-      const response = await api.post(loginUrl, {
+      const response = await api.post(`${AUTH_ENDPOINT}/login`, {
         username,
         password,
       });
-
-      console.log('Login response:', response.data);
 
       if (response.data.accessToken) {
         localStorage.setItem('accessToken', response.data.accessToken);
@@ -27,8 +24,9 @@ export const authService = {
 
       return response.data;
     } catch (error) {
-      console.error('Login API error:', error);
-      console.error('Error response:', error.response);
+      // Re-throw the server's error payload (GlobalExceptionHandler returns a
+      // Vietnamese message) for LoginPage's toast; never log the error object,
+      // which includes the failed request's config and headers.
       throw error.response?.data || error.message;
     }
   },

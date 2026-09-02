@@ -108,3 +108,19 @@ export function navItemsForRole(role) {
 export function pageTitleForPath(pathname) {
   return NAV_ITEMS.find((item) => item.href === pathname)?.label ?? 'Dashboard';
 }
+
+// The roles allowed on a given in-app route, or null for a path with no
+// NAV_ITEMS entry (nothing to gate on). Used by ProtectedRoute (A3) so a
+// user who types a URL for a page their role can't use is bounced, instead
+// of landing on a page that 403s every request - the menu was already
+// filtered by navItemsForRole, the route wasn't.
+export function rolesForPath(pathname) {
+  return NAV_ITEMS.find((item) => item.href === pathname)?.roles ?? null;
+}
+
+// Where to send a user who isn't allowed on the route they asked for: their
+// first available menu item (Dashboard for most, /notifications for a
+// PARENT, ...). Falls back to '/' if the role somehow has no items.
+export function defaultPathForRole(role) {
+  return navItemsForRole(role)[0]?.href ?? '/';
+}

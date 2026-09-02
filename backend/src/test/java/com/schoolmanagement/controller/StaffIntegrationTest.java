@@ -139,6 +139,47 @@ class StaffIntegrationTest {
     }
 
     @Test
+    void getStaffById_asTeacher_redactsSalaryAndPii() throws Exception {
+        User teacherUser = saveTeacherUser("5");
+        Staff staff = staffRepository.save(Staff.builder()
+                .employeeId("ITEST-EMP-5").user(teacherUser)
+                .position(StaffPosition.TEACHER).department("Toán").status(EmploymentStatus.ACTIVE)
+                .salary(18_500_000.0).address("123 Lê Lợi").city("Đà Nẵng")
+                .emergencyContactName("Nguyễn Văn X").emergencyContactPhone("0900000000").build());
+
+        // ADMIN sees the full record
+        mockMvc.perform(get("/v1/staff/{id}", staff.getId()).with(asUser(adminUser, "ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.salary").value(18_500_000.0))
+                .andExpect(jsonPath("$.address").value("123 Lê Lợi"))
+                .andExpect(jsonPath("$.emergencyContactPhone").value("0900000000"));
+
+        // TEACHER sees name/position/department but salary + PII are nulled
+        mockMvc.perform(get("/v1/staff/{id}", staff.getId()).with(asUser(teacherUser, "TEACHER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.department").value("Toán"))
+                .andExpect(jsonPath("$.salary").doesNotExist())
+                .andExpect(jsonPath("$.address").doesNotExist())
+                .andExpect(jsonPath("$.city").doesNotExist())
+                .andExpect(jsonPath("$.emergencyContactName").doesNotExist())
+                .andExpect(jsonPath("$.emergencyContactPhone").doesNotExist());
+    }
+
+    @Test
+    void getAllStaff_asTeacher_redactsSalaryForEveryRow() throws Exception {
+        User teacherUser = saveTeacherUser("6");
+        staffRepository.save(Staff.builder()
+                .employeeId("ITEST-EMP-6").user(teacherUser)
+                .position(StaffPosition.TEACHER).status(EmploymentStatus.ACTIVE)
+                .salary(20_000_000.0).address("456 Trần Phú").build());
+
+        mockMvc.perform(get("/v1/staff").with(asUser(teacherUser, "TEACHER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.employeeId == 'ITEST-EMP-6')].salary").isEmpty())
+                .andExpect(jsonPath("$[?(@.employeeId == 'ITEST-EMP-6')].address").isEmpty());
+    }
+
+    @Test
     void createStaff_asTeacher_returns403() throws Exception {
         User teacherUser = saveTeacherUser("4");
 

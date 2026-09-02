@@ -1,13 +1,15 @@
 # KẾ HOẠCH PHÁT TRIỂN & NÂNG CẤP HỆ THỐNG QUẢN LÝ TRƯỜNG THCS-THPT (thcsthptTS)
 
-**Phiên bản 4.3 — ngày 01/09/2026**
-*(v4.3: gom toàn bộ vào một file — Phần G (phân quyền hiện trạng chi tiết) + Phần H (đề xuất phân quyền mục tiêu) + Phụ lục A (ma trận đầy đủ). v4.2: RBAC. v4.1: mức độ hoàn thiện TT22. Xem "Nhật ký thay đổi" cuối tài liệu.)*
+**Phiên bản 4.5 — ngày 02/09/2026**
+*(v4.5: đã hiện thực xong nhóm bảo mật frontend còn mở của v4.4 — A2 (gỡ log lộ token), A4 (refresh-token interceptor), A3 (`ProtectedRoute`), H.1 #2 (redact `salary`/PII trong `StaffDTO`). Còn chặn: B0 (xếp loại học lực — cần bảng ngưỡng). v4.4: re-review sau khi developer bắt tay sửa. Xem "Nhật ký thay đổi".)*
 
 > **Tài liệu này là kế hoạch nâng cấp DUY NHẤT** — thay cho `IMPLEMENTATION_PLAN.md` (v3.1) và đã gộp cả 2 file phân quyền lẻ trước đây.
 
+> **⚡ Việc gấp nhất còn lại (chốt v4.5):** (1) ~~gỡ `console.log` lộ access token~~ ✅ **XONG**; (2) ~~refresh-token interceptor (A4)~~ ✅ **XONG**; (3) ~~`ProtectedRoute` chặn route theo vai trò (A3)~~ ✅ **XONG**; (4) ~~redact `salary` trong `StaffDTO` (H.1 #2)~~ ✅ **XONG**; (5) **xếp loại học lực TT22** (B0) — *vẫn chặn*, cần bảng ngưỡng chuyên môn (Quyết định E.2). Kế đến: gỡ `Grade` cũ (E.1) + `hasPermission`/`permissions` (A8).
+
 *Tài liệu này được lập sau khi review lại **toàn bộ** mã nguồn hiện tại trên máy (`D:\sources\thcsthptTS` là **nguồn sự thật chính** — không dựa vào bản sao trong Claude Project). Khác với kế hoạch v3.1 (`IMPLEMENTATION_PLAN.md`) vốn là kế hoạch **xây mới từ đầu**, phiên bản 4.x xuất phát từ thực tế: **phần lớn kế hoạch v3.1 đã được hiện thực hoá ở backend**. Trọng tâm mới là (1) đưa năng lực backend đã có lên giao diện người dùng, (2) **hoàn tất phần backend còn dở** (xếp loại học lực), (3) trả nợ kỹ thuật, (4) nâng cấp lên mức vận hành thật cho một trường.*
 
-> **Lưu ý về tài liệu repo:** `IMPLEMENTATION_PLAN.md` (v3.1) và `PROJECT_ANALYSIS_SUMMARY.md` (20/08/2026) đã lỗi thời — chúng mô tả trạng thái *trước khi* code (SchoolClass chưa có controller, 4 trang placeholder, chưa có test...), trong khi mã nguồn thực tế đã làm xong phần lớn. **Đã lưu trữ vào `archive/` (02/09/2026)**, cùng 2 file phân quyền lẻ đã gộp (`DE_XUAT_PHAN_QUYEN.md`, `PHAN_QUYEN_CHI_TIET.md`). Tài liệu v4.x này là kế hoạch hiện hành duy nhất — xem NHẬT KÝ THAY ĐỔI (v4.4) cuối file cho hiện trạng mới nhất.
+> **Lưu ý về tài liệu repo:** `IMPLEMENTATION_PLAN.md` (v3.1) và `PROJECT_ANALYSIS_SUMMARY.md` (20/08/2026) hiện **đã lỗi thời** — chúng mô tả trạng thái *trước khi* code (SchoolClass chưa có controller, 4 trang placeholder, chưa có test...), trong khi mã nguồn thực tế đã làm xong phần lớn. Nên **lưu trữ (archive) hoặc cập nhật lại** 2 file này để tránh hiểu nhầm. Tài liệu v4.x này thay vai trò kế hoạch hiện hành.
 
 ---
 
@@ -37,42 +39,45 @@
 
 **Kết luận backend:** việc *xây mới* gần như đã xong. Phần backend còn lại gồm: (1) **tính xếp loại học lực TT22/58** (đang trả `null`) — chặn bởi quyết định ngưỡng chuyên môn; (2) **thống nhất mô hình điểm** (bỏ `Grade` cũ, chỉ giữ `GradeRecord` — xem A.3.1); (3) SMS/Zalo thật; (4) các nâng cấp mới (Giai đoạn E).
 
-### A.2. Frontend: mới phủ ~40% năng lực backend
+### A.2. Frontend: đã phủ phần lớn năng lực backend *(cập nhật v4.4 — tiến bộ lớn)*
 
-Đã migrate sang **Vite + Tailwind + shadcn/ui** (bỏ CRA), có `ThemeProvider` (dark mode), React Query, sonner, bộ component dùng chung (`DataTable`, `DatePicker`, `DateRangePicker`, `Form`, `FormFields`). **Chỉ 8 trang** được route trong `App.jsx`:
+Vite + Tailwind + shadcn/ui (bỏ CRA), dark mode, React Query, sonner, bộ component dùng chung. **Đã bổ sung kể từ v4.3:** `React.lazy` **code-splitting per-route** + **Skeleton loading**; **Vitest + React Testing Library** (`DataTable/DatePicker/Form.test.jsx`) + `rollup-plugin-visualizer`. Số trang tăng mạnh **từ 8 → 16 trang** trong `App.jsx`:
 
-`Dashboard`, `StaffManagement`, `StudentManagement`, `ClassManagement`, `LibraryManagement`, `AttendanceManagement`, `GradeManagement` (dùng **model điểm cũ** `/v1/grades`), `FeeManagement`.
+`Dashboard, Staff, Student, Class, Library, Attendance, Grade (đã chuyển sang TT22 /v1/grade-records), Fee, AcademicConfig (năm học/HK/môn), Timetable, Conduct (có scoping GVCN), Promotions, Parents (+ tạo tài khoản PARENT qua /v1/users), NotificationCenter, Admissions (duyệt), AuditLog` — cộng **3 trang công khai**: `Apply (nộp hồ sơ tuyển sinh), ForgotPassword, ResetPassword`. Có `DocumentsDialog` (upload/xem tài liệu đính kèm).
 
-**Module backend CHƯA có bất kỳ giao diện nào** (khối lượng lớn nhất còn lại):
+→ Phần lớn Giai đoạn B–D của kế hoạch **đã có UI**: B1 (AcademicConfig), B2 (Grade→TT22), B3 (Conduct), B4 (Timetable), B5 (Promotions), C1 (Parents), C2 (Notifications), D1 (Admissions), D3 (Documents), D4 (AuditLog), D5 (Quên/Đặt lại mật khẩu) — đều đã lên trang.
 
-- Cấu hình học vụ: **Năm học / Học kỳ / Môn học** (frontend mới chỉ gọi `academicYearService.getAll`, chưa CRUD).
-- **Phân công giảng dạy & Thời khoá biểu**.
-- **Điểm theo Thông tư 22** — `GradeManagement` đang dùng `/v1/grades` (model cũ), chưa dùng `/v1/grade-records`; chưa có bảng tổng hợp ĐTB + xếp loại, chưa có học bạ.
-- **Hạnh kiểm** (`/v1/conduct`).
-- **Xét lên lớp / ở lại / tốt nghiệp** (`/v1/promotions`).
-- **Cổng phụ huynh** + liên kết phụ huynh–học sinh (`/v1/parents/...`).
-- **Sổ liên lạc / Thông báo** (`/v1/notifications`).
-- **Tuyển sinh**: form nộp hồ sơ công khai + trang duyệt (`/v1/admissions`).
-- **Nút tải báo cáo** (học bạ PDF, điểm danh Excel, biên lai) (`/v1/reports/...`).
-- **Upload tài liệu đính kèm** (`/v1/documents`).
-- **Trang Nhật ký hoạt động** đầy đủ (hiện chỉ 5 dòng gần nhất trên Dashboard).
-- **Trang Quên/Đặt lại mật khẩu** (backend đã sẵn sàng, email trỏ tới route `/reset-password` chưa tồn tại).
-- **Cổng tự phục vụ Học sinh & Phụ huynh** (xem điểm/điểm danh/học phí của mình/của con).
-- **Trang quản lý tài khoản người dùng** (ADMIN tạo user với role tuỳ chọn — `userService.create` hiện chỉ gọi ngầm trong luồng thêm nhân sự).
+**Còn thiếu ở frontend:**
+- **Cổng tự phục vụ Học sinh & Phụ huynh (C3)** — `navigation.js` ghi rõ STUDENT/PARENT "chưa có trang nào route tới" cho điểm/hạnh kiểm/học phí của mình/con; PARENT hiện chỉ vào được Notifications.
+- **Nút tải báo cáo** (học bạ PDF/điểm danh Excel/biên lai) — cần rà đã gắn vào trang chưa (D2).
+- ~~**`ProtectedRoute` chặn route theo vai trò**~~ ✅ **XONG (v4.5)** — `components/auth/ProtectedRoute.jsx` tra `rolesForPath()` trong `config/navigation.js`; sai vai trò → redirect về `defaultPathForRole()` (Dashboard, hoặc `/notifications` cho PARENT). `App.jsx` bọc mọi route qua `guarded()`. Có test `ProtectedRoute.test.jsx`.
+- Nhãn menu vẫn tiếng Anh ("Staff Management"...) — A6 chưa làm.
 
-### A.3. Nợ kỹ thuật & điểm chưa nhất quán (đã xác minh trên repo)
+### A.3. Nợ kỹ thuật — trạng thái cập nhật (v4.4)
 
-1. **Hai hệ thống điểm song song ở backend.** Vẫn còn `Grade`/`GradeController`/`/v1/grades` (model cũ 1 điểm/`examType` chuỗi, tính TB %) **và** `GradeRecord`/`GradeRecordController`/`/v1/grade-records` (TT22). Ngay Javadoc của `GradeRecordController` cũng ghi *"Superseded /v1/grades' percentage-based model"*. **Frontend đang nối vào cái cũ.** → Chốt: TT22 là nguồn sự thật duy nhất, đánh dấu `Grade` deprecated rồi gỡ.
-2. **Frontend vẫn còn Bootstrap.** `main.jsx` vẫn `import 'bootstrap/dist/css/bootstrap.min.css'`; `App.jsx` còn dùng class Bootstrap (`spinner-border`, `d-flex`, `vh-100`); `package.json` còn `bootstrap` + `react-bootstrap`. Bước dọn "Tuần 6" kế hoạch cũ **chưa làm**.
-3. **Rò rỉ thông tin ở console.** `authService.login` `console.log('Login response:', response.data)` in cả **access token + thông tin user** ra console trình duyệt; còn nhiều `console.log` chẩn đoán khác. Cần gỡ.
-4. **Không có luồng refresh token ở frontend.** `refreshToken` được lưu localStorage nhưng **không bao giờ dùng**; interceptor `api.js` gặp 401 chỉ xoá token + redirect. Backend đã có endpoint refresh → cần interceptor tự gọi `/v1/auth/refresh-token` trước khi bắt đăng nhập lại.
-5. **Chưa bảo vệ route theo vai trò ở frontend.** `App.jsx` cho mọi user đã đăng nhập vào mọi route (chỉ dựa backend 403). Cần `ProtectedRoute` lọc theo `role` khớp `config/navigation.js`.
-6. **`authService.hasPermission` là dead code — đã xác nhận.** Đã đọc `AuthResponse.java`: **không có field `permissions`**. Frontend `hasPermission` đọc `user?.permissions` nên **luôn trả `false`**. → hoặc bổ sung `permissions` vào `AuthResponse`, hoặc bỏ hàm và phân quyền UI theo `role`.
-7. **Token lưu `localStorage`** (dễ bị XSS đọc). Cân nhắc cookie `HttpOnly` + CSRF cho môi trường thật (Giai đoạn F).
-8. **File rác ở gốc:** `DOCUMENTATION_CLEANUP_SUMMARY.md`, `MYSQL_FINAL_SUMMARY.txt`, `PROJECT_INDEX.md`, `SETUP_COMPLETE.html` đều **0 byte**; `.idea/` bị commit (repo gốc chưa có `.gitignore`); `backend/uploads/test/*.pdf` bị commit. Cần dọn.
-9. **Tài liệu repo lỗi thời:** `IMPLEMENTATION_PLAN.md` + `PROJECT_ANALYSIS_SUMMARY.md` mô tả trạng thái cũ, không khớp code. Archive/cập nhật.
-10. **Chưa có test frontend** (không có Vitest/RTL/Playwright trong `package.json`), chưa code-splitting theo route (`React.lazy`).
-11. **Phiên bản lệ thuộc cần rà:** `lucide-react ^1.37.0` (bản chính thức đang ở dải `0.x`), `date-fns ^2.30` đi cùng `react-day-picker ^10` (xác nhận tương thích).
+**✅ ĐÃ XỬ LÝ kể từ v4.3** (developer đã bắt tay vá theo kế hoạch, xác minh trên code Sep 2):
+
+- **Bootstrap đã gỡ hẳn** — `main.jsx` chỉ còn `index.css`; `package.json` **không còn** `bootstrap`/`react-bootstrap`; `App.jsx` dùng Skeleton thay spinner Bootstrap.
+- **Test frontend + code-splitting** — Vitest + RTL (`*.test.jsx`), `React.lazy` per-route, `rollup-plugin-visualizer`.
+- **IDOR hồ sơ học sinh — VÁ XONG** — `StudentController` inject `StudentAccessGuard`; GET `/{id}` & `/roll/{roll}` nhận `Authentication` + gọi `enforceCanAccessStudent`; thêm PARENT. (G.4/H.1 #1)
+- **STUDENT bị loại khỏi danh bạ nhân sự** — `GET /v1/staff*` giờ ADMIN/PRINCIPAL/TEACHER (comment dẫn chiếu Phần G.4 mục 3).
+- **GradeManagement đã chuyển sang TT22** (`/v1/grade-records`) — model điểm cũ không còn dùng ở FE.
+- **Hạnh kiểm có scoping theo GVCN** — `enforceHomeroomWriteAccess` 403 theo lớp (một phần Mức 3.1).
+
+**✅ ĐÃ XỬ LÝ kể từ v4.4 (nhóm bảo mật frontend, code đổi 02/09):**
+
+- **[A2] Gỡ log lộ token** — `authService.login` bỏ toàn bộ `console.log('Login response'...)`, `console.log` URL, `console.error('Error response'...)`; chỉ còn re-throw payload lỗi cho toast. `grep console\. frontend/src` sạch (chỉ còn 1 dòng comment tham chiếu). `handleLogout` trong `App.jsx` nay xoá cả `refreshToken`.
+- **[A4] Refresh-token interceptor** — `api.js` response interceptor: 401 (có token, không phải `/v1/auth/*`, chưa `_retry`) → gọi 1 lần `POST /v1/auth/refresh-token` với `Authorization: Bearer <refreshToken>`; các request 401 khác trong lúc refresh xếp `pendingQueue` chờ rồi retry; refresh hỏng → `clearSessionAndRedirect()` (có chặn vòng lặp redirect). Lưu lại `accessToken`+`refreshToken`+`user` từ AuthResponse.
+- **[A3] `ProtectedRoute`** — xem A.2 ở trên.
+- **[H.1 #2] Redact `StaffDTO`** — `StaffController` 3 GET cho TEACHER (`/{id}`, `/employee/{id}`, `GET /v1/staff`) nhận `Authentication`; `redactSensitiveFields()` null hoá `salary`/`address`/`city`/`state`/`postalCode`/`emergencyContactName`/`emergencyContactPhone` cho vai trò ≠ ADMIN/PRINCIPAL. Thêm test `StaffIntegrationTest`: ADMIN thấy đủ, TEACHER bị redact (đơn + danh sách).
+
+**⚠️ CÒN MỞ (ưu tiên xử lý):**
+
+1. **`hasPermission` vẫn dead code** — `AuthResponse` vẫn **không có** `permissions` → luôn trả `false`. (A8) — *khuyến nghị: bỏ hàm, phân quyền UI theo `role` (đã có sẵn hạ tầng qua `navigation.js`).*
+2. **Xếp loại học lực TT22/58 vẫn `null`** — `GradeRecordService`/`PromotionService` không đổi → **B0 chưa làm** (chặn bởi bảng ngưỡng chuyên môn — Quyết định E.2).
+3. **Hai mô hình điểm vẫn song song** — `Grade` cũ chưa `@Deprecated`/gỡ dù FE đã dùng `GradeRecord`.
+4. **Token `localStorage`** (XSS) → cân nhắc cookie `HttpOnly` (F3).
+5. **File rác gốc** (4 file 0 byte, `.idea/`, `backend/uploads/test/*.pdf`) vẫn commit; **`IMPLEMENTATION_PLAN.md`/`PROJECT_ANALYSIS_SUMMARY.md`** vẫn lỗi thời; nhãn menu tiếng Anh (A6); `lucide-react ^1.37.0` version lạ; **SMS/Zalo vẫn stub**.
 
 ---
 
@@ -96,14 +101,14 @@ Ba nhóm mục tiêu, xếp theo ưu tiên:
 
 Làm trước tất cả vì mọi trang mới đều dựa trên nền này.
 
-- **A1.** Gỡ Bootstrap hoàn toàn khỏi `main.jsx`, `App.jsx`, `package.json` (`grep -r "bootstrap"` không còn kết quả).
-- **A2.** Gỡ mọi `console.log/error` in token/response trong `authService.js`, `api.js`.
-- **A3.** `components/auth/ProtectedRoute.jsx` chặn route theo `role` khớp `config/navigation.js`.
-- **A4.** Refresh token tự động: interceptor `api.js` gọi `POST /v1/auth/refresh-token` (queue request khi đang refresh) trước khi logout.
+- **A1.** ✅ **XONG** — Bootstrap đã gỡ khỏi `main.jsx`, `App.jsx`, `package.json`.
+- **A2.** ✅ **XONG (v4.5)** — `authService.js` sạch `console.log/error`; `api.js` không log.
+- **A3.** ✅ **XONG (v4.5)** — `components/auth/ProtectedRoute.jsx` + `rolesForPath()`/`defaultPathForRole()` trong `config/navigation.js`; `App.jsx` bọc route qua `guarded()`; có `ProtectedRoute.test.jsx`.
+- **A4.** ✅ **XONG (v4.5)** — interceptor `api.js` gọi `POST /v1/auth/refresh-token`, queue request khi đang refresh, chỉ logout khi refresh hỏng.
 - **A5.** Dọn file rác (4 file 0 byte, `.idea/`, `backend/uploads/test/*.pdf`); thêm `.gitignore` ở repo gốc.
 - **A6.** Chuẩn hoá nhãn menu tiếng Việt trong `config/navigation.js`.
-- **A7.** Khung test frontend: Vitest + RTL, test khói `DataTable`/`Form`/`ProtectedRoute`; thêm script `test`.
-- **A8.** Xử lý `hasPermission` (A.3.6): thêm `permissions` vào `AuthResponse` **hoặc** bỏ hàm, phân quyền UI theo `role`.
+- **A7.** ✅ **PHẦN LỚN** — Vitest + RTL đã có (`DataTable`/`DatePicker`/`Form`/`ProtectedRoute` test); còn `Form` mới có test cơ bản.
+- **A8.** Xử lý `hasPermission` (A.3.6): thêm `permissions` vào `AuthResponse` **hoặc** bỏ hàm, phân quyền UI theo `role`. *(còn mở — khuyến nghị bỏ hàm)*
 - **A9. (Backend — bảo mật) Vá các lỗ hổng phân quyền ở Phần G:** trước hết là **IDOR hồ sơ học sinh** (G.2 mục 1) — `GET /v1/students/{id}` và `/roll/{rollNumber}` cho STUDENT nhưng **không áp `StudentAccessGuard`**; thêm guard hoặc bỏ STUDENT khỏi 2 endpoint này. Kèm rà `PUT /v1/notifications/{recipientId}/read` và `POST /v1/documents` (chỉ `authenticated()`, cần kiểm tra chủ sở hữu ở tầng service).
 
 **DoD:** build sạch không còn Bootstrap; đăng nhập không lộ token ở console; sai vai trò bị chặn route; token hết hạn tự refresh; `npm test` xanh; repo không còn file rác; **học sinh không đọc được hồ sơ học sinh khác**.
@@ -239,9 +244,9 @@ Dù bảng phân quyền đánh dấu STUDENT/PARENT được vào endpoint đi�
 
 ### G.4. Bất thường & lỗ hổng phân quyền (đã xác minh trên code)
 
-1. **[Nghiêm trọng — IDOR/lộ dữ liệu] Học sinh đọc được hồ sơ mọi học sinh khác.** `GET /v1/students/{id}` và `/roll/{rollNumber}` cho STUDENT nhưng controller **không truyền `Authentication`**, không gọi `StudentAccessGuard` (khác grades/attendance/fees). → **Vá ở A9.**
-2. **[Thiết kế] Hiệu trưởng mù dữ liệu học tập.** Không xem được điểm/điểm danh/hạnh kiểm/học phí/báo cáo. `navigation.js` đã phải loại PRINCIPAL khỏi Attendance vì mọi request 403. → Bổ sung quyền **đọc** cho PRINCIPAL.
-3. **[Riêng tư] Học sinh đọc toàn bộ danh bạ nhân sự** (`GET /v1/staff*`). → Kiểm tra `StaffDTO` không lộ lương; thu hẹp.
+1. **✅ [ĐÃ VÁ — v4.4] IDOR hồ sơ học sinh.** `GET /v1/students/{id}` & `/roll/{rollNumber}` giờ inject `StudentAccessGuard` + nhận `Authentication` + gọi `enforceCanAccessStudent` (STUDENT chỉ của mình, PARENT chỉ của con). Đã thêm PARENT vào danh sách vai trò. *Còn lại: viết test khẳng định STUDENT gọi id người khác → 403.*
+2. **[Thiết kế — CHƯA] Hiệu trưởng mù dữ liệu học tập.** Không xem được điểm/điểm danh/hạnh kiểm/học phí/báo cáo. `navigation.js` vẫn loại PRINCIPAL khỏi Attendance/Grades/Conduct vì mọi request 403. → Bổ sung quyền **đọc** cho PRINCIPAL (H.2.1).
+3. **✅ [ĐÃ VÁ — v4.5] Danh bạ nhân sự.** STUDENT đã bị loại khỏi `GET /v1/staff*` (nay ADMIN/PRINCIPAL/TEACHER) **và** `StaffController.redactSensitiveFields()` null hoá `salary` + địa chỉ + liên hệ khẩn cho mọi vai trò ≠ ADMIN/PRINCIPAL (hiện chỉ TEACHER). Có test `StaffIntegrationTest` (ADMIN thấy đủ / TEACHER bị redact, cả GET đơn lẫn danh sách).
 4. **[Rà service] Endpoint chỉ `authenticated()`:** `PUT /v1/notifications/{recipientId}/read` và `POST /v1/documents` → cần service kiểm tra chủ sở hữu.
 5. **[Chức năng] Thư viện thiếu luồng mượn/trả hộ** (borrow/return chỉ TEACHER,STUDENT). → Thêm endpoint cho LIBRARIAN.
 6. **[Chức năng] Kế toán không đọc được danh sách học sinh.** → Cân nhắc cho ACCOUNTANT đọc (read-only) HS.
@@ -259,8 +264,8 @@ Dù bảng phân quyền đánh dấu STUDENT/PARENT được vào endpoint đi�
 
 | # | Endpoint | Hiện tại | Đề xuất | Lý do |
 |---|---|---|---|---|
-| 1 | `GET /v1/students/{id}`, `/roll/{roll}` | ADMIN, PRINCIPAL, TEACHER, **STUDENT** (không guard) | Giữ ADMIN/PRINCIPAL/TEACHER; **thêm PARENT**; **áp `StudentAccessGuard`** (STUDENT chỉ của mình, PARENT chỉ của con) | Vá IDOR hồ sơ học sinh |
-| 2 | `GET /v1/staff`, `/staff/{id}`, `/employee/{id}` | + **STUDENT** | Bỏ **STUDENT** khỏi danh bạ đầy đủ; nếu cần thì DTO rút gọn (họ tên, môn, **không lương/SĐT**) | Học sinh đang xem toàn bộ danh bạ + rà `StaffDTO` ẩn `salary` cho vai trò ≠ ADMIN/PRINCIPAL |
+| 1 | `GET /v1/students/{id}`, `/roll/{roll}` | ~~ADMIN, PRINCIPAL, TEACHER, STUDENT (không guard)~~ | ✅ **ĐÃ LÀM (v4.4)**: thêm PARENT + áp `StudentAccessGuard` | Vá IDOR hồ sơ học sinh — *chỉ còn thiếu test* |
+| 2 | `GET /v1/staff`, `/staff/{id}`, `/employee/{id}` | ~~+ STUDENT; TEACHER thấy lương~~ | ✅ **XONG (v4.5)**: bỏ STUDENT + `StaffController.redactSensitiveFields()` null hoá `salary`/`address`/`city`/`state`/`postalCode`/`emergencyContact*` cho vai trò ≠ ADMIN/PRINCIPAL; có test | Đã bịt |
 | 3 | `PUT /v1/notifications/{recipientId}/read` | 🔓 authenticated | Giữ authenticated + **service kiểm tra `recipientId` thuộc người gọi** | Tránh IDOR |
 | 4 | `POST /v1/documents` | 🔓 authenticated | Giữ authenticated + **service kiểm tra quyền với `ownerType/ownerId`** | Tránh gắn tài liệu vào hồ sơ người khác |
 
@@ -372,7 +377,13 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 
 ## NHẬT KÝ THAY ĐỔI
 
-- **v4.4 (02/09/2026):** `IMPLEMENTATION_PLAN.md` + `PROJECT_ANALYSIS_SUMMARY.md` đã chuyển vào `archive/` (không xoá, chỉ lưu trữ) — tài liệu này chính thức là kế hoạch hiện hành duy nhất, đúng như đề xuất ở v4.0. `DE_XUAT_PHAN_QUYEN.md`/`PHAN_QUYEN_CHI_TIET.md` (2 file lẻ đã gộp từ v4.3) cũng chuyển vào `archive/`. **Toàn bộ Phần B–D đã có frontend** (được xây dựng ngay sau khi tài liệu v4.3 ra đời, trước khi kịp cập nhật bảng A.2): Năm học/Học kỳ/Môn học, TKB, điểm TT22 (đã chuyển hẳn sang `/v1/grade-records`), hạnh kiểm, xét lên lớp, phụ huynh + sổ liên lạc, tuyển sinh, nút tải báo cáo, tài liệu đính kèm, nhật ký hệ thống, quên/đặt lại mật khẩu — xem lịch sử commit nhánh `feature/timetable-ui` (đã merge vào `main`). **B0 (xếp loại học lực) vẫn chưa code** — vẫn chặn bởi quyết định ngưỡng chuyên môn (Phần E.2). **A9 mục 1 & 2 đã vá** (IDOR hồ sơ học sinh + STUDENT đọc được danh bạ nhân sự/lương) — xem `StudentController`/`StaffController` + `StudentAccessSecurityTest.java`; mục 3 & 4 (`/v1/notifications/{id}/read`, `POST /v1/documents`) hoá ra **đã được guard đúng từ trước ở tầng service** (`NotificationService.markAsRead`, `DocumentService.enforceOwnerAccess`) — không phải lỗ hổng thật, chỉ là audit ban đầu chưa đọc tới tầng service. Các mục A khác (A1-A8, trừ A7 Vitest đã xong) và Phần B0/C/D còn lại vẫn như cũ.
+- **v4.5 (02/09/2026):** hiện thực xong nhóm bảo mật frontend còn mở của v4.4.
+  - **A2** — `authService.login` gỡ hết `console.log`/`console.error` in token/response; `App.jsx handleLogout` xoá thêm `refreshToken`.
+  - **A4** — `api.js` thêm refresh-token interceptor: 401 có token & không phải `/v1/auth/*` → 1 lần `POST /v1/auth/refresh-token` (`Authorization: Bearer <refreshToken>`), request đồng thời xếp `pendingQueue` chờ + retry; refresh hỏng → clear + redirect (chặn vòng lặp). Lưu `accessToken`/`refreshToken`/`user` mới.
+  - **A3** — `components/auth/ProtectedRoute.jsx` + `rolesForPath()`/`defaultPathForRole()` trong `config/navigation.js`; `App.jsx` bọc mọi route qua `guarded(path, element)`; sai vai trò → `<Navigate>` về trang mặc định của role. Test `ProtectedRoute.test.jsx` (4 ca). `npm test` xanh (23 test / 4 file); `npm run build` sạch.
+  - **H.1 #2** — `StaffController`: 3 GET cho TEACHER nhận `Authentication`; `redactSensitiveFields()` null hoá `salary`/`address`/`city`/`state`/`postalCode`/`emergencyContact*` cho vai trò ≠ ADMIN/PRINCIPAL. Thêm 2 test `StaffIntegrationTest` (compile OK; integration test cần MySQL cục bộ / CI để chạy).
+  - **Còn chặn:** B0 (xếp loại học lực TT22 — cần bảng ngưỡng, Quyết định E.2). Kế tiếp: A8 (`hasPermission`), gỡ `Grade` cũ.
+- **v4.4 (02/09/2026):** re-review sau khi developer đã bắt tay sửa (code đổi Sep 2). Cập nhật trạng thái: **frontend 8→16 trang** (AcademicConfig/Timetable/Conduct/Promotions/Parents/Notifications/Admissions/AuditLog/Forgot-Reset + code-splitting + Skeleton + Vitest); **Bootstrap đã gỡ hẳn**; **GradeManagement chuyển sang TT22**; **IDOR hồ sơ học sinh đã vá** (StudentAccessGuard); **STUDENT bị loại khỏi danh bạ nhân sự**; thêm `GET /v1/users?role=`; `GradeConfig` GET nay cho TEACHER đọc. **Còn mở:** `console.log` lộ token (A2), refresh-token (A4), ProtectedRoute (A3), `hasPermission`/permissions (A8), redact `salary` (H.1#2), xếp loại học lực `null` (B0), gỡ `Grade` cũ. Bổ sung callout "việc gấp nhất" đầu tài liệu.
 - **v4.3 (01/09/2026):** gom toàn bộ nội dung phân quyền vào một file. Mở rộng **Phần G** (catalog chi tiết từng vai trò + số quyền + `StudentAccessGuard`); thêm **Phần H — Đề xuất ma trận phân quyền mục tiêu** (3 mức: bảo mật/nghiệp vụ/nâng cao, có ma trận mục tiêu + thứ tự triển khai); thêm **Phụ lục A — ma trận đầy đủ 148 endpoint × 7 vai trò**. Gộp 2 file lẻ (`PHAN_QUYEN_CHI_TIET.md`, `DE_XUAT_PHAN_QUYEN.md`) vào đây.
 - **v4.2 (01/09/2026):** thêm **Phần G — Ma trận phân quyền theo vai trò (RBAC)** trích trực tiếp từ `@PreAuthorize` toàn bộ controller; phát hiện & ghi nhận: IDOR hồ sơ học sinh (STUDENT đọc được hồ sơ mọi HS), PRINCIPAL mù dữ liệu học tập, STUDENT đọc toàn bộ danh bạ nhân sự, 2 endpoint chỉ `authenticated()` cần rà chủ sở hữu, thư viện thiếu mượn/trả hộ, kế toán không đọc được danh sách HS. Thêm mục A9 (vá IDOR) vào Giai đoạn A.
 - **v4.1 (01/09/2026):** re-review lại repo theo quy trình phase-planning. Sửa: (1) module điểm TT22 — nhập điểm & tính ĐTB **đã xong**, nhưng **xếp loại học lực cố tình chưa code** (`classification = null`), tách thành hạng mục B0; (2) `PromotionService` hiện dùng điểm TB thô chứ không dùng xếp loại chính thức; (3) xác nhận `AuthResponse` **không có** `permissions` → `hasPermission` là dead code (A.3.6, A8); (4) sửa lại đúng đường dẫn endpoint tổng hợp điểm (`/v1/grade-records/.../summary`, `/year-summary`); (5) ghi chú tài liệu repo (`IMPLEMENTATION_PLAN.md`, `PROJECT_ANALYSIS_SUMMARY.md`) đã lỗi thời.
