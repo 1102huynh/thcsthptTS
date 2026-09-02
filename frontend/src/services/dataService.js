@@ -212,6 +212,19 @@ export const gradeConfigService = {
   delete: (id) => api.delete(`/v1/grade-config/${id}`),
 };
 
+// Conduct Service (Hạnh kiểm/rèn luyện) - no delete endpoint exists on the
+// backend (ConductController only has create/update/read), matching the
+// real workflow: a conduct evaluation is corrected via PUT, not removed.
+// getClassSemesterRoster is a real bulk endpoint (unlike gradeRecordService
+// above) - one row per student already in the class, rating/remarks
+// pre-filled or null, no per-student N+1 fetching needed here.
+export const conductService = {
+  create: (data) => api.post('/v1/conduct', data),
+  update: (id, data) => api.put(`/v1/conduct/${id}`, data),
+  getByStudent: (studentId) => api.get(`/v1/conduct/student/${studentId}`),
+  getClassSemesterRoster: (classId, semesterId) => api.get(`/v1/conduct/class/${classId}/semester/${semesterId}`),
+};
+
 // Audit Log Service (ADMIN only - see AuditLogController)
 export const auditLogService = {
   getRecent: (size = 5) => api.get('/v1/audit-logs', { params: { page: 0, size } }),
@@ -233,5 +246,6 @@ export default {
   timetableService,
   gradeRecordService,
   gradeConfigService,
+  conductService,
   auditLogService,
 };

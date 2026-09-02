@@ -117,6 +117,15 @@ export const SEMESTER_NAME_LABELS = {
   HK2: 'Học kỳ 2',
 };
 
+// ConductRecord.rating - xếp loại hạnh kiểm/rèn luyện theo học kỳ, luôn đi
+// kèm song song với học lực trong học bạ (IMPLEMENTATION_PLAN.md 3.4).
+export const CONDUCT_RATING_LABELS = {
+  TOT: 'Tốt',
+  KHA: 'Khá',
+  TRUNG_BINH: 'Trung bình',
+  YEU: 'Yếu',
+};
+
 // GradeRecord.componentType, theo Thông tư 22/2021 (tương thích TT58) -
 // mỗi loại có hệ số riêng, xem GradeComponentConfig / GradeManagement.
 export const GRADE_COMPONENT_TYPE_LABELS = {

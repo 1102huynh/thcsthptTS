@@ -17,6 +17,7 @@ const GradeManagement = lazy(() => import('./pages/GradeManagement'));
 const FeeManagement = lazy(() => import('./pages/FeeManagement'));
 const AcademicConfig = lazy(() => import('./pages/AcademicConfig'));
 const TimetableManagement = lazy(() => import('./pages/TimetableManagement'));
+const ConductManagement = lazy(() => import('./pages/ConductManagement'));
 
 // Layout
 import AppShell from './components/layout/AppShell';
@@ -75,6 +76,7 @@ function App() {
               <Route path="/fees" element={<FeeManagement />} />
               <Route path="/academic-config" element={<AcademicConfig />} />
               <Route path="/timetable" element={<TimetableManagement />} />
+              <Route path="/conduct" element={<ConductManagement />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </Suspense>

@@ -8,6 +8,7 @@ import {
   FiGrid,
   FiCalendar,
   FiSettings,
+  FiCheckSquare,
 } from 'react-icons/fi';
 
 // Shared between Sidebar (nav links) and Navbar (page title lookup by
@@ -59,6 +60,14 @@ export const NAV_ITEMS = [
   // what the Timetable page already surfaces (subject names, semester
   // picker) - ADMIN/PRINCIPAL only, same scoping as Staff/Class Management.
   { label: 'Academic Config', href: '/academic-config', icon: FiSettings, roles: ['ADMIN', 'PRINCIPAL'] },
+  // TEACHER included (unlike Class/Staff Management) since the write
+  // restriction is per-class, not role-wide - ConductController lets any
+  // TEACHER call the endpoints, enforceHomeroomWriteAccess 403s per class
+  // server-side, and the page itself narrows its class picker to only the
+  // classes that TEACHER is GVCN of. STUDENT/PARENT excluded for the same
+  // reason as Grades: they can read their own conduct via
+  // GET /v1/conduct/student/{id}, but no self-service page routes to it yet.
+  { label: 'Conduct', href: '/conduct', icon: FiCheckSquare, roles: ['ADMIN', 'TEACHER'] },
 ];
 
 export function navItemsForRole(role) {
