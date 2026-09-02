@@ -16,6 +16,10 @@ import api from './api';
 // Staff record pointing at the returned userId.)
 export const userService = {
   create: (data) => api.post('/v1/users', data),
+  // ADMIN-only - added for ParentManagement.jsx to list existing PARENT
+  // accounts when linking a child (UserRepository.findByRole existed
+  // server-side already but was never exposed over HTTP before this).
+  getByRole: (role) => api.get('/v1/users', { params: { role } }),
 };
 
 // Staff Service
@@ -246,6 +250,23 @@ export const promotionThresholdService = {
   delete: (id) => api.delete(`/v1/promotion-thresholds/${id}`),
 };
 
+// Parent Service (Phụ huynh - links a PARENT account to their children)
+export const parentService = {
+  linkChild: (parentId, studentId, relationship, isPrimaryContact = false) =>
+    api.post(`/v1/parents/${parentId}/children/${studentId}`, null, { params: { relationship, isPrimaryContact } }),
+  unlinkChild: (parentId, studentId) => api.delete(`/v1/parents/${parentId}/children/${studentId}`),
+  getChildren: (parentId) => api.get(`/v1/parents/${parentId}/children`),
+};
+
+// Notification Service (Sổ liên lạc điện tử) - created and sent in the same
+// request; SMS/ZALO channels return 501 (pending vendor decision, see
+// NotificationChannel's Javadoc) - the compose UI only offers APP/EMAIL.
+export const notificationService = {
+  createAndSend: (data) => api.post('/v1/notifications', data),
+  getMy: () => api.get('/v1/notifications/my'),
+  markAsRead: (recipientId) => api.put(`/v1/notifications/${recipientId}/read`),
+};
+
 // Audit Log Service (ADMIN only - see AuditLogController)
 export const auditLogService = {
   getRecent: (size = 5) => api.get('/v1/audit-logs', { params: { page: 0, size } }),
@@ -270,5 +291,7 @@ export default {
   conductService,
   promotionService,
   promotionThresholdService,
+  parentService,
+  notificationService,
   auditLogService,
 };

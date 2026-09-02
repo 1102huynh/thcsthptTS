@@ -117,6 +117,41 @@ export const SEMESTER_NAME_LABELS = {
   HK2: 'Học kỳ 2',
 };
 
+// ParentStudentRelation.relationship
+export const PARENT_RELATIONSHIP_LABELS = {
+  CHA: 'Cha',
+  ME: 'Mẹ',
+  NGUOI_GIAM_HO: 'Người giám hộ',
+};
+
+// Notification.targetType - who the recipients are resolved from at send
+// time (see NotificationTargetType's Javadoc for how targetId is
+// interpreted per type).
+export const NOTIFICATION_TARGET_TYPE_LABELS = {
+  CLASS: 'Cả lớp',
+  STUDENT: 'Một học sinh',
+  ALL_PARENTS: 'Tất cả phụ huynh',
+  STAFF: 'Một nhân viên',
+};
+
+// Notification.channel - SMS/ZALO exist as vocabulary but return 501
+// (NotificationChannelUnavailableException) until a vendor/Zalo OA
+// decision is made, per IMPLEMENTATION_PLAN.md 3.6 - the compose UI only
+// offers APP/EMAIL as selectable, these two labels exist for display only
+// (e.g. showing a channel on an already-sent notification).
+export const NOTIFICATION_CHANNEL_LABELS = {
+  APP: 'Trong ứng dụng',
+  EMAIL: 'Email',
+  SMS: 'SMS',
+  ZALO: 'Zalo',
+};
+
+export const NOTIFICATION_STATUS_LABELS = {
+  SENT: 'Đã gửi',
+  PARTIALLY_SENT: 'Gửi một phần',
+  FAILED: 'Gửi thất bại',
+};
+
 // PromotionRecord.decision - LEN_LOP/O_LAI/TOT_NGHIEP are the only ones the
 // system ever suggests (PromotionService); RA_TRUONG (chuyển trường/thôi
 // học...) is always a manual pick, never a suggestion.

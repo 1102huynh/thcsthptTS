@@ -10,6 +10,8 @@ import {
   FiSettings,
   FiCheckSquare,
   FiTrendingUp,
+  FiUserPlus,
+  FiBell,
 } from 'react-icons/fi';
 
 // Shared between Sidebar (nav links) and Navbar (page title lookup by
@@ -76,6 +78,18 @@ export const NAV_ITEMS = [
   // confirm button behind canConfirm and shows TEACHER a read-only
   // suggestion table.
   { label: 'Promotions', href: '/promotions', icon: FiTrendingUp, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+  // ADMIN only - ParentController's link/unlink (and this page's own
+  // account-creation flow via POST /v1/users) are ADMIN-only; PRINCIPAL
+  // isn't authorized on those endpoints either, unlike most other
+  // ADMIN+PRINCIPAL config pages in this app.
+  { label: 'Parents', href: '/parents', icon: FiUserPlus, roles: ['ADMIN'] },
+  // PARENT included here for the first time in this nav list (no other
+  // page has read value for that role yet) - NotificationController's
+  // resolveRecipients only ever delivers to PARENT accounts (CLASS/
+  // STUDENT/ALL_PARENTS targets) or one specific STAFF account (STAFF
+  // target) - a STUDENT account is never a recipient under this design,
+  // so STUDENT is excluded here unlike Dashboard/Library.
+  { label: 'Notifications', href: '/notifications', icon: FiBell, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER', 'LIBRARIAN', 'ACCOUNTANT', 'PARENT'] },
 ];
 
 export function navItemsForRole(role) {

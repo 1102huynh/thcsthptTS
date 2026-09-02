@@ -19,6 +19,8 @@ const AcademicConfig = lazy(() => import('./pages/AcademicConfig'));
 const TimetableManagement = lazy(() => import('./pages/TimetableManagement'));
 const ConductManagement = lazy(() => import('./pages/ConductManagement'));
 const PromotionManagement = lazy(() => import('./pages/PromotionManagement'));
+const ParentManagement = lazy(() => import('./pages/ParentManagement'));
+const NotificationCenter = lazy(() => import('./pages/NotificationCenter'));
 
 // Layout
 import AppShell from './components/layout/AppShell';
@@ -79,6 +81,8 @@ function App() {
               <Route path="/timetable" element={<TimetableManagement />} />
               <Route path="/conduct" element={<ConductManagement />} />
               <Route path="/promotions" element={<PromotionManagement />} />
+              <Route path="/parents" element={<ParentManagement />} />
+              <Route path="/notifications" element={<NotificationCenter />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </Suspense>

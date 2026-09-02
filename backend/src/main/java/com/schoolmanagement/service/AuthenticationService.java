@@ -4,6 +4,7 @@ import com.schoolmanagement.dto.AuthRequest;
 import com.schoolmanagement.dto.AuthResponse;
 import com.schoolmanagement.dto.CreateUserRequest;
 import com.schoolmanagement.dto.RegisterRequest;
+import com.schoolmanagement.dto.UserDTO;
 import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.User;
 import com.schoolmanagement.exception.DuplicateResourceException;
@@ -23,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
@@ -99,6 +102,35 @@ public class AuthenticationService {
                 java.util.Map.of("username", savedUser.getUsername(), "role", savedUser.getRole().name()));
 
         return buildAuthResponse(savedUser, null, refreshToken);
+    }
+
+    /**
+     * ADMIN-only account lookup by role (GET /v1/users?role=...) — added for
+     * ParentManagement.jsx (Giai đoạn 3.6), which needs to list existing
+     * PARENT accounts to link a child to one instead of only ever creating a
+     * brand-new parent account per link (most parents have more than one
+     * child at the school). UserRepository.findByRole already existed
+     * (NotificationService uses it internally to resolve ALL_PARENTS
+     * recipients) but was never exposed over HTTP before this.
+     */
+    public List<UserDTO> getUsersByRole(Role role) {
+        return userRepository.findByRole(role).stream().map(this::mapToUserDTO).collect(Collectors.toList());
+    }
+
+    private UserDTO mapToUserDTO(User user) {
+        return UserDTO.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phoneNumber(user.getPhoneNumber())
+                .role(user.getRole())
+                .enabled(user.getEnabled())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .lastLogin(user.getLastLogin())
+                .build();
     }
 
     public AuthResponse login(AuthRequest authRequest) {
