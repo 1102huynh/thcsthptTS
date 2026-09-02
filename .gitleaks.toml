@@ -1,0 +1,17 @@
+# gitleaks config for the CI secret-scan job (.github/workflows/build.yml).
+# Extends the built-in default ruleset; only adds allowlisting for values
+# that are deliberately committed and carry no real secret.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Committed non-secrets"
+paths = [
+  # Env templates - keys are present but their values are empty.
+  '''.*\.env\.example$''',
+]
+regexes = [
+  # Test-only JWT signing key in the test Spring profile. Not used by any
+  # real environment (the prod profile has no default and fails fast).
+  '''dGVzdC1vbmx5LWp3dC1zZWNyZXQtZm9yLXRoZS1zY2hvb2wtbWFuYWdlbWVudC1pbnRlZ3JhdGlvbi10ZXN0cw==''',
+]
