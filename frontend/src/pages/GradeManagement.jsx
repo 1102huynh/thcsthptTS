@@ -120,8 +120,8 @@ function GradeManagement() {
   // (GradeRecordController only has per-student queries, see
   // gradeRecordService's comment in dataService.js), so fetch in parallel
   // for the roster, same "no bulk endpoint, fetch+filter" pattern as
-  // teachingAssignmentService/gradeService's getByYear elsewhere in this
-  // app. Reused for both the editable "Điểm" column (filtered to the
+  // teachingAssignmentService's getAll elsewhere in this app. Reused for
+  // both the editable "Điểm" column (filtered to the
   // selected subject+componentType) and the read-only "TB môn HK" column
   // (all of that subject's component types).
   const rosterGradesQuery = useQuery({

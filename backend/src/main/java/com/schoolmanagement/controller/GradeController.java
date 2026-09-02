@@ -19,10 +19,21 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * @deprecated Legacy percentage-based grade model. Superseded by
+ * {@link GradeRecordController} (/v1/grade-records, Thông tư 22/2021 —
+ * điểm theo loại + ĐTB có hệ số + xếp loại học lực). The frontend no
+ * longer calls /v1/grades (its {@code gradeService} was removed).
+ * Kept only until it is confirmed no external client depends on it, then
+ * removed together with {@link com.schoolmanagement.entity.Grade} /
+ * {@link GradeService} — Quyết định E.1 in KE_HOACH_NANG_CAP_V4.md.
+ */
+@Deprecated
 @RestController
 @RequestMapping("/v1/grades")
 @AllArgsConstructor
-@Tag(name = "Grade Management", description = "Grade management endpoints")
+@Tag(name = "Grade Management (deprecated — dùng /v1/grade-records)",
+        description = "Legacy percentage-based grades. Superseded by /v1/grade-records (TT22).")
 public class GradeController {
 
     private GradeService gradeService;

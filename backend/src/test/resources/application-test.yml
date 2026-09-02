@@ -9,6 +9,11 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 app:
+  jwt:
+    # Test-only signing key so the suite is self-contained (no real
+    # JWT_SECRET env var needed to run `mvn test` locally or in CI). The
+    # production profile still has no default and fails fast without one.
+    secret: dGVzdC1vbmx5LWp3dC1zZWNyZXQtZm9yLXRoZS1zY2hvb2wtbWFuYWdlbWVudC1pbnRlZ3JhdGlvbi10ZXN0cw==
   admissions:
     rate-limit:
       # High enough that ordinary functional tests posting to /v1/admissions a

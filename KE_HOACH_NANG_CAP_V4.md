@@ -1,11 +1,11 @@
 # KẾ HOẠCH PHÁT TRIỂN & NÂNG CẤP HỆ THỐNG QUẢN LÝ TRƯỜNG THCS-THPT (thcsthptTS)
 
-**Phiên bản 4.10 — ngày 02/09/2026**
-*(v4.10: **Mức 2 (RBAC nghiệp vụ) xong** — 2.2 (ACCOUNTANT đọc HS, sửa lỗi form thêm khoản thu) + 2.3 (LIBRARIAN ghi mượn/trả hộ). v4.9: Mức 2.1 (PRINCIPAL xem). v4.8: D2. v4.7: C3. v4.6: Giai đoạn A. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
+**Phiên bản 4.11 — ngày 02/09/2026**
+*(v4.11: **nợ kỹ thuật + CI/CD** — gỡ `gradeService` chết khỏi FE + `@Deprecated` `Grade` cũ ở BE; viết lại `build.yml` (MySQL service container cho `mvn verify`, gitleaks, actions v4). v4.10: Mức 2.2/2.3. v4.9: Mức 2.1. v4.8: D2. v4.7: C3. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
 
 > **Tài liệu này là kế hoạch nâng cấp DUY NHẤT** — thay cho `IMPLEMENTATION_PLAN.md` (v3.1) và đã gộp cả 2 file phân quyền lẻ trước đây.
 
-> **⚡ Việc gấp nhất còn lại (chốt v4.10):** Giai đoạn A + C + D2 + **toàn bộ Mức 1–2** (trừ 2.4 gắn cổng thanh toán) đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Không chặn: gỡ `Grade` cũ (Quyết định E.1), D6 (trang quản lý tài khoản riêng), Giai đoạn E/F (cần ngân sách).
+> **⚡ Việc gấp nhất còn lại (chốt v4.11):** Giai đoạn A + C + D2 + **Mức 1–2** + dọn nợ điểm + CI backend-có-DB đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Không chặn: xoá hẳn class `Grade` cũ + `V11` (Quyết định E.1), D6, bật branch-protection trên GitHub, Giai đoạn E (cần ngân sách/nhà cung cấp).
 
 *Tài liệu này được lập sau khi review lại **toàn bộ** mã nguồn hiện tại trên máy (`D:\sources\thcsthptTS` là **nguồn sự thật chính** — không dựa vào bản sao trong Claude Project). Khác với kế hoạch v3.1 (`IMPLEMENTATION_PLAN.md`) vốn là kế hoạch **xây mới từ đầu**, phiên bản 4.x xuất phát từ thực tế: **phần lớn kế hoạch v3.1 đã được hiện thực hoá ở backend**. Trọng tâm mới là (1) đưa năng lực backend đã có lên giao diện người dùng, (2) **hoàn tất phần backend còn dở** (xếp loại học lực), (3) trả nợ kỹ thuật, (4) nâng cấp lên mức vận hành thật cho một trường.*
 
@@ -81,7 +81,7 @@ Vite + Tailwind + shadcn/ui (bỏ CRA), dark mode, React Query, sonner, bộ com
 **⚠️ CÒN MỞ:**
 
 1. **Xếp loại học lực TT22/58 vẫn `null`** — `GradeRecordService`/`PromotionService` không đổi → **B0 chưa làm** (chặn bởi bảng ngưỡng chuyên môn — Quyết định E.2). *Đây là việc chặn duy nhất còn lại.*
-2. **Hai mô hình điểm vẫn song song** — `Grade` cũ chưa `@Deprecated`/gỡ dù FE đã dùng `GradeRecord` (Quyết định E.1).
+2. **✅ [v4.11] Mô hình điểm — FE đã dứt điểm.** `gradeService` (dead code) đã gỡ khỏi `dataService.js`; `GradeController`/`GradeService` backend đã đánh dấu `@Deprecated` (trỏ `GradeRecord`). *Còn lại: xoá hẳn `GradeController`/`Grade`/`GradeService`/`GradeRepository` + migration `V11` (nếu có dữ liệu điểm cũ) — Quyết định E.1.*
 3. **Token `localStorage`** (XSS) → cân nhắc cookie `HttpOnly` (F3).
 4. `lucide-react ^1.37.0` version lạ; **SMS/Zalo vẫn stub** (E1).
 
@@ -176,7 +176,7 @@ Làm trước tất cả vì mọi trang mới đều dựa trên nền này.
 
 ### GIAI ĐOẠN F — Vận hành, bảo mật nâng cao & CI/CD (song song, ~1–1.5 tuần)
 
-- **F1.** CI/CD: mở rộng `.github/workflows/build.yml` chạy `mvn test` (Testcontainers MySQL) + `npm build/test`, chặn merge khi fail; thêm secret scanning (gitleaks).
+- **F1.** ✅ **PHẦN LỚN (v4.11)** — `.github/workflows/build.yml` viết lại: job `build-backend` có **service container MySQL 8** + env `DB_*` nên `mvn -B clean verify` chạy thật các `@SpringBootTest` (trước đây không có DB → mọi test hỏng khi khởi context); `application-test.yml` thêm `app.jwt.secret` test-only để suite tự chứa. `build-frontend` dùng Node 20 + `npm ci` + `npm run build` + `npm test` (bỏ cờ CRA cũ). Thêm job `secret-scan` (**gitleaks-action**). Nâng mọi action v3→v4, `adopt`→`temurin`, `docker compose` v2. **Còn lại:** bật branch-protection "require checks to pass" trên GitHub (thao tác cấu hình repo, không phải code).
 - **F2.** Đóng gói/triển khai: `docker-compose` prod (MySQL + backend + frontend nginx), env qua `.env` không commit, healthcheck.
 - **F3.** Bảo mật nâng cao: cân nhắc token cookie `HttpOnly` + CSRF; account lockout sau N lần sai; 2FA cho ADMIN/PRINCIPAL; rà `@PreAuthorize` các thao tác nhạy cảm đã ghi audit.
 - **F4.** Observability & sao lưu: actuator health/metrics (đang `show-actuator: false`), log tập trung, backup MySQL định kỳ + kiểm thử phục hồi.
@@ -203,7 +203,7 @@ Làm trước tất cả vì mọi trang mới đều dựa trên nền này.
 
 ## PHẦN E — QUYẾT ĐỊNH CẦN CHỐT
 
-1. **Mô hình điểm:** bỏ hẳn `Grade` cũ, chỉ dùng `GradeRecord` (TT22)? (ảnh hưởng B2 + migration `V11`).
+1. **Mô hình điểm:** bỏ hẳn `Grade` cũ, chỉ dùng `GradeRecord` (TT22)? *(v4.11: FE đã gỡ `gradeService`, BE đã `@Deprecated`. Chỉ còn chốt việc **xoá hẳn** class + migration `V11` nếu có dữ liệu điểm cũ.)*
 2. **Bảng ngưỡng xếp loại học lực TT22/TT58 + điều kiện môn Toán/Ngữ văn + quy định nghỉ học tối đa** — **chặn B0 và B5**, phải do người chuyên môn giáo dục xác nhận. Đây là hạng mục *chặn* quan trọng nhất hiện nay.
 3. **Kênh liên lạc:** nhà cung cấp SMS (eSMS/FPT) + Zalo OA + ngân sách (E1).
 4. **Cổng thanh toán:** VNPay/Momo/khác + tài khoản merchant (E2).
@@ -391,6 +391,10 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 
 ## NHẬT KÝ THAY ĐỔI
 
+- **v4.11 (02/09/2026):** dọn nợ kỹ thuật + CI/CD (F1).
+  - **Mô hình điểm** — gỡ `export const gradeService` (percentage-based `/v1/grades`, không còn nơi gọi) khỏi `frontend/src/services/dataService.js` + entry trong default export; sửa 3 comment tham chiếu. BE: `@Deprecated` trên `GradeController` + `GradeService` (Javadoc trỏ `GradeRecordController`/E.1). Chưa xoá class (giữ tương thích tới khi chốt E.1).
+  - **F1 CI/CD** — `.github/workflows/build.yml` viết lại: `build-backend` chạy trên **MySQL 8 service container** + env `DB_*` → `mvn -B clean verify` chạy thật toàn bộ `@SpringBootTest` (trước không có DB); `application-test.yml` thêm `app.jwt.secret` test-only (suite tự chứa, không cần `JWT_SECRET`). `build-frontend`: Node 20, `npm ci` + `npm run build` + `npm test`. Job mới `secret-scan` (gitleaks-action). Actions v3→v4, `adopt`→`temurin`, `docker compose` v2, `concurrency` cancel-in-progress.
+  - `npm test` **34/34**; `npm run build` sạch; backend `test-compile` OK. Cập nhật A.3.1, F1, Phần E QĐ 1.
 - **v4.10 (02/09/2026):** **Mức 2.2 + 2.3** — hoàn tất RBAC nghiệp vụ (Mức 1–2 trừ 2.4).
   - **2.2 — ACCOUNTANT đọc HS:** `StudentController` `GET /v1/students` + `/{id}` thêm `ACCOUNTANT`. Sửa lỗi thực tế: form "Thêm khoản thu" (`FeeFormDialog`) gọi `studentService.getAll()` → `GET /v1/students` vốn 403 với ACCOUNTANT nên dropdown HS rỗng, kế toán không lập được khoản thu. Test `StudentAccessSecurityTest` (+1 ca).
   - **2.3 — LIBRARIAN mượn/trả hộ:** `POST /v1/library/books/{bookId}/lend?studentId=&borrowDays=` + `/return-for?studentId=` (`hasAnyRole('ADMIN','LIBRARIAN')`). `LibraryService.lendBookToStudent/returnBookForStudent` + `resolveStudentUser` (qua `StudentRepository`), dùng lại `borrowBook/returnBook`. FE: nút "Ghi mượn/trả hộ" (icon) + `Dialog` nhập mã HS trên `LibraryManagement` (cột actions của canManage); `dataService.libraryService.lendToStudent/returnForStudent`. Test `LibraryIntegrationTest` (+2 ca: lend→me→return-for; STUDENT lend 403).

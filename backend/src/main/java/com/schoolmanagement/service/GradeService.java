@@ -17,6 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * @deprecated Legacy percentage-based grade logic behind {@link com.schoolmanagement.controller.GradeController}.
+ * Use {@link GradeRecordService} (TT22). Removed together with the rest of
+ * the legacy Grade layer under Quyết định E.1 (KE_HOACH_NANG_CAP_V4.md).
+ */
+@Deprecated
 @Service
 @AllArgsConstructor
 @Transactional

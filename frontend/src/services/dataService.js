@@ -117,18 +117,11 @@ export const schoolClassService = {
   getStudents: (classId) => api.get(`/v1/classes/${classId}/students`),
 };
 
-// Grade Service
-export const gradeService = {
-  getByStudent: (studentId) => api.get(`/v1/grades/student/${studentId}`),
-  // GET /v1/grades/class/... never existed on the backend (GradeController
-  // only has per-student and school-wide-by-year queries) - getByYear is
-  // what GradeManagement actually filters client-side to build a
-  // by-class-and-subject view.
-  getByYear: (academicYear) => api.get(`/v1/grades/year/${academicYear}`),
-  createGrade: (data) => api.post('/v1/grades', data),
-  updateGrade: (id, data) => api.put(`/v1/grades/${id}`, data),
-  deleteGrade: (id) => api.delete(`/v1/grades/${id}`),
-};
+// NOTE: the old `gradeService` (percentage-based /v1/grades model) was
+// removed here - GradeManagement was rebuilt on gradeRecordService (TT22,
+// see below) and nothing in the frontend calls /v1/grades any more. The
+// backend GradeController is now @Deprecated; drop it once no external
+// client depends on it (Quyết định E.1 in KE_HOACH_NANG_CAP_V4.md).
 
 // Fee Service
 export const feeService = {
@@ -178,8 +171,8 @@ export const semesterService = {
 
 // Teaching Assignment Service (Phân công giảng dạy) - no filtered-by-class/
 // semester endpoint on the backend (only GET all), so callers filter the
-// full list client-side, same pattern as gradeService/feeService's
-// getByYear + client-side class filtering.
+// full list client-side, same pattern as feeService's getByYear +
+// client-side class filtering.
 export const teachingAssignmentService = {
   getAll: () => api.get('/v1/teaching-assignments'),
   create: (data) => api.post('/v1/teaching-assignments', data),
@@ -198,13 +191,13 @@ export const timetableService = {
   deleteSlot: (id) => api.delete(`/v1/timetable/slots/${id}`),
 };
 
-// Grade Record Service (Điểm số theo TT22/2021, thang điểm 10) - supersedes
-// gradeService's percentage-based model above (kept untouched for Phase
-// 1-2 compatibility, not used by GradeManagement any more). No
-// by-class/by-subject bulk endpoint exists (GradeRecordController only has
-// per-student queries) - GradeManagement fetches per-student in parallel
-// for the selected class roster, same "no bulk endpoint, fetch+filter"
-// pattern as teachingAssignmentService above.
+// Grade Record Service (Điểm số theo TT22/2021, thang điểm 10) - the sole
+// grade model the frontend uses; supersedes the old percentage-based
+// /v1/grades (its `gradeService` was removed above). No by-class/by-subject
+// bulk endpoint exists (GradeRecordController only has per-student queries)
+// - GradeManagement fetches per-student in parallel for the selected class
+// roster, same "no bulk endpoint, fetch+filter" pattern as
+// teachingAssignmentService above.
 export const gradeRecordService = {
   create: (data) => api.post('/v1/grade-records', data),
   update: (id, data) => api.put(`/v1/grade-records/${id}`, data),
@@ -342,7 +335,6 @@ export default {
   studentService,
   libraryService,
   attendanceService,
-  gradeService,
   feeService,
   dashboardService,
   academicYearService,
