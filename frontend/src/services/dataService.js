@@ -291,9 +291,38 @@ export const reportService = {
   feeReceipt: (feeId) => api.get(`/v1/reports/fees/receipt/${feeId}`, { responseType: 'blob' }),
 };
 
+// Document Service (Tệp đính kèm - hồ sơ học sinh/nhân sự/tuyển sinh) -
+// upload sends multipart/form-data.
+export const documentService = {
+  upload: (file, ownerType, ownerId) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    // api.js's instance sets a default Content-Type: application/json
+    // header - turns out (confirmed live, 500 "Content-Type 'application/
+    // json' is not supported") that this app's axios setup does NOT
+    // auto-strip it for a FormData body the way axios's docs describe,
+    // so it silently overrides whatever boundary the browser would have
+    // set. Explicitly clearing it here lets the browser generate the
+    // correct multipart/form-data; boundary=... header itself.
+    return api.post('/v1/documents', formData, {
+      params: { ownerType, ownerId },
+      headers: { 'Content-Type': undefined },
+    });
+  },
+  listByOwner: (ownerType, ownerId) => api.get('/v1/documents', { params: { ownerType, ownerId } }),
+  getById: (id) => api.get(`/v1/documents/${id}`),
+  download: (id) => api.get(`/v1/documents/${id}/download`, { responseType: 'blob' }),
+  delete: (id) => api.delete(`/v1/documents/${id}`),
+};
+
 // Audit Log Service (ADMIN only - see AuditLogController)
 export const auditLogService = {
   getRecent: (size = 5) => api.get('/v1/audit-logs', { params: { page: 0, size } }),
+  // Full paginated search (AuditLogManagement.jsx) - entityType/actorId are
+  // optional server-side filters, page/size default to 0/20 there too if
+  // omitted here.
+  search: ({ entityType, actorId, page = 0, size = 20 } = {}) =>
+    api.get('/v1/audit-logs', { params: { entityType, actorId, page, size } }),
 };
 
 export default {
@@ -319,5 +348,6 @@ export default {
   notificationService,
   admissionService,
   reportService,
+  documentService,
   auditLogService,
 };

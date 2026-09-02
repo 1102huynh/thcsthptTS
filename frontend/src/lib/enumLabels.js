@@ -200,6 +200,19 @@ export const DAY_OF_WEEK_LABELS = {
   7: 'Thứ 7',
 };
 
+// AuditLog.action - free-text (not a backend enum), these are just the
+// values AuditLogService actually logs today (see its call sites: create/
+// update/delete on grades/students/..., APPROVE/REJECT on admissions).
+// Shared between Dashboard's "recent activity" widget and
+// AuditLogManagement.jsx so the two don't drift.
+export const AUDIT_ACTION_LABELS = {
+  CREATE: 'tạo mới',
+  UPDATE: 'cập nhật',
+  DELETE: 'xóa',
+  APPROVE: 'duyệt',
+  REJECT: 'từ chối',
+};
+
 export function toOptions(labelMap, keys = Object.keys(labelMap)) {
   return keys.map((value) => ({ value, label: labelMap[value] ?? value }));
 }

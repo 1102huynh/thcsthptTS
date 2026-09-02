@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FiEdit2, FiUserPlus } from 'react-icons/fi';
+import { FiEdit2, FiUserPlus, FiPaperclip } from 'react-icons/fi';
 import { admissionService } from '../services/dataService';
 import DataTable from '../components/shared/DataTable';
 import UpdateStatusDialog from './admissions/UpdateStatusDialog';
 import ApproveAndCreateDialog from './admissions/ApproveAndCreateDialog';
+import DocumentsDialog from '../components/shared/DocumentsDialog';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -24,6 +25,7 @@ function AdmissionManagement() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [editingApplication, setEditingApplication] = useState(null);
   const [approvingApplication, setApprovingApplication] = useState(null);
+  const [docsForApplication, setDocsForApplication] = useState(null);
 
   const applicationsQuery = useQuery({
     queryKey: ['admissions', statusFilter],
@@ -70,6 +72,9 @@ function AdmissionManagement() {
               {app.createdStudentId && (
                 <Badge variant="secondary" className="mr-1">Đã tạo HS #{app.createdStudentId}</Badge>
               )}
+              <Button variant="ghost" size="icon" onClick={() => setDocsForApplication(app)} aria-label="Tài liệu đính kèm">
+                <FiPaperclip className="h-4 w-4" />
+              </Button>
               <Button variant="ghost" size="icon" onClick={() => setEditingApplication(app)} aria-label="Cập nhật trạng thái">
                 <FiEdit2 className="h-4 w-4" />
               </Button>
@@ -130,6 +135,14 @@ function AdmissionManagement() {
         open={Boolean(approvingApplication)}
         onOpenChange={(open) => !open && setApprovingApplication(null)}
         application={approvingApplication}
+      />
+      <DocumentsDialog
+        key={`docs-${docsForApplication?.id ?? 'none'}`}
+        open={Boolean(docsForApplication)}
+        onOpenChange={(open) => !open && setDocsForApplication(null)}
+        ownerType="ADMISSION_APPLICATION"
+        ownerId={docsForApplication?.id}
+        ownerLabel={docsForApplication?.applicantName ?? ''}
       />
     </div>
   );

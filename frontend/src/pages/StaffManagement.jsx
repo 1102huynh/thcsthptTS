@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiPlus, FiPaperclip } from 'react-icons/fi';
 import { staffService } from '../services/dataService';
 import DataTable from '../components/shared/DataTable';
 import StaffFormDialog from './staff/StaffFormDialog';
+import DocumentsDialog from '../components/shared/DocumentsDialog';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import {
@@ -29,6 +30,7 @@ function StaffManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [deletingStaff, setDeletingStaff] = useState(null);
+  const [docsForStaff, setDocsForStaff] = useState(null);
 
   const staffQuery = useQuery({
     queryKey: ['staff'],
@@ -106,6 +108,9 @@ function StaffManagement() {
         header: '',
         cell: ({ row }) => (
           <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="icon" onClick={() => setDocsForStaff(row.original)} aria-label="Tài liệu đính kèm">
+              <FiPaperclip className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => openEdit(row.original)} aria-label="Sửa">
               <FiEdit2 className="h-4 w-4" />
             </Button>
@@ -176,6 +181,15 @@ function StaffManagement() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         staff={editingStaff}
+      />
+
+      <DocumentsDialog
+        key={`docs-${docsForStaff?.id ?? 'none'}`}
+        open={Boolean(docsForStaff)}
+        onOpenChange={(open) => !open && setDocsForStaff(null)}
+        ownerType="STAFF"
+        ownerId={docsForStaff?.id}
+        ownerLabel={docsForStaff ? `${docsForStaff.user?.firstName ?? ''} ${docsForStaff.user?.lastName ?? ''} (${docsForStaff.employeeId})` : ''}
       />
 
       <AlertDialog open={Boolean(deletingStaff)} onOpenChange={(open) => !open && setDeletingStaff(null)}>

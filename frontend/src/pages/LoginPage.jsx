@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { FiBookOpen, FiEye, FiEyeOff, FiLoader } from 'react-icons/fi';
@@ -109,6 +109,11 @@ function LoginPage({ onLogin }) {
               {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </Button>
           </AppForm>
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            <Link to="/forgot-password" className="underline-offset-2 hover:underline hover:text-foreground">
+              Quên mật khẩu?
+            </Link>
+          </p>
         </CardContent>
       </Card>
     </main>

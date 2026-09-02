@@ -23,6 +23,9 @@ const ParentManagement = lazy(() => import('./pages/ParentManagement'));
 const NotificationCenter = lazy(() => import('./pages/NotificationCenter'));
 const AdmissionManagement = lazy(() => import('./pages/AdmissionManagement'));
 const AdmissionApplyPage = lazy(() => import('./pages/AdmissionApplyPage'));
+const AuditLogManagement = lazy(() => import('./pages/AuditLogManagement'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 
 // Layout
 import AppShell from './components/layout/AppShell';
@@ -86,6 +89,7 @@ function App() {
               <Route path="/parents" element={<ParentManagement />} />
               <Route path="/notifications" element={<NotificationCenter />} />
               <Route path="/admissions" element={<AdmissionManagement />} />
+              <Route path="/audit-log" element={<AuditLogManagement />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </Suspense>
@@ -99,6 +103,8 @@ function App() {
                 unauthenticated branch; a logged-in user manages
                 applications at /admissions instead. */}
             <Route path="/apply" element={<AdmissionApplyPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </Suspense>

@@ -33,6 +33,18 @@ export const authService = {
     }
   },
 
+  // Request a password reset email - public, no auth required. Always
+  // resolves the same way regardless of whether the email is registered
+  // (per ForgotPasswordRequest's own doc comment, to avoid leaking which
+  // emails have accounts), so there's no "email not found" branch to
+  // handle here.
+  forgotPassword: (email) => api.post(`${AUTH_ENDPOINT}/forgot-password`, { email }),
+
+  // Reset a password using the token from the forgot-password email link -
+  // public, no auth required. Token is single-use, expires 15 minutes
+  // after being issued (see PasswordResetService).
+  resetPassword: (token, newPassword) => api.post(`${AUTH_ENDPOINT}/reset-password`, { token, newPassword }),
+
   // Logout user
   logout: () => {
     localStorage.removeItem('accessToken');

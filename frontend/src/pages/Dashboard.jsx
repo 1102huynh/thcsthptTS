@@ -34,6 +34,7 @@ import {
 } from '../services/dataService';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { AUDIT_ACTION_LABELS } from '../lib/enumLabels';
 import { StatCardsSkeleton, ChartSkeleton, ListRowsSkeleton } from '../components/shared/Skeleton';
 
 const ISO_DATE = 'yyyy-MM-dd';
@@ -96,14 +97,6 @@ function buildFeeChartData(fees) {
       'Còn nợ': Math.round(remaining),
     }));
 }
-
-const AUDIT_ACTION_LABELS = {
-  CREATE: 'tạo mới',
-  UPDATE: 'cập nhật',
-  DELETE: 'xóa',
-  APPROVE: 'duyệt',
-  REJECT: 'từ chối',
-};
 
 function StatCard({ icon: Icon, title, value, iconClassName }) {
   return (
@@ -370,9 +363,14 @@ function Dashboard({ user }) {
 
           {/* Recent activity - real audit log entries (ADMIN only) */}
           <Card>
-            <CardHeader>
-              <CardTitle>Hoạt động gần đây</CardTitle>
-              <CardDescription>5 thao tác nhạy cảm gần nhất trong hệ thống</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>Hoạt động gần đây</CardTitle>
+                <CardDescription>5 thao tác nhạy cảm gần nhất trong hệ thống</CardDescription>
+              </div>
+              <Link to="/audit-log" className="text-sm text-primary underline-offset-2 hover:underline">
+                Xem tất cả
+              </Link>
             </CardHeader>
             <CardContent>
               {activityQuery.isLoading ? (

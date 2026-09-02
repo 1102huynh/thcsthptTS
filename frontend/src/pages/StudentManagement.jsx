@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiPlus, FiPaperclip } from 'react-icons/fi';
 import { studentService } from '../services/dataService';
 import DataTable from '../components/shared/DataTable';
 import StudentFormDialog from './student/StudentFormDialog';
+import DocumentsDialog from '../components/shared/DocumentsDialog';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import {
@@ -29,6 +30,7 @@ function StudentManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [deletingStudent, setDeletingStudent] = useState(null);
+  const [docsForStudent, setDocsForStudent] = useState(null);
 
   const studentsQuery = useQuery({
     queryKey: ['students'],
@@ -106,6 +108,9 @@ function StudentManagement() {
         header: '',
         cell: ({ row }) => (
           <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="icon" onClick={() => setDocsForStudent(row.original)} aria-label="Tài liệu đính kèm">
+              <FiPaperclip className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => openEdit(row.original)} aria-label="Sửa">
               <FiEdit2 className="h-4 w-4" />
             </Button>
@@ -173,6 +178,15 @@ function StudentManagement() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         student={editingStudent}
+      />
+
+      <DocumentsDialog
+        key={`docs-${docsForStudent?.id ?? 'none'}`}
+        open={Boolean(docsForStudent)}
+        onOpenChange={(open) => !open && setDocsForStudent(null)}
+        ownerType="STUDENT"
+        ownerId={docsForStudent?.id}
+        ownerLabel={docsForStudent ? `${docsForStudent.user?.firstName ?? ''} ${docsForStudent.user?.lastName ?? ''} (${docsForStudent.rollNumber})` : ''}
       />
 
       <AlertDialog open={Boolean(deletingStudent)} onOpenChange={(open) => !open && setDeletingStudent(null)}>

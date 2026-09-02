@@ -13,6 +13,7 @@ import {
   FiUserPlus,
   FiBell,
   FiFileText,
+  FiActivity,
 } from 'react-icons/fi';
 
 // Shared between Sidebar (nav links) and Navbar (page title lookup by
@@ -96,6 +97,8 @@ export const NAV_ITEMS = [
   // at /apply instead (outside AppShell entirely, no nav entry - an
   // applicant isn't logged in).
   { label: 'Admissions', href: '/admissions', icon: FiFileText, roles: ['ADMIN'] },
+  // ADMIN only - AuditLogController's one endpoint is ADMIN-only.
+  { label: 'Audit Log', href: '/audit-log', icon: FiActivity, roles: ['ADMIN'] },
 ];
 
 export function navItemsForRole(role) {
