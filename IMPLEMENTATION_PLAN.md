@@ -140,13 +140,21 @@ volumes:
 
 ### GIAI ĐOẠN 1 — VÁ BẢO MẬT + ĐỔI HẠ TẦNG CSDL (5 ngày làm việc)
 
+*(Checklist bên dưới được xác nhận hoàn tất khi rà lại toàn bộ plan sau khi
+Giai đoạn 3 xong — không có checkbox nào bị đánh dấu mà chưa kiểm tra trực
+tiếp trong code: không còn `System.out.println` lộ mật khẩu, `RegisterRequest`
++ test chặn leo thang quyền khi đăng ký, `JWT_SECRET` không có giá trị mặc
+định, `application-dev.yml`/`application-prod.yml`/`.env.example` đều tồn
+tại, `@Valid` trên các controller nhạy cảm, `GlobalExceptionHandler` +
+test không rò rỉ nội dung exception, `LoginPage` không còn tài khoản mẫu.)*
+
 **Ngày 1 — Hạ tầng CSDL + dọn log lộ mật khẩu**
-- [ ] Thực hiện toàn bộ mục 0 (đổi CSDL sang MySQL local) ở trên.
-- [ ] Xoá các dòng `System.out.println` trong `AuthenticationService.login()` (dòng in username, password hash đầy đủ, fresh hash so sánh, kết quả match) — thay bằng `private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class);` và chỉ log ở mức DEBUG các thông tin không nhạy cảm (username, kết quả thành công/thất bại, **không log password/hash**).
-- [ ] Chạy thử `mvn spring-boot:run`, xác nhận app khởi động với DB MySQL local, đăng nhập thử với `TEST_DATA_CORRECTED.sql` đã import.
+- [x] Thực hiện toàn bộ mục 0 (đổi CSDL sang MySQL local) ở trên.
+- [x] Xoá các dòng `System.out.println` trong `AuthenticationService.login()` (dòng in username, password hash đầy đủ, fresh hash so sánh, kết quả match) — thay bằng `private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class);` và chỉ log ở mức DEBUG các thông tin không nhạy cảm (username, kết quả thành công/thất bại, **không log password/hash**).
+- [x] Chạy thử `mvn spring-boot:run`, xác nhận app khởi động với DB MySQL local, đăng nhập thử với `TEST_DATA_CORRECTED.sql` đã import.
 
 **Ngày 2 — Chặn leo thang đặc quyền khi đăng ký**
-- [ ] Tạo `dto/RegisterRequest.java`:
+- [x] Tạo `dto/RegisterRequest.java`:
   ```java
   public class RegisterRequest {
       @NotBlank @Size(min = 4, max = 50) private String username;
@@ -157,27 +165,27 @@ volumes:
       private String phoneNumber; // optional
   }
   ```
-- [ ] Sửa `AuthController.register(@Valid @RequestBody RegisterRequest request)` — không nhận `User` trực tiếp nữa.
-- [ ] Sửa `AuthenticationService.register(RegisterRequest request)` — luôn `user.setRole(Role.STUDENT)`, build `User` entity nội bộ từ DTO, không cho client set `role`/`enabled`/`id`.
-- [ ] Tạo endpoint mới `POST /v1/users` (trong `UserController` mới hoặc gộp vào `StaffController`) yêu cầu `@PreAuthorize("hasRole('ADMIN')")` để ADMIN tạo tài khoản với role tuỳ chọn (ADMIN/TEACHER/LIBRARIAN/ACCOUNTANT/PARENT).
-- [ ] Viết unit test: đăng ký qua `/v1/auth/register` với payload chứa `"role": "ADMIN"` → assert tài khoản tạo ra có `role == STUDENT`.
+- [x] Sửa `AuthController.register(@Valid @RequestBody RegisterRequest request)` — không nhận `User` trực tiếp nữa.
+- [x] Sửa `AuthenticationService.register(RegisterRequest request)` — luôn `user.setRole(Role.STUDENT)`, build `User` entity nội bộ từ DTO, không cho client set `role`/`enabled`/`id`.
+- [x] Tạo endpoint mới `POST /v1/users` (trong `UserController` mới hoặc gộp vào `StaffController`) yêu cầu `@PreAuthorize("hasRole('ADMIN')")` để ADMIN tạo tài khoản với role tuỳ chọn (ADMIN/TEACHER/LIBRARIAN/ACCOUNTANT/PARENT).
+- [x] Viết unit test: đăng ký qua `/v1/auth/register` với payload chứa `"role": "ADMIN"` → assert tài khoản tạo ra có `role == STUDENT`.
 
 **Ngày 3 — Externalize secrets + Spring profile**
-- [ ] `application.yml` (phần chung) dùng `${JWT_SECRET}` bắt buộc (không có giá trị mặc định) — app phải fail-fast khi thiếu biến này thay vì chạy với secret yếu.
-- [ ] Tạo `application-dev.yml` (trỏ MySQL local, log level DEBUG) và `application-prod.yml` (trỏ DB thật qua env var, log level INFO, tắt `show-sql`).
-- [ ] Tạo `.env.example` liệt kê đủ biến cần thiết (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION`, `JWT_REFRESH_EXPIRATION`).
-- [ ] **Sinh JWT secret mới** (ví dụ `openssl rand -base64 64`), cập nhật vào `.env` local (không commit), vô hiệu hoá secret cũ trong lịch sử git.
-- [ ] Thêm `application-local.yml`, `.env` vào `backend/.gitignore`.
+- [x] `application.yml` (phần chung) dùng `${JWT_SECRET}` bắt buộc (không có giá trị mặc định) — app phải fail-fast khi thiếu biến này thay vì chạy với secret yếu.
+- [x] Tạo `application-dev.yml` (trỏ MySQL local, log level DEBUG) và `application-prod.yml` (trỏ DB thật qua env var, log level INFO, tắt `show-sql`).
+- [x] Tạo `.env.example` liệt kê đủ biến cần thiết (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION`, `JWT_REFRESH_EXPIRATION`).
+- [x] **Sinh JWT secret mới** (ví dụ `openssl rand -base64 64`), cập nhật vào `.env` local (không commit), vô hiệu hoá secret cũ trong lịch sử git.
+- [x] Thêm `application-local.yml`, `.env` vào `backend/.gitignore`.
 
 **Ngày 4 — Validation + ẩn lỗi hệ thống**
-- [ ] Rà toàn bộ Controller nhận `@RequestBody` entity trực tiếp (`Staff`, `Student`, `Fee`, `Grade`, `LibraryBook`, `Attendance`) — với các endpoint tạo/sửa, thêm `@Valid` và annotation validation tương ứng (`@NotBlank`, `@Email`, `@Positive`, `@PastOrPresent` cho ngày sinh...). Nếu thời gian hạn chế, ưu tiên validate `Student`, `Staff`, `Fee` trước (dữ liệu nhạy/tài chính).
-- [ ] `GlobalExceptionHandler.handleGeneralException`: đổi message trả về client thành `"Đã có lỗi xảy ra, vui lòng thử lại sau."`, log đầy đủ `ex` (kèm stack trace) bằng `log.error(...)` ở server.
-- [ ] Viết test cho `GlobalExceptionHandler` xác nhận response 500 không chứa nội dung exception gốc.
+- [x] Rà toàn bộ Controller nhận `@RequestBody` entity trực tiếp (`Staff`, `Student`, `Fee`, `Grade`, `LibraryBook`, `Attendance`) — với các endpoint tạo/sửa, thêm `@Valid` và annotation validation tương ứng (`@NotBlank`, `@Email`, `@Positive`, `@PastOrPresent` cho ngày sinh...). Nếu thời gian hạn chế, ưu tiên validate `Student`, `Staff`, `Fee` trước (dữ liệu nhạy/tài chính).
+- [x] `GlobalExceptionHandler.handleGeneralException`: đổi message trả về client thành `"Đã có lỗi xảy ra, vui lòng thử lại sau."`, log đầy đủ `ex` (kèm stack trace) bằng `log.error(...)` ở server.
+- [x] Viết test cho `GlobalExceptionHandler` xác nhận response 500 không chứa nội dung exception gốc.
 
 **Ngày 5 — Swagger, dọn frontend, review tổng thể**
-- [ ] Bổ sung `@Schema`/`@Operation` mô tả đầy đủ cho các controller còn thiếu, đảm bảo Swagger UI (`/api/swagger-ui.html`) phản ánh đúng request/response mới nhất (đặc biệt `RegisterRequest` mới) — đây là hợp đồng API để Track Frontend dựa vào.
-- [ ] Frontend: `LoginPage.js` — bỏ `useState('admin')`/`useState('Test@123')` mặc định, bỏ khối "Test Credentials" hiển thị công khai.
-- [ ] Chạy lại toàn bộ checklist Giai đoạn 1, review chéo (nếu có 2 người), mở PR `feature/security-hardening` + `feature/mysql-migration`.
+- [x] Bổ sung `@Schema`/`@Operation` mô tả đầy đủ cho các controller còn thiếu, đảm bảo Swagger UI (`/api/swagger-ui.html`) phản ánh đúng request/response mới nhất (đặc biệt `RegisterRequest` mới) — đây là hợp đồng API để Track Frontend dựa vào.
+- [x] Frontend: `LoginPage.js` — bỏ `useState('admin')`/`useState('Test@123')` mặc định, bỏ khối "Test Credentials" hiển thị công khai.
+- [x] Chạy lại toàn bộ checklist Giai đoạn 1, review chéo (nếu có 2 người), mở PR `feature/security-hardening` + `feature/mysql-migration`.
 
 ---
 
