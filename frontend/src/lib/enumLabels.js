@@ -107,6 +107,27 @@ export const PAYMENT_METHOD_LABELS = {
   ONLINE: 'Thanh toán online',
 };
 
+export const SUBJECT_CATEGORY_LABELS = {
+  BAT_BUOC: 'Bắt buộc',
+  TU_CHON: 'Tự chọn',
+};
+
+export const SEMESTER_NAME_LABELS = {
+  HK1: 'Học kỳ 1',
+  HK2: 'Học kỳ 2',
+};
+
+// TimetableSlot.dayOfWeek follows the Vietnamese calendar convention: Thứ
+// Hai (Monday) = 2 ... Thứ Bảy (Saturday) = 7 (no Sunday classes).
+export const DAY_OF_WEEK_LABELS = {
+  2: 'Thứ 2',
+  3: 'Thứ 3',
+  4: 'Thứ 4',
+  5: 'Thứ 5',
+  6: 'Thứ 6',
+  7: 'Thứ 7',
+};
+
 export function toOptions(labelMap, keys = Object.keys(labelMap)) {
   return keys.map((value) => ({ value, label: labelMap[value] ?? value }));
 }

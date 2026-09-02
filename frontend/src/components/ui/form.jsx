@@ -67,7 +67,7 @@ const FormLabel = React.forwardRef(({ className, ...props }, ref) => {
   return (
     <Label
       ref={ref}
-      className={cn(error && "text-destructive", className)}
+      className={cn(error && "text-destructive dark:text-red-400", className)}
       htmlFor={formItemId}
       {...props} />
   );
@@ -117,7 +117,14 @@ const FormMessage = React.forwardRef(({ className, children, ...props }, ref) =>
     <p
       ref={ref}
       id={formMessageId}
-      className={cn("text-[0.8rem] font-medium text-destructive", className)}
+      // dark:text-red-400 - --destructive itself stays dark in dark mode
+      // (tuned for use as a Button background), which reads as low-
+      // contrast on the dark page background when used as plain text like
+      // this - see index.css's own comment on --destructive for why there's
+      // no single token value that works for both roles. Caught building
+      // Thời khoá biểu (Tuần 7): the first page where a validation error
+      // happened to still be visible during an axe-core scan.
+      className={cn("text-[0.8rem] font-medium text-destructive dark:text-red-400", className)}
       {...props}>
       {body}
     </p>

@@ -144,6 +144,45 @@ export const academicYearService = {
   getAll: () => api.get('/v1/academic-years'),
 };
 
+// Subject Service (Môn học)
+export const subjectService = {
+  getAll: () => api.get('/v1/subjects'),
+  create: (data) => api.post('/v1/subjects', data),
+  update: (id, data) => api.put(`/v1/subjects/${id}`, data),
+  delete: (id) => api.delete(`/v1/subjects/${id}`),
+};
+
+// Semester Service (Học kỳ)
+export const semesterService = {
+  getAll: () => api.get('/v1/semesters'),
+  getByAcademicYear: (academicYearId) => api.get(`/v1/semesters/academic-year/${academicYearId}`),
+  create: (data) => api.post('/v1/semesters', data),
+  update: (id, data) => api.put(`/v1/semesters/${id}`, data),
+  delete: (id) => api.delete(`/v1/semesters/${id}`),
+};
+
+// Teaching Assignment Service (Phân công giảng dạy) - no filtered-by-class/
+// semester endpoint on the backend (only GET all), so callers filter the
+// full list client-side, same pattern as gradeService/feeService's
+// getByYear + client-side class filtering.
+export const teachingAssignmentService = {
+  getAll: () => api.get('/v1/teaching-assignments'),
+  create: (data) => api.post('/v1/teaching-assignments', data),
+  update: (id, data) => api.put(`/v1/teaching-assignments/${id}`, data),
+  delete: (id) => api.delete(`/v1/teaching-assignments/${id}`),
+};
+
+// Timetable Service (Thời khoá biểu)
+export const timetableService = {
+  getByClass: (classId, semesterId) =>
+    api.get(`/v1/timetable/class/${classId}`, { params: semesterId ? { semesterId } : {} }),
+  getByTeacher: (teacherId, semesterId) =>
+    api.get(`/v1/timetable/teacher/${teacherId}`, { params: semesterId ? { semesterId } : {} }),
+  createSlot: (data) => api.post('/v1/timetable/slots', data),
+  updateSlot: (id, data) => api.put(`/v1/timetable/slots/${id}`, data),
+  deleteSlot: (id) => api.delete(`/v1/timetable/slots/${id}`),
+};
+
 // Audit Log Service (ADMIN only - see AuditLogController)
 export const auditLogService = {
   getRecent: (size = 5) => api.get('/v1/audit-logs', { params: { page: 0, size } }),
@@ -159,5 +198,9 @@ export default {
   feeService,
   dashboardService,
   academicYearService,
+  subjectService,
+  semesterService,
+  teachingAssignmentService,
+  timetableService,
   auditLogService,
 };

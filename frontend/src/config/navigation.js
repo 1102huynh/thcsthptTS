@@ -6,6 +6,8 @@ import {
   FiAward,
   FiDollarSign,
   FiGrid,
+  FiCalendar,
+  FiSettings,
 } from 'react-icons/fi';
 
 // Shared between Sidebar (nav links) and Navbar (page title lookup by
@@ -44,6 +46,18 @@ export const NAV_ITEMS = [
   // this week. A student self-service "my fees" view is a real, valid
   // future addition, just not this one.
   { label: 'Fees', href: '/fees', icon: FiDollarSign, roles: ['ADMIN', 'ACCOUNTANT'] },
+  // TEACHER can view a class's timetable (TimetableController's GET is
+  // ADMIN/PRINCIPAL/TEACHER) but not manage it (POST/PUT/DELETE on both
+  // teaching-assignments and timetable slots are ADMIN/PRINCIPAL only) -
+  // included for TEACHER anyway, unlike Class/Staff Management, since the
+  // page itself is useful read-only (checking one's own schedule) and
+  // gates every write control behind an internal canManage check rather
+  // than needing a separate route.
+  { label: 'Timetable', href: '/timetable', icon: FiCalendar, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+  // Academic Config (Môn học/Học kỳ) has no read value for TEACHER beyond
+  // what the Timetable page already surfaces (subject names, semester
+  // picker) - ADMIN/PRINCIPAL only, same scoping as Staff/Class Management.
+  { label: 'Academic Config', href: '/academic-config', icon: FiSettings, roles: ['ADMIN', 'PRINCIPAL'] },
 ];
 
 export function navItemsForRole(role) {

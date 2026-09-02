@@ -160,12 +160,12 @@ function FeeManagement() {
       </div>
 
       {!academicYear && academicYearsQuery.isSuccess && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
           Chưa thiết lập năm học đang hoạt động (ACTIVE) trong hệ thống.
         </div>
       )}
       {feesQuery.isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
           Không tải được danh sách khoản thu.
         </div>
       )}

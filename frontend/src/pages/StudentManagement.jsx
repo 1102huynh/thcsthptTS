@@ -138,7 +138,7 @@ function StudentManagement() {
       </div>
 
       {studentsQuery.isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
           Không tải được danh sách học sinh.
         </div>
       )}

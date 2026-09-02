@@ -109,7 +109,10 @@ function Navbar({ user, onLogout, onToggleSidebar }) {
                 <FiSettings className="mr-2 h-4 w-4" /> Cài đặt tài khoản
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="text-destructive focus:text-destructive dark:text-red-400 dark:focus:text-red-400"
+              >
                 <FiLogOut className="mr-2 h-4 w-4" /> Đăng xuất
               </DropdownMenuItem>
             </DropdownMenuContent>

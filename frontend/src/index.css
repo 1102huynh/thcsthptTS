@@ -36,7 +36,26 @@
     --muted-foreground: 215.4 16.3% 44%;
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
+    /* Lightness darkened from 60.2% to 38% (same 0/84.2 hue/saturation) -
+       shadcn's stock value is tuned for use as a Button background (paired
+       with white --destructive-foreground text on top of it), but the same
+       token is also used directly AS text color in several places
+       (FormMessage's Zod error text, every *Management page's error
+       banner, Navbar's "Đăng xuất" item, TimetableManagement's inline
+       "Xóa" link) - #ef4444 there only hit 3.5-3.8:1 against a light
+       background, failing WCAG AA. The error banners are the tightest
+       case: text-destructive sits on its own bg-destructive/10 tint, not
+       plain white, and needed a darker value than the 45.2% that first
+       looked sufficient (measured 4.15:1 live, not the ~4.5 a plain-white
+       estimate suggested) - 38% (#b20f0f) clears every pairing with
+       margin, live-checked via axe-core each time rather than trusted from
+       the math alone, and darkens the destructive Button's own text
+       pairing too (a side benefit - it was equally borderline). Caught
+       while building Thời khoá biểu (Tuần 7), the first page with
+       destructive text actually visible during a scan - every earlier
+       sweep happened to run on states with no error banner/validation
+       message/open dropdown on screen. */
+    --destructive: 0 84.2% 38%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
@@ -65,6 +84,14 @@
     --muted-foreground: 215 20.2% 65.1%;
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
+    /* Left at shadcn's stock dark value (unlike --primary above) - it's
+       already excellent as a Button background (9.6:1 against white text)
+       and there's no single lightness that works well as BOTH a button
+       background (wants dark) and inline text on the dark page background
+       (wants light) at once - tried, the crossover point where both roles
+       are merely "passing" has neither with real margin. Every spot above
+       that uses --destructive as inline text instead pairs it with an
+       explicit `dark:text-red-400` override for that one role. */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
