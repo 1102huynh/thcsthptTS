@@ -1,3 +1,9 @@
+> **⚠️ ĐÃ LƯU TRỮ (archived) — không còn là kế hoạch hiện hành.** Toàn bộ
+> checklist trong tài liệu này (Giai đoạn 0-3, Track Frontend Tuần 1-6) đã
+> hoàn tất và được xác minh trực tiếp qua code (02/09/2026). Kế hoạch hiện
+> hành là **`KE_HOACH_NANG_CAP_V4.md`** ở gốc repo — giữ file này lại chỉ để
+> tham khảo lịch sử/bối cảnh thiết kế ban đầu.
+
 # KẾ HOẠCH CHI TIẾT TRIỂN KHAI HỆ THỐNG QUẢN LÝ TRƯỜNG THCS-THPT (thcsthptTS)
 
 *Phiên bản 3.1 — cập nhật theo yêu cầu: (1) chi tiết hoá từng giai đoạn xuống mức có thể giao việc trực tiếp cho dev (ngày/tuần, file cụ thể, endpoint cụ thể, field entity cụ thể); (2) đổi hạ tầng CSDL từ PostgreSQL (Aiven Cloud) sang **MySQL chạy local** (đã cài đặt và cấu hình sẵn), xoá hoàn toàn cấu hình PostgreSQL/Aiven khỏi repo; (3) đã xác nhận dữ liệu trên Aiven chỉ là dữ liệu test — bỏ mọi bước export/backup dữ liệu thật.*

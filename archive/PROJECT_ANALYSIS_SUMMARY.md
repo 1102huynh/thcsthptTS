@@ -1,3 +1,10 @@
+> **⚠️ ĐÃ LƯU TRỮ (archived) — mô tả trạng thái mã nguồn tại 20/08/2026, đã
+> lỗi thời.** Từ đó tới nay dự án đã đổi hẳn sang Vite/Tailwind/shadcn (bỏ
+> CRA + Bootstrap), `SchoolClass` đã có controller đầy đủ, và mọi module ở
+> mục 3 bên dưới đã có cả backend lẫn frontend. Xem `KE_HOACH_NANG_CAP_V4.md`
+> ở gốc repo (Phần A) cho hiện trạng thật đã xác minh lại. Giữ file này chỉ
+> để tham khảo lịch sử.
+
 # PHÂN TÍCH DỰ ÁN: Hệ thống Quản lý Trường THCS-THPT (thcsthptTS)
 
 *Tài liệu này do Claude đọc và phân tích trực tiếp toàn bộ mã nguồn (backend Spring Boot + frontend React) vào ngày 20/08/2026. Mục tiêu: đánh giá hiện trạng, chỉ ra các điểm chưa phù hợp cần sửa, và đề xuất các tính năng còn thiếu so với nhu cầu thực tế của một trường THCS/THPT tại Việt Nam.*
