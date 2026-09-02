@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { FiEdit2, FiTrash2, FiPlus, FiDollarSign, FiDownload } from 'react-icons/fi';
 import { feeService, academicYearService, reportService } from '../services/dataService';
 import { triggerBlobDownload } from '../lib/download';
+import { getCurrentUser } from '../services/authService';
 import DataTable from '../components/shared/DataTable';
 import FeeFormDialog from './fee/FeeFormDialog';
 import PaymentDialog from './fee/PaymentDialog';
@@ -31,6 +32,10 @@ function currencyVND(n) {
 
 function FeeManagement() {
   const queryClient = useQueryClient();
+  // Mức 2.1 (v4.9): PRINCIPAL reaches this page read-only - fee GETs now
+  // allow PRINCIPAL for oversight, but create/update/delete/record-payment
+  // stay ADMIN/ACCOUNTANT, so those controls are hidden for this role.
+  const readOnly = getCurrentUser()?.role === 'PRINCIPAL';
   const [search, setSearch] = useState('');
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
@@ -114,7 +119,7 @@ function FeeManagement() {
           const canPay = !CLOSED_STATUSES.has(fee.status);
           return (
             <div className="flex justify-end gap-2">
-              {canPay && (
+              {canPay && !readOnly && (
                 <Button variant="ghost" size="icon" onClick={() => setPayingFee(fee)} aria-label="Ghi nhận thanh toán">
                   <FiDollarSign className="h-4 w-4" />
                 </Button>
@@ -130,24 +135,28 @@ function FeeManagement() {
                   <FiDownload className="h-4 w-4" />
                 </Button>
               )}
-              <Button variant="ghost" size="icon" onClick={() => openEdit(fee)} aria-label="Sửa">
-                <FiEdit2 className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-destructive hover:text-destructive"
-                onClick={() => setDeletingFee(fee)}
-                aria-label="Xóa"
-              >
-                <FiTrash2 className="h-4 w-4" />
-              </Button>
+              {!readOnly && (
+                <>
+                  <Button variant="ghost" size="icon" onClick={() => openEdit(fee)} aria-label="Sửa">
+                    <FiEdit2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeletingFee(fee)}
+                    aria-label="Xóa"
+                  >
+                    <FiTrash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
             </div>
           );
         },
       },
     ],
-    []
+    [readOnly]
   );
 
   return (
@@ -157,10 +166,18 @@ function FeeManagement() {
           <h1 className="text-2xl font-semibold">Học phí</h1>
           <p className="text-sm text-muted-foreground">Danh sách khoản thu, thanh toán và công nợ</p>
         </div>
-        <Button onClick={openCreate} disabled={!academicYear}>
-          <FiPlus className="mr-2 h-4 w-4" /> Thêm khoản thu
-        </Button>
+        {!readOnly && (
+          <Button onClick={openCreate} disabled={!academicYear}>
+            <FiPlus className="mr-2 h-4 w-4" /> Thêm khoản thu
+          </Button>
+        )}
       </div>
+
+      {readOnly && (
+        <div className="rounded-lg border bg-muted/50 px-4 py-2 text-sm text-muted-foreground">
+          Chế độ chỉ xem (Hiệu trưởng) — việc lập khoản thu và ghi nhận thanh toán do kế toán thực hiện.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card>

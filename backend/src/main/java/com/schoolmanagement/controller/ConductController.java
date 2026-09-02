@@ -46,7 +46,7 @@ public class ConductController {
     }
 
     @GetMapping("/student/{studentId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get every conduct record for a student (all semesters)",
             description = "A STUDENT caller may only fetch their own conduct records (403 otherwise).")
     public ResponseEntity<List<ConductRecordDTO>> getStudentConductRecords(
@@ -56,7 +56,7 @@ public class ConductController {
     }
 
     @GetMapping("/class/{classId}/semester/{semesterId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
     @Operation(summary = "Bảng đánh giá hạnh kiểm hàng loạt cho GVCN",
             description = "One row per student currently in the class; rating/remarks are null for students not yet evaluated this semester.")
     public ResponseEntity<List<ConductRosterEntryDTO>> getClassSemesterRoster(

@@ -46,29 +46,20 @@ export const NAV_ITEMS = [
   // scoping choice as Staff Management just above.
   { label: 'Quản lý lớp học', href: '/classes', icon: FiGrid, roles: ['ADMIN', 'PRINCIPAL'] },
   { label: 'Thư viện', href: '/library', icon: FiBook, roles: ['ADMIN', 'LIBRARIAN', 'STUDENT', 'TEACHER'] },
-  // PRINCIPAL deliberately excluded: AttendanceController's endpoints -
-  // including the GET ones - are all hasAnyRole('ADMIN', 'TEACHER', ...)
-  // with no PRINCIPAL, so a PRINCIPAL session would land on a page that
-  // 403s on every single request. Found while building the page itself
-  // (Tuần 4 Ngày 2), same root cause as the Dashboard stats bug (Tuần 3).
-  { label: 'Điểm danh', href: '/attendance', icon: FiClipboard, roles: ['ADMIN', 'TEACHER'] },
-  // STUDENT excluded for the same reason as PRINCIPAL was on Attendance
-  // above: /grades is a grade-entry table (rebuilt Tuần 7 on the TT22/2021
-  // GradeRecord model, GradeRecordController write endpoints are
-  // hasAnyRole('ADMIN', 'TEACHER') only) - a STUDENT/PARENT can read their
-  // own grades via GET /v1/grade-records/student/{id}/..., but nothing in
-  // the frontend routes to it yet (a self-service view is a real future
-  // addition, not this one), so there's no page here for them to land on.
-  { label: 'Quản lý điểm', href: '/grades', icon: FiAward, roles: ['ADMIN', 'TEACHER'] },
-  // STUDENT excluded for now, same reasoning pattern as Attendance/Grades
-  // above: unlike those two, FeeController genuinely does let a STUDENT
-  // view/pay their *own* fees (GET .../student/{id}, POST .../payment both
-  // allow it) - but the page built today (Tuần 4 Ngày 5) is the
-  // ADMIN/ACCOUNTANT-facing "danh sách khoản thu" management view (GET
-  // .../year/{year}, ADMIN/ACCOUNTANT only), matching every other page
-  // this week. A student self-service "my fees" view is a real, valid
-  // future addition, just not this one.
-  { label: 'Học phí', href: '/fees', icon: FiDollarSign, roles: ['ADMIN', 'ACCOUNTANT'] },
+  // PRINCIPAL included since Mức 2.1 (v4.9): AttendanceController's GET
+  // endpoints now allow PRINCIPAL (read-only oversight - "hiệu trưởng xem
+  // toàn cảnh, giáo viên nhập liệu"). The page renders read-only for a
+  // PRINCIPAL session (isReadOnlyRole) - the mark/save controls that would
+  // 403 are hidden. STUDENT/PARENT get their own /portal instead.
+  { label: 'Điểm danh', href: '/attendance', icon: FiClipboard, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+  // PRINCIPAL: read-only (Mức 2.1) - GradeRecordController GETs now allow
+  // PRINCIPAL; the grade-entry grid renders read-only for that role.
+  // STUDENT/PARENT read their own grades at /portal.
+  { label: 'Quản lý điểm', href: '/grades', icon: FiAward, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+  // PRINCIPAL: read-only (Mức 2.1) - FeeController GETs now allow PRINCIPAL;
+  // create/edit/delete/record-payment controls are hidden for that role
+  // (writes stay ADMIN/ACCOUNTANT). STUDENT/PARENT see their fees at /portal.
+  { label: 'Học phí', href: '/fees', icon: FiDollarSign, roles: ['ADMIN', 'PRINCIPAL', 'ACCOUNTANT'] },
   // TEACHER can view a class's timetable (TimetableController's GET is
   // ADMIN/PRINCIPAL/TEACHER) but not manage it (POST/PUT/DELETE on both
   // teaching-assignments and timetable slots are ADMIN/PRINCIPAL only) -
@@ -85,10 +76,10 @@ export const NAV_ITEMS = [
   // restriction is per-class, not role-wide - ConductController lets any
   // TEACHER call the endpoints, enforceHomeroomWriteAccess 403s per class
   // server-side, and the page itself narrows its class picker to only the
-  // classes that TEACHER is GVCN of. STUDENT/PARENT excluded for the same
-  // reason as Grades: they can read their own conduct via
-  // GET /v1/conduct/student/{id}, but no self-service page routes to it yet.
-  { label: 'Hạnh kiểm', href: '/conduct', icon: FiCheckSquare, roles: ['ADMIN', 'TEACHER'] },
+  // classes that TEACHER is GVCN of. PRINCIPAL included since Mức 2.1 (v4.9)
+  // as read-only (the roster GET now allows PRINCIPAL; the save control is
+  // hidden). STUDENT/PARENT read their own conduct at /portal.
+  { label: 'Hạnh kiểm', href: '/conduct', icon: FiCheckSquare, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
   // PRINCIPAL included (unlike Conduct/Grades) - PromotionController's
   // confirm endpoint is ADMIN/PRINCIPAL only (a xét lên lớp decision is a
   // Hội đồng-level call, not a per-class teacher one), and its preview

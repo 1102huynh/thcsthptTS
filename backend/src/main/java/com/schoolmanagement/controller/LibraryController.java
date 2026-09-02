@@ -46,7 +46,7 @@ public class LibraryController {
     }
 
     @GetMapping("/books/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'LIBRARIAN', 'TEACHER', 'STUDENT')")
     @Operation(summary = "Get book by ID")
     public ResponseEntity<LibraryBookDTO> getBookById(@PathVariable Long id) {
         LibraryBookDTO book = libraryService.getBookById(id);
@@ -54,7 +54,7 @@ public class LibraryController {
     }
 
     @GetMapping("/books")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'LIBRARIAN', 'TEACHER', 'STUDENT')")
     @Operation(summary = "Get all books",
             description = "Optional page/size query params paginate the result (0-indexed page); omit both to get the full list. Total count is returned in the X-Total-Count header when paginated.")
     public ResponseEntity<List<LibraryBookDTO>> getAllBooks(
@@ -71,7 +71,7 @@ public class LibraryController {
     }
 
     @GetMapping("/books/search")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'LIBRARIAN', 'TEACHER', 'STUDENT')")
     @Operation(summary = "Search books by title")
     public ResponseEntity<List<LibraryBookDTO>> searchBooks(@RequestParam String title) {
         List<LibraryBookDTO> books = libraryService.searchBooks(title);
@@ -79,7 +79,7 @@ public class LibraryController {
     }
 
     @GetMapping("/books/category/{category}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'LIBRARIAN', 'TEACHER', 'STUDENT')")
     @Operation(summary = "Get books by category")
     public ResponseEntity<List<LibraryBookDTO>> getBooksByCategory(@PathVariable BookCategory category) {
         List<LibraryBookDTO> books = libraryService.getBooksByCategory(category);
@@ -87,7 +87,7 @@ public class LibraryController {
     }
 
     @GetMapping("/books/author/{author}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'LIBRARIAN', 'TEACHER', 'STUDENT')")
     @Operation(summary = "Get books by author")
     public ResponseEntity<List<LibraryBookDTO>> getBooksByAuthor(@PathVariable String author) {
         List<LibraryBookDTO> books = libraryService.getBooksByAuthor(author);
@@ -95,7 +95,7 @@ public class LibraryController {
     }
 
     @GetMapping("/books/available")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'LIBRARIAN', 'TEACHER', 'STUDENT')")
     @Operation(summary = "Get available books")
     public ResponseEntity<List<LibraryBookDTO>> getAvailableBooks() {
         List<LibraryBookDTO> books = libraryService.getAvailableBooks();
@@ -144,7 +144,7 @@ public class LibraryController {
     }
 
     @GetMapping("/transactions")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('LIBRARIAN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'LIBRARIAN')")
     @Operation(summary = "Get all currently outstanding (not yet returned) borrows")
     public ResponseEntity<List<BookTransactionDTO>> getActiveBorrows() {
         return new ResponseEntity<>(libraryService.getActiveBorrows(), HttpStatus.OK);

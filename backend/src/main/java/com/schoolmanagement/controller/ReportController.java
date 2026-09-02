@@ -48,7 +48,7 @@ public class ReportController {
     // Same role set as GradeRecordController.getStudentYearSummary
     // (/v1/grade-records/student/{id}/year-summary), the endpoint this
     // transcript is built from.
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER','STUDENT','PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN','PRINCIPAL','TEACHER','STUDENT','PARENT')")
     @Operation(summary = "Xuất bảng điểm/học bạ PDF cho một học sinh trong một năm học",
             description = "STUDENT/PARENT chỉ xem được của chính mình/con mình — xem StudentAccessGuard.")
     public ResponseEntity<byte[]> studentTranscript(
@@ -62,7 +62,7 @@ public class ReportController {
     // Same role set as ConductController.getClassSemesterRoster
     // (/v1/conduct/class/{classId}/semester/{semesterId}), the closest
     // existing "whole-class roster export" endpoint.
-    @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN','PRINCIPAL','TEACHER')")
     @Operation(summary = "Xuất bảng điểm danh Excel cho một lớp trong khoảng ngày [from, to]",
             description = "Khoảng [from, to] tối đa 366 ngày (một năm học) — mỗi ngày là một cột trong file Excel.")
     public ResponseEntity<byte[]> classAttendance(
@@ -77,7 +77,7 @@ public class ReportController {
     @GetMapping("/fees/receipt/{feeId}")
     // Same role set as FeeController.getFeeById (/v1/fees/{id}), the
     // endpoint this receipt's data comes from.
-    @PreAuthorize("hasAnyRole('ADMIN','ACCOUNTANT','STUDENT','PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN','PRINCIPAL','ACCOUNTANT','STUDENT','PARENT')")
     @Operation(summary = "Xuất biên lai thu học phí PDF cho một khoản thu đã có thanh toán",
             description = "Trả về 400 nếu khoản thu chưa ghi nhận thanh toán nào (paidAmount rỗng/0).")
     public ResponseEntity<byte[]> feeReceipt(@PathVariable Long feeId, Authentication authentication) {

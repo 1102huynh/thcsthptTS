@@ -14,6 +14,7 @@ import {
   reportService,
 } from '../services/dataService';
 import { triggerBlobDownload } from '../lib/download';
+import { getCurrentUser } from '../services/authService';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -68,6 +69,10 @@ function semesterLabel(s) {
 
 function GradeManagement() {
   const queryClient = useQueryClient();
+  // Mức 2.1 (v4.9): PRINCIPAL reaches this page read-only - grade-record
+  // GETs now allow PRINCIPAL, but every write 403s, so the save control is
+  // hidden and the score inputs are locked.
+  const readOnly = getCurrentUser()?.role === 'PRINCIPAL';
   const [selectedKey, setSelectedKey] = useState('');
   const [semesterId, setSemesterId] = useState('');
   const [subjectId, setSubjectId] = useState('');
@@ -219,7 +224,13 @@ function GradeManagement() {
         </div>
       )}
 
-      {!myStaffId && staffQuery.isSuccess && (
+      {readOnly && (
+        <div className="rounded-lg border bg-muted/50 px-4 py-2 text-sm text-muted-foreground">
+          Chế độ chỉ xem (Hiệu trưởng) — việc nhập/sửa điểm do giáo viên bộ môn thực hiện.
+        </div>
+      )}
+
+      {!myStaffId && !readOnly && staffQuery.isSuccess && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
           Tài khoản của bạn chưa được liên kết với hồ sơ nhân sự nên không thể lưu điểm mới (vẫn xem được bảng điểm).
         </div>
@@ -302,13 +313,15 @@ function GradeManagement() {
                 {filledCount}/{roster.length} đã nhập điểm · {semesterLabel(selectedSemester)}
               </CardDescription>
             </div>
-            <Button
-              onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending || loading || filledCount === 0 || !myStaffId}
-            >
-              <FiSave className="mr-2 h-4 w-4" />
-              {saveMutation.isPending ? 'Đang lưu...' : 'Lưu bảng điểm'}
-            </Button>
+            {!readOnly && (
+              <Button
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending || loading || filledCount === 0 || !myStaffId}
+              >
+                <FiSave className="mr-2 h-4 w-4" />
+                {saveMutation.isPending ? 'Đang lưu...' : 'Lưu bảng điểm'}
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -364,6 +377,7 @@ function GradeManagement() {
                               }
                               className="h-8 w-24"
                               aria-label={`Điểm ${s.user?.firstName} ${s.user?.lastName}`}
+                              readOnly={readOnly}
                             />
                           </td>
                           <td className="p-2">

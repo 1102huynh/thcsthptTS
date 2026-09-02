@@ -1,11 +1,11 @@
 # KẾ HOẠCH PHÁT TRIỂN & NÂNG CẤP HỆ THỐNG QUẢN LÝ TRƯỜNG THCS-THPT (thcsthptTS)
 
-**Phiên bản 4.8 — ngày 02/09/2026**
-*(v4.8: **Giai đoạn D rà soát xong** — D1–D5 đã có; D2 bổ sung nút tải học bạ PDF + biên lai PDF vào `SelfServicePortal`. v4.7: Giai đoạn C (C3 cổng tự phục vụ). v4.6: Giai đoạn A. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
+**Phiên bản 4.9 — ngày 02/09/2026**
+*(v4.9: **Mức 2.1 xong** — PRINCIPAL có quyền XEM (chỉ đọc) điểm/điểm danh/hạnh kiểm/học phí/báo cáo/thư viện; 4 trang quản lý render read-only cho PRINCIPAL. v4.8: Giai đoạn D (D2). v4.7: Giai đoạn C. v4.6: Giai đoạn A. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
 
 > **Tài liệu này là kế hoạch nâng cấp DUY NHẤT** — thay cho `IMPLEMENTATION_PLAN.md` (v3.1) và đã gộp cả 2 file phân quyền lẻ trước đây.
 
-> **⚡ Việc gấp nhất còn lại (chốt v4.7):** Giai đoạn A + C + D2 đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Không chặn: gỡ `Grade` cũ (Quyết định E.1), Mức 2.1 (PRINCIPAL xem dữ liệu học tập), D6 (trang quản lý tài khoản riêng — hiện gộp trong luồng nhân sự/phụ huynh).
+> **⚡ Việc gấp nhất còn lại (chốt v4.9):** Giai đoạn A + C + D2 + Mức 2.1 đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Không chặn: gỡ `Grade` cũ (Quyết định E.1), Mức 2.2/2.3 (kế toán đọc HS, thư viện mượn/trả hộ), D6 (trang quản lý tài khoản riêng).
 
 *Tài liệu này được lập sau khi review lại **toàn bộ** mã nguồn hiện tại trên máy (`D:\sources\thcsthptTS` là **nguồn sự thật chính** — không dựa vào bản sao trong Claude Project). Khác với kế hoạch v3.1 (`IMPLEMENTATION_PLAN.md`) vốn là kế hoạch **xây mới từ đầu**, phiên bản 4.x xuất phát từ thực tế: **phần lớn kế hoạch v3.1 đã được hiện thực hoá ở backend**. Trọng tâm mới là (1) đưa năng lực backend đã có lên giao diện người dùng, (2) **hoàn tất phần backend còn dở** (xếp loại học lực), (3) trả nợ kỹ thuật, (4) nâng cấp lên mức vận hành thật cho một trường.*
 
@@ -241,7 +241,7 @@ Làm trước tất cả vì mọi trang mới đều dựa trên nền này.
 ### G.2. Chi tiết từng vai trò được làm gì
 
 - **ADMIN** — mọi chức năng mọi module. Độc quyền: quản lý tài khoản (`POST /v1/users`), cấu hình hệ số điểm (`/v1/grade-config`), nhật ký hoạt động (`/v1/audit-logs`), duyệt tuyển sinh.
-- **PRINCIPAL (Hiệu trưởng)** — CÓ: dashboard; **CRUD** lớp/học sinh/nhân sự/môn học/học kỳ/năm học/phân công/thời khoá biểu; xét lên lớp (**confirm**) + ngưỡng xét; tạo thông báo; tài liệu (upload/xem/xoá). **KHÔNG:** điểm (cả 2 model), điểm danh, hạnh kiểm, học phí, báo cáo, thư viện, cấu hình điểm, audit, tuyển sinh, quản lý user → **mù dữ liệu học tập (G.4 mục 2).**
+- **PRINCIPAL (Hiệu trưởng)** — CÓ: dashboard; **CRUD** lớp/học sinh/nhân sự/môn học/học kỳ/năm học/phân công/thời khoá biểu; xét lên lớp (**confirm**) + ngưỡng xét; tạo thông báo; tài liệu (upload/xem/xoá). **XEM (chỉ đọc, từ v4.9 — Mức 2.1):** điểm (cũ + TT22), điểm danh, hạnh kiểm, học phí, báo cáo (học bạ/điểm danh/biên lai), thư viện. **KHÔNG:** *nhập* điểm/điểm danh/hạnh kiểm/học phí, cấu hình điểm, audit, tuyển sinh, quản lý user.
 - **TEACHER (Giáo viên)** — **nhập & sửa** điểm (cũ + TT22), điểm danh, hạnh kiểm; **đọc** cơ cấu (năm học/HK/môn/lớp/HS/nhân sự/phân công/TKB); xem trước xét lên lớp (**chỉ preview**); tạo thông báo; thư viện (tự mượn/trả + xem sách); tài liệu (upload/xem); tải học bạ + Excel điểm danh. **KHÔNG:** tạo/sửa/xoá cơ cấu, học phí, cấu hình điểm, **confirm** xét lên lớp, tuyển sinh, audit, user, dashboard.
 - **STUDENT (Học sinh)** — (đã guard về chính mình) điểm/điểm danh/học phí/hạnh kiểm/học bạ/xét lên lớp **của mình**; **đóng học phí** của mình; thư viện (mượn/trả/tìm/xem sách + lịch sử của mình); tài liệu; thông báo của mình. **⚠️ Bất thường (chưa guard):** đọc được hồ sơ **mọi** học sinh (`GET /v1/students/{id}`, `/roll/...`) và **toàn bộ danh bạ nhân sự** (`GET /v1/staff*`) — G.4 mục 1 & 3.
 - **PARENT (Phụ huynh)** — (đã guard về đúng con) điểm/điểm danh/hạnh kiểm/học phí/học bạ/biên lai/xét lên lớp **của con**; **đóng học phí** cho con; danh sách con; tài liệu; thông báo của mình. **KHÔNG:** mọi quản lý; thư viện; danh bạ HS/nhân sự.
@@ -257,7 +257,7 @@ Dù bảng phân quyền đánh dấu STUDENT/PARENT được vào endpoint đi�
 ### G.4. Bất thường & lỗ hổng phân quyền (đã xác minh trên code)
 
 1. **✅ [ĐÃ VÁ — v4.4] IDOR hồ sơ học sinh.** `GET /v1/students/{id}` & `/roll/{rollNumber}` giờ inject `StudentAccessGuard` + nhận `Authentication` + gọi `enforceCanAccessStudent` (STUDENT chỉ của mình, PARENT chỉ của con). Đã thêm PARENT vào danh sách vai trò. *Còn lại: viết test khẳng định STUDENT gọi id người khác → 403.*
-2. **[Thiết kế — CHƯA] Hiệu trưởng mù dữ liệu học tập.** Không xem được điểm/điểm danh/hạnh kiểm/học phí/báo cáo. `navigation.js` vẫn loại PRINCIPAL khỏi Attendance/Grades/Conduct vì mọi request 403. → Bổ sung quyền **đọc** cho PRINCIPAL (H.2.1).
+2. **✅ [ĐÃ VÁ — v4.9] Hiệu trưởng mù dữ liệu học tập.** Thêm `PRINCIPAL` vào GET của Attendance/Grade/GradeRecord/Conduct/Fee/Report/Library controller (chỉ đọc; POST/PUT/DELETE giữ nguyên TEACHER/ACCOUNTANT). `navigation.js` thêm PRINCIPAL vào Điểm danh/Quản lý điểm/Hạnh kiểm/Học phí; 4 trang render **read-only** (`readOnly = role === 'PRINCIPAL'` — ẩn nút lưu, khoá input). Test `PrincipalReadAccessIntegrationTest` (GET 2xx, DELETE 403) + `navigation.test.js`.
 3. **✅ [ĐÃ VÁ — v4.5] Danh bạ nhân sự.** STUDENT đã bị loại khỏi `GET /v1/staff*` (nay ADMIN/PRINCIPAL/TEACHER) **và** `StaffController.redactSensitiveFields()` null hoá `salary` + địa chỉ + liên hệ khẩn cho mọi vai trò ≠ ADMIN/PRINCIPAL (hiện chỉ TEACHER). Có test `StaffIntegrationTest` (ADMIN thấy đủ / TEACHER bị redact, cả GET đơn lẫn danh sách).
 4. **[Rà service] Endpoint chỉ `authenticated()`:** `PUT /v1/notifications/{recipientId}/read` và `POST /v1/documents` → cần service kiểm tra chủ sở hữu.
 5. **[Chức năng] Thư viện thiếu luồng mượn/trả hộ** (borrow/return chỉ TEACHER,STUDENT). → Thêm endpoint cho LIBRARIAN.
@@ -283,7 +283,7 @@ Dù bảng phân quyền đánh dấu STUDENT/PARENT được vào endpoint đi�
 
 ### H.2. MỨC 2 — NÊN SỬA (nghiệp vụ, Giai đoạn B–D)
 
-- **2.1. PRINCIPAL — thêm quyền XEM (chỉ đọc):** thêm `PRINCIPAL` vào các GET của điểm danh, điểm (cũ + TT22), hạnh kiểm, học phí, báo cáo (học bạ/điểm danh/biên lai), thư viện; tuỳ chọn audit log. **Không** thêm vào POST/PUT/DELETE (giữ việc nhập cho TEACHER, học phí cho ACCOUNTANT).
+- **2.1. ✅ XONG (v4.9) — PRINCIPAL thêm quyền XEM (chỉ đọc):** đã thêm `PRINCIPAL` vào GET của điểm danh, điểm (cũ + TT22), hạnh kiểm, học phí, báo cáo, thư viện (kể cả `GET /v1/library/transactions`). POST/PUT/DELETE **không** đổi. FE: 4 trang quản lý render read-only cho PRINCIPAL; nav mở cho PRINCIPAL. *(Audit log: vẫn ADMIN-only — chưa thêm.)*
 - **2.2. ACCOUNTANT — thêm đọc học sinh:** thêm ACCOUNTANT (read-only) vào `GET /v1/students`, `/students/{id}`; tuỳ chọn `GET /v1/classes`.
 - **2.3. LIBRARIAN — luồng mượn/trả hộ:** thêm `POST /v1/library/books/{bookId}/lend?studentId=` và `.../return-for?studentId=` (ADMIN, LIBRARIAN); giữ self-service borrow/return.
 - **2.4. Tách thanh toán học phí:** `POST /v1/fees/{feeId}/payment` (ghi sổ thủ công) → **chỉ ADMIN, ACCOUNTANT**; thêm `POST /v1/fees/{feeId}/pay-online` (khởi tạo cổng thanh toán, tiền vào qua webhook) → STUDENT, PARENT (gắn E2).
@@ -318,7 +318,7 @@ Dù bảng phân quyền đánh dấu STUDENT/PARENT được vào endpoint đi�
 ### H.5. Thứ tự triển khai
 
 1. **Ngay (A9):** Mức 1 #1–#4 + test: STUDENT gọi `GET /v1/students/{idNgườiKhác}` → **403**.
-2. **Giai đoạn B–D:** Mức 2.1 (PRINCIPAL xem), 2.2 (kế toán đọc HS), 2.3 (thư viện mượn/trả hộ).
+2. **Giai đoạn B–D:** ~~Mức 2.1 (PRINCIPAL xem)~~ ✅ **v4.9**; 2.2 (kế toán đọc HS), 2.3 (thư viện mượn/trả hộ) — *còn lại*.
 3. **Giai đoạn E2:** Mức 2.4 (tách thanh toán online / ghi sổ).
 4. **Dài hạn:** Mức 3.
 
@@ -355,26 +355,26 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 | Thời khoá biểu | `POST,PUT,DELETE /v1/timetable/slots` | ✅ | ✅ | | | | | |
 | Thời khoá biểu | `GET /v1/timetable/class/{id}`, `/teacher/{id}` | ✅ | ✅ | ✅ | | | | |
 | Điểm danh | `POST,PUT,DELETE /v1/attendance`, `/class`, `/date/{d}`, `/between` | ✅ | | ✅ | | | | |
-| Điểm danh | `GET /v1/attendance/{id}`, `/student/{id}**`, `/percentage` | ✅ | | ✅ | *mình* | *con* | | |
-| Điểm (cũ) | `POST,PUT,DELETE /v1/grades`, `/year/{y}` | ✅ | | ✅ | | | | |
-| Điểm (cũ) | `GET /v1/grades/{id}`, `/student/{id}**`, `/average**` | ✅ | | ✅ | *mình* | *con* | | |
+| Điểm danh | `GET /v1/attendance/{id}`, `/student/{id}**`, `/percentage`, `/date/{d}`, `/between` *(PRINCIPAL đọc — Mức 2.1)* | ✅ | ✅ | ✅ | *mình* | *con* | | |
+| Điểm (cũ) | `POST,PUT,DELETE /v1/grades` | ✅ | | ✅ | | | | |
+| Điểm (cũ) | `GET /v1/grades/{id}`, `/student/{id}**`, `/average**`, `/year/{y}` | ✅ | ✅ | ✅ | *mình* | *con* | | |
 | Điểm TT22 | `POST,PUT,DELETE /v1/grade-records` | ✅ | | ✅ | | | | |
-| Điểm TT22 | `GET /v1/grade-records/{id}`, `/student/{id}/semester,summary,year-summary` | ✅ | | ✅ | *mình* | *con* | | |
+| Điểm TT22 | `GET /v1/grade-records/{id}`, `/student/{id}/semester,summary,year-summary` | ✅ | ✅ | ✅ | *mình* | *con* | | |
 | Cấu hình điểm | `POST,PUT,GET,DELETE /v1/grade-config` | ✅ | | | | | | |
-| Hạnh kiểm | `POST,PUT /v1/conduct`, `GET /class/{c}/semester/{s}` | ✅ | | ✅ | | | | |
-| Hạnh kiểm | `GET /v1/conduct/student/{id}` | ✅ | | ✅ | *mình* | *con* | | |
+| Hạnh kiểm | `POST,PUT /v1/conduct` | ✅ | | ✅ | | | | |
+| Hạnh kiểm | `GET /v1/conduct/class/{c}/semester/{s}`, `/student/{id}` | ✅ | ✅ | ✅ | *mình* | *con* | | |
 | Xét lên lớp | `GET /v1/promotions/class/{id}/preview` | ✅ | ✅ | ✅ | | | | |
 | Xét lên lớp | `POST /v1/promotions/confirm` | ✅ | ✅ | | | | | |
 | Xét lên lớp | `GET /v1/promotions/student/{id}` | ✅ | ✅ | ✅ | *mình* | *con* | | |
 | Ngưỡng xét | `POST,PUT,GET,DELETE /v1/promotion-thresholds` | ✅ | ✅ | | | | | |
-| Học phí | `POST,PUT,DELETE /v1/fees`, `/status/{s}`, `/year/{y}` | ✅ | | | | | | ✅ |
-| Học phí | `GET /v1/fees/{id}`, `/student/{id}**`, `POST /{id}/payment` | ✅ | | | *mình* | *con* | | ✅ |
-| Thư viện | `POST,PUT,DELETE /v1/library/books`, `GET /transactions` | ✅ | | | | | ✅ | |
-| Thư viện | `GET /v1/library/books**` (danh sách/tìm/xem) | ✅ | | ✅ | ✅ | | ✅ | |
+| Học phí | `POST,PUT,DELETE /v1/fees`, `POST /{id}/payment` | ✅ | | | *mình*/*con* (payment) | | | ✅ |
+| Học phí | `GET /v1/fees/{id}`, `/student/{id}**`, `/status/{s}`, `/year/{y}`, `/total-dues` | ✅ | ✅ | | *mình* | *con* | | ✅ |
+| Thư viện | `POST,PUT,DELETE /v1/library/books` | ✅ | | | | | ✅ | |
+| Thư viện | `GET /v1/library/books**` (danh sách/tìm/xem), `GET /transactions` | ✅ | ✅ | ✅ | ✅ | | ✅ | |
 | Thư viện | `POST /v1/library/books/{id}/borrow,return`, `GET /transactions/me` | | | ✅ | ✅ | | | |
-| Báo cáo | `GET /v1/reports/student/{id}/transcript` | ✅ | | ✅ | *mình* | *con* | | |
-| Báo cáo | `GET /v1/reports/class/{id}/attendance` | ✅ | | ✅ | | | | |
-| Báo cáo | `GET /v1/reports/fees/receipt/{feeId}` | ✅ | | | *mình* | *con* | | ✅ |
+| Báo cáo | `GET /v1/reports/student/{id}/transcript` | ✅ | ✅ | ✅ | *mình* | *con* | | |
+| Báo cáo | `GET /v1/reports/class/{id}/attendance` | ✅ | ✅ | ✅ | | | | |
+| Báo cáo | `GET /v1/reports/fees/receipt/{feeId}` | ✅ | ✅ | | *mình* | *con* | | ✅ |
 | Tài liệu | `POST /v1/documents` 🔓, `GET /v1/documents**` | ✅ | ✅ | ✅ | ✅ | ✅ | | |
 | Tài liệu | `DELETE /v1/documents/{id}` | ✅ | ✅ | | | | | |
 | Thông báo | `POST /v1/notifications` | ✅ | ✅ | ✅ | | | | |
@@ -390,6 +390,11 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 
 ## NHẬT KÝ THAY ĐỔI
 
+- **v4.9 (02/09/2026):** **Mức 2.1** — PRINCIPAL hết "mù dữ liệu học tập".
+  - **Backend** — thêm `PRINCIPAL` vào `@PreAuthorize` của mọi GET trong `AttendanceController`, `GradeController` (cũ), `GradeRecordController`, `ConductController` (student + class roster), `FeeController` (tất cả GET, **không** `POST /{feeId}/payment`), `ReportController` (3 GET), `LibraryController` (catalog GET + `/transactions`). POST/PUT/DELETE không đổi.
+  - **Frontend** — `navigation.js`: PRINCIPAL vào Điểm danh/Quản lý điểm/Hạnh kiểm/Học phí. 4 trang thêm `readOnly = getCurrentUser()?.role === 'PRINCIPAL'` → ẩn nút Lưu/Thêm/Sửa/Xóa/Ghi thanh toán, khoá input, banner "Chế độ chỉ xem (Hiệu trưởng)". Nút tải báo cáo/biên lai vẫn hiển thị (chỉ đọc).
+  - **Test** — `PrincipalReadAccessIntegrationTest` (GET 2xx cho attendance/grade-records/conduct/fees/library; DELETE 403 cho attendance/grade-records/fees); `navigation.test.js` +1 ca. `npm test` **34/34** (6 file); build sạch; backend `test-compile` OK.
+  - **Còn lại Mức 2:** 2.2 (ACCOUNTANT đọc HS), 2.3 (thư viện mượn/trả hộ). **Chặn duy nhất:** B0.
 - **v4.8 (02/09/2026):** rà soát **Giai đoạn D** — D1/D3/D4/D5 xác nhận đã có từ trước; **D2 hoàn tất**.
   - `SelfServicePortal` tab **Điểm**: nút "Tải học bạ (PDF)" → `reportService.studentTranscript(studentId, yearId)`.
   - `SelfServicePortal` tab **Học phí**: mỗi khoản đã nộp có nút tải **biên lai PDF** → `reportService.feeReceipt(feeId)` (ẩn nếu `paidAmount = 0` vì endpoint 400).

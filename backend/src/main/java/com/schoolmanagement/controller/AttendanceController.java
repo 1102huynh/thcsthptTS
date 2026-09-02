@@ -60,7 +60,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get attendance record by ID",
             description = "A STUDENT may only fetch their own attendance; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<AttendanceDTO> getAttendanceById(@PathVariable Long id, Authentication authentication) {
@@ -69,7 +69,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/student/{studentId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get attendance records for a student",
             description = "A STUDENT may only fetch their own attendance; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<List<AttendanceDTO>> getStudentAttendance(@PathVariable Long studentId, Authentication authentication) {
@@ -78,7 +78,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/student/{studentId}/between")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get student attendance between dates",
             description = "A STUDENT may only fetch their own attendance; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<List<AttendanceDTO>> getStudentAttendanceBetweenDates(
@@ -92,7 +92,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/date/{date}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
     @Operation(summary = "Get attendance records by date")
     public ResponseEntity<List<AttendanceDTO>> getAttendanceByDate(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
@@ -101,7 +101,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/between")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
     @Operation(summary = "Get attendance records between dates")
     public ResponseEntity<List<AttendanceDTO>> getAttendanceBetweenDates(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -111,7 +111,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/student/{studentId}/percentage")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get attendance percentage for a student",
             description = "A STUDENT may only fetch their own percentage; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<Double> getAttendancePercentage(

@@ -43,7 +43,7 @@ public class GradeRecordController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get a grade record by ID",
             description = "A STUDENT caller may only fetch their own grade records (403 otherwise).")
     public ResponseEntity<GradeRecordDTO> getGradeRecordById(@PathVariable Long id, Authentication authentication) {
@@ -61,7 +61,7 @@ public class GradeRecordController {
     }
 
     @GetMapping("/student/{studentId}/semester/{semesterId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get every grade record for a student in one semester (all subjects, all component types)",
             description = "A STUDENT caller may only fetch their own grade records (403 otherwise).")
     public ResponseEntity<List<GradeRecordDTO>> getStudentSemesterGrades(
@@ -71,7 +71,7 @@ public class GradeRecordController {
     }
 
     @GetMapping("/student/{studentId}/summary")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Điểm TB môn học kỳ, per subject",
             description = "Σ(score × weight) / Σ(weight) for every subject the student has a grade record in for that semester. classification is not computed yet — see field description. A STUDENT caller may only fetch their own summary (403 otherwise).")
     public ResponseEntity<List<SubjectSemesterAverageDTO>> getStudentSemesterSummary(
@@ -81,7 +81,7 @@ public class GradeRecordController {
     }
 
     @GetMapping("/student/{studentId}/year-summary")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Điểm TB môn cả năm, per subject",
             description = "(ĐTB HK1 + ĐTB HK2 × 2) / 3 for every subject the student has a grade record in for that academic year. classification is not computed yet — see field description. A STUDENT caller may only fetch their own summary (403 otherwise).")
     public ResponseEntity<List<SubjectYearAverageDTO>> getStudentYearSummary(

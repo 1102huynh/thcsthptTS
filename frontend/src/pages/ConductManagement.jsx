@@ -26,6 +26,10 @@ function semesterLabel(s) {
 function ConductManagement() {
   const queryClient = useQueryClient();
   const role = getCurrentUser()?.role;
+  // Mức 2.1 (v4.9): PRINCIPAL reaches this page for read-only oversight -
+  // the conduct roster GET now allows PRINCIPAL, but every write endpoint
+  // still 403s them, so hide the save control and lock the inputs.
+  const readOnly = role === 'PRINCIPAL';
   const [classId, setClassId] = useState('');
   const [semesterId, setSemesterId] = useState('');
   const [ratingInputs, setRatingInputs] = useState({});
@@ -130,6 +134,12 @@ function ConductManagement() {
         <p className="text-sm text-muted-foreground">Đánh giá hạnh kiểm/rèn luyện theo lớp và học kỳ</p>
       </div>
 
+      {readOnly && (
+        <div className="rounded-lg border bg-muted/50 px-4 py-2 text-sm text-muted-foreground">
+          Chế độ chỉ xem (Hiệu trưởng) — việc nhập/sửa đánh giá do giáo viên chủ nhiệm thực hiện.
+        </div>
+      )}
+
       {!activeYear && academicYearsQuery.isSuccess && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
           Chưa có năm học đang hoạt động.
@@ -142,7 +152,7 @@ function ConductManagement() {
         </div>
       )}
 
-      {!myStaffId && staffQuery.isSuccess && (
+      {!myStaffId && !readOnly && staffQuery.isSuccess && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
           Tài khoản của bạn chưa được liên kết với hồ sơ nhân sự nên không thể lưu đánh giá mới (vẫn xem được bảng).
         </div>
@@ -188,13 +198,15 @@ function ConductManagement() {
                 {filledCount}/{roster.length} đã đánh giá · {semesterLabel(selectedSemester)}
               </CardDescription>
             </div>
-            <Button
-              onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending || loading || filledCount === 0 || !myStaffId}
-            >
-              <FiSave className="mr-2 h-4 w-4" />
-              {saveMutation.isPending ? 'Đang lưu...' : 'Lưu đánh giá'}
-            </Button>
+            {!readOnly && (
+              <Button
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending || loading || filledCount === 0 || !myStaffId}
+              >
+                <FiSave className="mr-2 h-4 w-4" />
+                {saveMutation.isPending ? 'Đang lưu...' : 'Lưu đánh giá'}
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -235,6 +247,7 @@ function ConductManagement() {
                           <Select
                             value={ratingInputs[entry.studentId] ?? ''}
                             onValueChange={(v) => setRatingInputs((prev) => ({ ...prev, [entry.studentId]: v }))}
+                            disabled={readOnly}
                           >
                             <SelectTrigger className="h-8 w-32" aria-label={`Xếp loại hạnh kiểm ${entry.studentName}`}>
                               <SelectValue placeholder="Chưa đánh giá" />
@@ -253,6 +266,7 @@ function ConductManagement() {
                             className="h-8"
                             placeholder="Ghi chú (không bắt buộc)"
                             aria-label={`Ghi chú hạnh kiểm ${entry.studentName}`}
+                            readOnly={readOnly}
                           />
                         </td>
                       </tr>

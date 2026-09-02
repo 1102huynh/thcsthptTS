@@ -45,7 +45,7 @@ public class FeeController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ACCOUNTANT', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'ACCOUNTANT', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get fee record by ID",
             description = "A STUDENT may only fetch their own fees; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<FeeDTO> getFeeById(@PathVariable Long id, Authentication authentication) {
@@ -54,7 +54,7 @@ public class FeeController {
     }
 
     @GetMapping("/student/{studentId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ACCOUNTANT', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'ACCOUNTANT', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get all fees for a student",
             description = "A STUDENT may only fetch their own fees; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<List<FeeDTO>> getStudentFees(@PathVariable Long studentId, Authentication authentication) {
@@ -63,7 +63,7 @@ public class FeeController {
     }
 
     @GetMapping("/student/{studentId}/year/{academicYear}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ACCOUNTANT', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'ACCOUNTANT', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get student fees by academic year",
             description = "A STUDENT may only fetch their own fees; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<List<FeeDTO>> getStudentFeesByYear(
@@ -75,7 +75,7 @@ public class FeeController {
     }
 
     @GetMapping("/student/{studentId}/pending")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ACCOUNTANT', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'ACCOUNTANT', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get pending fees for a student",
             description = "A STUDENT may only fetch their own fees; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<List<FeeDTO>> getStudentPendingFees(@PathVariable Long studentId, Authentication authentication) {
@@ -84,7 +84,7 @@ public class FeeController {
     }
 
     @GetMapping("/status/{status}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'ACCOUNTANT')")
     @Operation(summary = "Get fees by status")
     public ResponseEntity<List<FeeDTO>> getFeesByStatus(@PathVariable FeeStatus status) {
         List<FeeDTO> fees = feeService.getFeesByStatus(status);
@@ -92,7 +92,7 @@ public class FeeController {
     }
 
     @GetMapping("/year/{academicYear}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('ACCOUNTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'ACCOUNTANT')")
     @Operation(summary = "Get all fees by academic year",
             description = "Optional page/size query params paginate the result (0-indexed page); omit both to get the full list. Total count is returned in the X-Total-Count header when paginated.")
     public ResponseEntity<List<FeeDTO>> getFeesByAcademicYear(
@@ -123,7 +123,7 @@ public class FeeController {
     }
 
     @GetMapping("/student/{studentId}/total-dues")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ACCOUNTANT', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'ACCOUNTANT', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get total dues for a student",
             description = "A STUDENT may only fetch their own total dues; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<Double> getStudentTotalDues(@PathVariable Long studentId, Authentication authentication) {

@@ -5,6 +5,7 @@ import { format, subDays } from 'date-fns';
 import { FiCheck, FiSave, FiDownload } from 'react-icons/fi';
 import { attendanceService, schoolClassService, studentService, reportService } from '../services/dataService';
 import { triggerBlobDownload } from '../lib/download';
+import { getCurrentUser } from '../services/authService';
 import DatePicker from '../components/shared/DatePicker';
 import { TableRowsSkeleton } from '../components/shared/Skeleton';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
@@ -25,6 +26,10 @@ function classKey(c) { return `${c.className}|${c.section}`; }
 
 function AttendanceManagement() {
   const queryClient = useQueryClient();
+  // Mức 2.1 (v4.9): PRINCIPAL reaches this page read-only - attendance GETs
+  // now allow PRINCIPAL, but POST /v1/attendance* still 403s them, so the
+  // mark/save controls and the roster checkboxes are disabled.
+  const readOnly = getCurrentUser()?.role === 'PRINCIPAL';
   const [selectedKey, setSelectedKey] = useState('');
   const [date, setDate] = useState(new Date());
   const [presentIds, setPresentIds] = useState(new Set());
@@ -148,6 +153,12 @@ function AttendanceManagement() {
         <p className="text-sm text-muted-foreground">Điểm danh theo lớp và ngày</p>
       </div>
 
+      {readOnly && (
+        <div className="rounded-lg border bg-muted/50 px-4 py-2 text-sm text-muted-foreground">
+          Chế độ chỉ xem (Hiệu trưởng) — việc điểm danh do giáo viên thực hiện.
+        </div>
+      )}
+
       <Card>
         <CardContent className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -206,13 +217,15 @@ function AttendanceManagement() {
                 <FiDownload className="mr-2 h-4 w-4" />
                 {downloadAttendanceMutation.isPending ? 'Đang tải...' : `Xuất Excel (${RATE_WINDOW_DAYS} ngày qua)`}
               </Button>
-              <Button
-                onClick={() => markMutation.mutate()}
-                disabled={markMutation.isPending || loading || roster.length === 0}
-              >
-                <FiSave className="mr-2 h-4 w-4" />
-                {markMutation.isPending ? 'Đang lưu...' : alreadyMarked ? 'Cập nhật điểm danh' : 'Lưu điểm danh'}
-              </Button>
+              {!readOnly && (
+                <Button
+                  onClick={() => markMutation.mutate()}
+                  disabled={markMutation.isPending || loading || roster.length === 0}
+                >
+                  <FiSave className="mr-2 h-4 w-4" />
+                  {markMutation.isPending ? 'Đang lưu...' : alreadyMarked ? 'Cập nhật điểm danh' : 'Lưu điểm danh'}
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -246,7 +259,8 @@ function AttendanceManagement() {
                         <button
                           type="button"
                           onClick={() => toggleAll(presentIds.size < roster.length)}
-                          className="flex h-5 w-5 items-center justify-center rounded border border-input hover:bg-accent"
+                          disabled={readOnly}
+                          className="flex h-5 w-5 items-center justify-center rounded border border-input hover:bg-accent disabled:opacity-50"
                           aria-label="Chọn/bỏ chọn tất cả"
                         >
                           {presentIds.size === roster.length && <FiCheck className="h-4 w-4" />}
@@ -266,7 +280,8 @@ function AttendanceManagement() {
                             <button
                               type="button"
                               onClick={() => toggle(s.id)}
-                              className="flex h-5 w-5 items-center justify-center rounded border border-input hover:bg-accent"
+                              disabled={readOnly}
+                              className="flex h-5 w-5 items-center justify-center rounded border border-input hover:bg-accent disabled:opacity-50"
                               aria-label={`Điểm danh ${s.user?.firstName} ${s.user?.lastName}`}
                             >
                               {present && <FiCheck className="h-4 w-4" />}

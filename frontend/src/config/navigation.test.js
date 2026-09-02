@@ -26,6 +26,18 @@ describe('navigation config', () => {
     expect(teacherItems.some((i) => i.href === '/audit-log')).toBe(false);
   });
 
+  it('PRINCIPAL sees the read-only oversight pages (Mức 2.1)', () => {
+    const hrefs = navItemsForRole('PRINCIPAL').map((i) => i.href);
+    // learning/fee data pages the PRINCIPAL can now GET
+    for (const href of ['/attendance', '/grades', '/conduct', '/fees']) {
+      expect(hrefs).toContain(href);
+    }
+    // still no Dashboard (DashboardController 403s STUDENT but allows
+    // PRINCIPAL) - Dashboard stays, audit log stays ADMIN-only
+    expect(hrefs).toContain('/');
+    expect(hrefs).not.toContain('/audit-log');
+  });
+
   it('rolesForPath returns the allow-list for a known route, null otherwise', () => {
     expect(rolesForPath('/staff')).toEqual(['ADMIN', 'PRINCIPAL']);
     expect(rolesForPath('/no-such-route')).toBeNull();

@@ -44,7 +44,7 @@ public class GradeController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get grade record by ID",
             description = "A STUDENT may only fetch their own grades; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<GradeDTO> getGradeById(@PathVariable Long id, Authentication authentication) {
@@ -53,7 +53,7 @@ public class GradeController {
     }
 
     @GetMapping("/student/{studentId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get all grades for a student",
             description = "A STUDENT may only fetch their own grades; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<List<GradeDTO>> getStudentGrades(@PathVariable Long studentId, Authentication authentication) {
@@ -62,7 +62,7 @@ public class GradeController {
     }
 
     @GetMapping("/student/{studentId}/year/{academicYear}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get grades for student by academic year",
             description = "A STUDENT may only fetch their own grades; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<List<GradeDTO>> getStudentGradesByYear(
@@ -75,7 +75,7 @@ public class GradeController {
     }
 
     @GetMapping("/student/{studentId}/subject/{subject}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get grades for student by subject",
             description = "A STUDENT may only fetch their own grades; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<List<GradeDTO>> getStudentGradesBySubject(
@@ -88,7 +88,7 @@ public class GradeController {
     }
 
     @GetMapping("/year/{academicYear}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
     @Operation(summary = "Get all grades by academic year",
             description = "Optional page/size query params paginate the result (0-indexed page); omit both to get the full list. Total count is returned in the X-Total-Count header when paginated.")
     public ResponseEntity<List<GradeDTO>> getGradesByAcademicYear(
@@ -106,7 +106,7 @@ public class GradeController {
     }
 
     @GetMapping("/student/{studentId}/average")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get average percentage for student",
             description = "A STUDENT may only fetch their own average; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<Double> getStudentAveragePercentage(@PathVariable Long studentId, Authentication authentication) {
@@ -115,7 +115,7 @@ public class GradeController {
     }
 
     @GetMapping("/student/{studentId}/average/year/{academicYear}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get average percentage for student by academic year",
             description = "A STUDENT may only fetch their own average; a PARENT only their own child's (403 otherwise).")
     public ResponseEntity<Double> getStudentAveragePercentageByYear(
