@@ -225,6 +225,27 @@ export const conductService = {
   getClassSemesterRoster: (classId, semesterId) => api.get(`/v1/conduct/class/${classId}/semester/${semesterId}`),
 };
 
+// Promotion Service (Xét lên lớp/ở lại/tốt nghiệp) - getClassPreview is a
+// live, unsaved computation (nothing persisted until confirm); confirm
+// accepts an array so a whole class can be decided in one call
+// ("hỗ trợ ghi đè hàng loạt" per the plan - confirming again for the same
+// student+year overwrites the previous decision, it's not an error).
+export const promotionService = {
+  getClassPreview: (classId, academicYearId) =>
+    api.get(`/v1/promotions/class/${classId}/preview`, { params: { academicYearId } }),
+  confirm: (records) => api.post('/v1/promotions/confirm', records),
+  getStudentHistory: (studentId) => api.get(`/v1/promotions/student/${studentId}`),
+};
+
+// Promotion Threshold Config Service (Ngưỡng xét lên lớp) - ADMIN/PRINCIPAL
+// only, see PromotionThresholdController.
+export const promotionThresholdService = {
+  getAll: () => api.get('/v1/promotion-thresholds'),
+  create: (data) => api.post('/v1/promotion-thresholds', data),
+  update: (id, data) => api.put(`/v1/promotion-thresholds/${id}`, data),
+  delete: (id) => api.delete(`/v1/promotion-thresholds/${id}`),
+};
+
 // Audit Log Service (ADMIN only - see AuditLogController)
 export const auditLogService = {
   getRecent: (size = 5) => api.get('/v1/audit-logs', { params: { page: 0, size } }),
@@ -247,5 +268,7 @@ export default {
   gradeRecordService,
   gradeConfigService,
   conductService,
+  promotionService,
+  promotionThresholdService,
   auditLogService,
 };

@@ -9,6 +9,7 @@ import {
   FiCalendar,
   FiSettings,
   FiCheckSquare,
+  FiTrendingUp,
 } from 'react-icons/fi';
 
 // Shared between Sidebar (nav links) and Navbar (page title lookup by
@@ -68,6 +69,13 @@ export const NAV_ITEMS = [
   // reason as Grades: they can read their own conduct via
   // GET /v1/conduct/student/{id}, but no self-service page routes to it yet.
   { label: 'Conduct', href: '/conduct', icon: FiCheckSquare, roles: ['ADMIN', 'TEACHER'] },
+  // PRINCIPAL included (unlike Conduct/Grades) - PromotionController's
+  // confirm endpoint is ADMIN/PRINCIPAL only (a xét lên lớp decision is a
+  // Hội đồng-level call, not a per-class teacher one), and its preview
+  // endpoint is ADMIN/PRINCIPAL/TEACHER - the page itself gates the
+  // confirm button behind canConfirm and shows TEACHER a read-only
+  // suggestion table.
+  { label: 'Promotions', href: '/promotions', icon: FiTrendingUp, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
 ];
 
 export function navItemsForRole(role) {

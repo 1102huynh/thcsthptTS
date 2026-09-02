@@ -117,6 +117,16 @@ export const SEMESTER_NAME_LABELS = {
   HK2: 'Học kỳ 2',
 };
 
+// PromotionRecord.decision - LEN_LOP/O_LAI/TOT_NGHIEP are the only ones the
+// system ever suggests (PromotionService); RA_TRUONG (chuyển trường/thôi
+// học...) is always a manual pick, never a suggestion.
+export const PROMOTION_DECISION_LABELS = {
+  LEN_LOP: 'Lên lớp',
+  O_LAI: 'Ở lại',
+  TOT_NGHIEP: 'Tốt nghiệp',
+  RA_TRUONG: 'Ra trường',
+};
+
 // ConductRecord.rating - xếp loại hạnh kiểm/rèn luyện theo học kỳ, luôn đi
 // kèm song song với học lực trong học bạ (IMPLEMENTATION_PLAN.md 3.4).
 export const CONDUCT_RATING_LABELS = {

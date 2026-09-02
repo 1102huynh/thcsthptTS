@@ -2,15 +2,21 @@ import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
-import { subjectService, semesterService, gradeConfigService } from '../services/dataService';
+import { subjectService, semesterService, gradeConfigService, promotionThresholdService } from '../services/dataService';
 import DataTable from '../components/shared/DataTable';
 import SubjectFormDialog from './academic/SubjectFormDialog';
 import SemesterFormDialog from './academic/SemesterFormDialog';
 import GradeConfigFormDialog from './academic/GradeConfigFormDialog';
+import PromotionThresholdFormDialog from './academic/PromotionThresholdFormDialog';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
-import { SUBJECT_CATEGORY_LABELS, SEMESTER_NAME_LABELS, GRADE_COMPONENT_TYPE_LABELS } from '../lib/enumLabels';
+import {
+  SUBJECT_CATEGORY_LABELS,
+  SEMESTER_NAME_LABELS,
+  GRADE_COMPONENT_TYPE_LABELS,
+  CONDUCT_RATING_LABELS,
+} from '../lib/enumLabels';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -44,6 +50,10 @@ function AcademicConfig() {
   const gradeConfigsQuery = useQuery({
     queryKey: ['grade-configs'],
     queryFn: () => gradeConfigService.getAll().then((r) => r.data),
+  });
+  const promotionThresholdsQuery = useQuery({
+    queryKey: ['promotion-thresholds'],
+    queryFn: () => promotionThresholdService.getAll().then((r) => r.data),
   });
 
   // Subjects
@@ -86,6 +96,20 @@ function AcademicConfig() {
     },
     onError: (err) => toast.error(err?.response?.data?.message || err?.message || 'Không thể xóa hệ số điểm'),
     onSettled: () => setDeletingGradeConfig(null),
+  });
+
+  // Promotion thresholds (Ngưỡng xét lên lớp)
+  const [thresholdDialogOpen, setThresholdDialogOpen] = useState(false);
+  const [editingThreshold, setEditingThreshold] = useState(null);
+  const [deletingThreshold, setDeletingThreshold] = useState(null);
+  const deleteThresholdMutation = useMutation({
+    mutationFn: (id) => promotionThresholdService.delete(id),
+    onSuccess: () => {
+      toast.success('Đã xóa ngưỡng xét lên lớp');
+      queryClient.invalidateQueries({ queryKey: ['promotion-thresholds'] });
+    },
+    onError: (err) => toast.error(err?.response?.data?.message || err?.message || 'Không thể xóa ngưỡng xét lên lớp'),
+    onSettled: () => setDeletingThreshold(null),
   });
 
   const subjectColumns = useMemo(
@@ -219,6 +243,52 @@ function AcademicConfig() {
     []
   );
 
+  const thresholdColumns = useMemo(
+    () => [
+      { accessorKey: 'appliesFrom', header: 'Áp dụng từ năm học' },
+      { accessorKey: 'minSubjectAverage', header: 'Điểm TB môn tối thiểu' },
+      {
+        id: 'minConduct',
+        header: 'Hạnh kiểm tối thiểu',
+        cell: ({ row }) => CONDUCT_RATING_LABELS[row.original.minConduct] ?? row.original.minConduct,
+      },
+      {
+        id: 'maxAbsenceRate',
+        header: 'Tỷ lệ nghỉ tối đa',
+        cell: ({ row }) => `${row.original.maxAbsenceRate}%`,
+      },
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }) => (
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setEditingThreshold(row.original);
+                setThresholdDialogOpen(true);
+              }}
+              aria-label="Sửa"
+            >
+              <FiEdit2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setDeletingThreshold(row.original)}
+              aria-label="Xóa"
+            >
+              <FiTrash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -319,6 +389,39 @@ function AcademicConfig() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle>Ngưỡng xét lên lớp</CardTitle>
+            <CardDescription>
+              Dùng để gợi ý xét lên lớp/ở lại/tốt nghiệp cuối năm — không phải công thức xếp loại học lực chính
+              thức, quyết định cuối cùng luôn do con người xác nhận
+            </CardDescription>
+          </div>
+          <Button
+            onClick={() => {
+              setEditingThreshold(null);
+              setThresholdDialogOpen(true);
+            }}
+          >
+            <FiPlus className="mr-2 h-4 w-4" /> Thêm ngưỡng
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {promotionThresholdsQuery.isError && (
+            <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
+              Không tải được danh sách ngưỡng xét lên lớp.
+            </div>
+          )}
+          <DataTable
+            columns={thresholdColumns}
+            data={promotionThresholdsQuery.data ?? []}
+            isLoading={promotionThresholdsQuery.isLoading}
+            emptyMessage="Chưa có ngưỡng xét lên lớp nào — trang Xét lên lớp sẽ không đề xuất được quyết định cho tới khi cấu hình."
+          />
+        </CardContent>
+      </Card>
+
       <SubjectFormDialog
         key={`subject-${editingSubject?.id ?? 'create'}`}
         open={subjectDialogOpen}
@@ -336,6 +439,12 @@ function AcademicConfig() {
         open={gradeConfigDialogOpen}
         onOpenChange={setGradeConfigDialogOpen}
         config={editingGradeConfig}
+      />
+      <PromotionThresholdFormDialog
+        key={`threshold-${editingThreshold?.id ?? 'create'}`}
+        open={thresholdDialogOpen}
+        onOpenChange={setThresholdDialogOpen}
+        threshold={editingThreshold}
       />
 
       <AlertDialog open={Boolean(deletingSubject)} onOpenChange={(open) => !open && setDeletingSubject(null)}>
@@ -400,6 +509,28 @@ function AcademicConfig() {
               onClick={() => deleteGradeConfigMutation.mutate(deletingGradeConfig.id)}
             >
               {deleteGradeConfigMutation.isPending ? 'Đang xóa...' : 'Xóa'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={Boolean(deletingThreshold)} onOpenChange={(open) => !open && setDeletingThreshold(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa ngưỡng xét lên lớp?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn sắp xóa ngưỡng áp dụng từ năm học {deletingThreshold?.appliesFrom}. Trang Xét lên lớp sẽ không đề
+              xuất được quyết định cho năm học đó cho tới khi cấu hình lại. Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteThresholdMutation.isPending}
+              onClick={() => deleteThresholdMutation.mutate(deletingThreshold.id)}
+            >
+              {deleteThresholdMutation.isPending ? 'Đang xóa...' : 'Xóa'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
