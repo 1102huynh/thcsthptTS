@@ -19,6 +19,7 @@ function renderAt(entry, path, user) {
           }
         />
         <Route path="/" element={<div>PAGE: dashboard</div>} />
+        <Route path="/portal" element={<div>PAGE: portal</div>} />
         <Route path="/notifications" element={<div>PAGE: notifications</div>} />
       </Routes>
     </MemoryRouter>
@@ -39,9 +40,9 @@ describe('ProtectedRoute', () => {
     expect(screen.getByText('PAGE: dashboard')).toBeInTheDocument();
   });
 
-  it('sends a PARENT to /notifications (their only menu item) for a disallowed route', () => {
+  it('sends a PARENT to /portal (their default landing) for a disallowed route', () => {
     renderAt('/grades', '/grades', { role: 'PARENT' });
-    expect(screen.getByText('PAGE: notifications')).toBeInTheDocument();
+    expect(screen.getByText('PAGE: portal')).toBeInTheDocument();
   });
 
   it('leaves a route with no NAV_ITEMS entry open', () => {

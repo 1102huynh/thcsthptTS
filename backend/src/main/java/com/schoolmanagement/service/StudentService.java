@@ -99,6 +99,18 @@ public class StudentService {
         return mapToDTO(student);
     }
 
+    /**
+     * The student record linked to a given user account — backs
+     * {@code GET /v1/students/me} for the STUDENT self-service portal (C3).
+     * A 404 here means the account has the STUDENT role but no Student row
+     * points at it (a data-setup problem), not an auth failure.
+     */
+    public StudentDTO getStudentByUserId(Long userId) {
+        Student student = studentRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("No student profile is linked to this account"));
+        return mapToDTO(student);
+    }
+
     public List<StudentDTO> getAllStudents() {
         return studentRepository.findAll()
                 .stream()

@@ -1,11 +1,11 @@
 # KẾ HOẠCH PHÁT TRIỂN & NÂNG CẤP HỆ THỐNG QUẢN LÝ TRƯỜNG THCS-THPT (thcsthptTS)
 
-**Phiên bản 4.6 — ngày 02/09/2026**
-*(v4.6: **Giai đoạn A hoàn tất** — thêm A5 (dọn file rác + `.gitignore` gốc), A6 (Việt hoá nhãn menu), A7 (test `navigation`), A8 (gỡ `hasPermission` dead-code). v4.5: nhóm bảo mật frontend (A2/A3/A4/H.1 #2). Còn chặn duy nhất: B0 (xếp loại học lực — cần bảng ngưỡng). Xem "Nhật ký thay đổi".)*
+**Phiên bản 4.7 — ngày 02/09/2026**
+*(v4.7: **Giai đoạn C hoàn tất** — C3 (cổng tự phục vụ HS/PH `/portal`: điểm/điểm danh/học phí/hạnh kiểm; PARENT chọn con) + `GET /v1/students/me` + mở year/semester GET cho STUDENT/PARENT. v4.6: Giai đoạn A hoàn tất. v4.5: nhóm bảo mật frontend. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
 
 > **Tài liệu này là kế hoạch nâng cấp DUY NHẤT** — thay cho `IMPLEMENTATION_PLAN.md` (v3.1) và đã gộp cả 2 file phân quyền lẻ trước đây.
 
-> **⚡ Việc gấp nhất còn lại (chốt v4.6):** Giai đoạn A đã xong toàn bộ (A1–A9). Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Không chặn: gỡ `Grade` cũ (Quyết định E.1), C3 (cổng tự phục vụ HS/PH), D2 (nút tải báo cáo).
+> **⚡ Việc gấp nhất còn lại (chốt v4.7):** Giai đoạn A + C đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Không chặn: **D2** (nút tải báo cáo — rà đã gắn UI chưa), gỡ `Grade` cũ (Quyết định E.1), Mức 2.1 (PRINCIPAL xem dữ liệu học tập).
 
 *Tài liệu này được lập sau khi review lại **toàn bộ** mã nguồn hiện tại trên máy (`D:\sources\thcsthptTS` là **nguồn sự thật chính** — không dựa vào bản sao trong Claude Project). Khác với kế hoạch v3.1 (`IMPLEMENTATION_PLAN.md`) vốn là kế hoạch **xây mới từ đầu**, phiên bản 4.x xuất phát từ thực tế: **phần lớn kế hoạch v3.1 đã được hiện thực hoá ở backend**. Trọng tâm mới là (1) đưa năng lực backend đã có lên giao diện người dùng, (2) **hoàn tất phần backend còn dở** (xếp loại học lực), (3) trả nợ kỹ thuật, (4) nâng cấp lên mức vận hành thật cho một trường.*
 
@@ -48,7 +48,7 @@ Vite + Tailwind + shadcn/ui (bỏ CRA), dark mode, React Query, sonner, bộ com
 → Phần lớn Giai đoạn B–D của kế hoạch **đã có UI**: B1 (AcademicConfig), B2 (Grade→TT22), B3 (Conduct), B4 (Timetable), B5 (Promotions), C1 (Parents), C2 (Notifications), D1 (Admissions), D3 (Documents), D4 (AuditLog), D5 (Quên/Đặt lại mật khẩu) — đều đã lên trang.
 
 **Còn thiếu ở frontend:**
-- **Cổng tự phục vụ Học sinh & Phụ huynh (C3)** — `navigation.js` ghi rõ STUDENT/PARENT "chưa có trang nào route tới" cho điểm/hạnh kiểm/học phí của mình/con; PARENT hiện chỉ vào được Notifications.
+- ~~**Cổng tự phục vụ Học sinh & Phụ huynh (C3)**~~ ✅ **XONG (v4.7)** — trang `SelfServicePortal` (`/portal`): điểm/điểm danh/học phí/hạnh kiểm; PARENT chọn con. Backend thêm `GET /v1/students/me` + mở year/semester GET cho STUDENT/PARENT.
 - **Nút tải báo cáo** (học bạ PDF/điểm danh Excel/biên lai) — cần rà đã gắn vào trang chưa (D2).
 - ~~**`ProtectedRoute` chặn route theo vai trò**~~ ✅ **XONG (v4.5)** — `components/auth/ProtectedRoute.jsx` tra `rolesForPath()` trong `config/navigation.js`; sai vai trò → redirect về `defaultPathForRole()` (Dashboard, hoặc `/notifications` cho PARENT). `App.jsx` bọc mọi route qua `guarded()`. Có test `ProtectedRoute.test.jsx`.
 - ~~Nhãn menu tiếng Anh~~ ✅ **XONG (v4.6)** — đã Việt hoá toàn bộ `NAV_ITEMS` + `pageTitleForPath`.
@@ -143,11 +143,17 @@ Làm trước tất cả vì mọi trang mới đều dựa trên nền này.
 
 ### GIAI ĐOẠN C — Cổng phụ huynh, Sổ liên lạc & Tự phục vụ (2–3 tuần)
 
-- **C1.** Liên kết Phụ huynh–Học sinh (2 ngày): `POST/DELETE /v1/parents/{parentId}/children/{studentId}`, `GET /v1/parents/{parentId}/children` + tạo tài khoản PARENT qua `POST /v1/users`.
-- **C2.** Sổ liên lạc / Thông báo (4–5 ngày): soạn & gửi `POST /v1/notifications` (targetType CLASS/STUDENT/ALL_PARENTS/STAFF; channel APP/EMAIL — **SMS/ZALO hiện báo "chưa khả dụng"**, xem E1); "Thông báo của tôi" `GET /v1/notifications/my`, đánh dấu đã đọc.
-- **C3.** Cổng tự phục vụ HS & PH (5–6 ngày): layout/route riêng theo role STUDENT/PARENT — xem điểm, điểm danh + %, học phí + công nợ, sổ liên lạc; PARENT chọn giữa các con đã liên kết. Thêm mục điều hướng riêng cho 2 vai trò trong `navigation.js`.
+- **C1.** ✅ **XONG (từ trước)** — trang `Parents` (`ParentManagement`): link/unlink `/v1/parents/{parentId}/children/{studentId}`, `GET .../children`, tạo tài khoản PARENT qua `POST /v1/users`.
+- **C2.** ✅ **XONG (từ trước)** — trang `NotificationCenter`: soạn & gửi `POST /v1/notifications` (APP/EMAIL; SMS/ZALO báo 501), "Thông báo của tôi" `GET /v1/notifications/my` + đánh dấu đã đọc.
+- **C3.** ✅ **XONG (v4.7)** — trang `SelfServicePortal` (`/portal`), một trang phục vụ cả STUDENT (dữ liệu của mình) lẫn PARENT (chọn giữa các con đã liên kết), 4 tab:
+  - **Điểm** — chọn năm học + học kỳ; `GET /v1/grade-records/student/{id}/summary` (ĐTB môn HK) + `/year-summary` (ĐTB cả năm). Cột xếp loại hiện "—" cho tới khi B0 xong.
+  - **Điểm danh** — `GET /v1/attendance/student/{id}`; tính tỷ lệ chuyên cần (PRESENT+LATE)/tổng client-side + bảng 40 bản ghi gần nhất.
+  - **Học phí** — `GET /v1/fees/student/{id}` + `/total-dues`; stat tổng công nợ + bảng khoản thu.
+  - **Hạnh kiểm** — `GET /v1/conduct/student/{id}`.
+  - **Backend kèm theo:** `GET /v1/students/me` (STUDENT tự tra hồ sơ của mình — `AuthResponse` chỉ có `userId`); mở `GET /v1/academic-years*` và `/v1/semesters*` cho STUDENT/PARENT (read-only reference data). Điều hướng: thêm `{ href: '/portal', roles: ['STUDENT','PARENT'] }`, **bỏ STUDENT khỏi Dashboard** (DashboardController 403 với STUDENT), `LoginPage` điều hướng theo `defaultPathForRole`.
+  - Test: `StudentAccessSecurityTest` (+2 ca `/me`), `SelfServicePortal.test.jsx` (4 ca).
 
-**DoD:** phụ huynh xem đúng dữ liệu **con mình**; nhà trường gửi được thông báo APP/EMAIL và người nhận thấy trong "Thông báo của tôi".
+**DoD:** ✅ **ĐẠT** — phụ huynh xem đúng dữ liệu **con mình** (StudentAccessGuard chặn chéo ở tầng service); nhà trường gửi thông báo APP/EMAIL và người nhận thấy ở "Thông báo của tôi" (C2, có từ trước).
 
 ### GIAI ĐOẠN D — Tuyển sinh, Báo cáo, Tài liệu, Vận hành người dùng (2–3 tuần)
 
@@ -331,18 +337,19 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 | Dashboard | `GET /v1/dashboard/stats` | ✅ | ✅ | | | | | |
 | Nhật ký | `GET /v1/audit-logs` | ✅ | | | | | | |
 | Năm học | `POST,PUT,DELETE /v1/academic-years`, `/{id}/close` | ✅ | ✅ | | | | | |
-| Năm học | `GET /v1/academic-years`, `/{id}` | ✅ | ✅ | ✅ | | | | |
+| Năm học | `GET /v1/academic-years`, `/{id}` *(STUDENT/PARENT read-only, C3)* | ✅ | ✅ | ✅ | ✅ | ✅ | | |
 | Học kỳ | `POST,PUT,DELETE /v1/semesters` | ✅ | ✅ | | | | | |
-| Học kỳ | `GET /v1/semesters`, `/{id}`, `/academic-year/{id}` | ✅ | ✅ | ✅ | | | | |
+| Học kỳ | `GET /v1/semesters`, `/{id}`, `/academic-year/{id}` *(STUDENT/PARENT read-only, C3)* | ✅ | ✅ | ✅ | ✅ | ✅ | | |
 | Môn học | `POST,PUT,DELETE /v1/subjects` | ✅ | ✅ | | | | | |
 | Môn học | `GET /v1/subjects`, `/{id}` | ✅ | ✅ | ✅ | | | | |
 | Lớp học | `POST,PUT,DELETE /v1/classes`, `/{id}/teacher/{s}`, `/year/{y}` | ✅ | ✅ | | | | | |
 | Lớp học | `GET /v1/classes`, `/{id}`, `/{id}/students` | ✅ | ✅ | ✅ | | | | |
 | Học sinh | `POST,PUT,DELETE /v1/students`, `/active`, `/class/**` | ✅ | ✅ | *đọc lớp* | | | | |
 | Học sinh | `GET /v1/students` | ✅ | ✅ | ✅ | | | | |
-| Học sinh | `GET /v1/students/{id}`, `/roll/{roll}` ⚠️ | ✅ | ✅ | ✅ | ✅ | | | |
+| Học sinh | `GET /v1/students/{id}`, `/roll/{roll}` *(guard: STUDENT mình / PARENT con — v4.4)* | ✅ | ✅ | ✅ | *mình* | *con* | | |
+| Học sinh | `GET /v1/students/me` *(C3)* | | | | ✅ | | | |
 | Nhân sự | `POST,PUT,DELETE /v1/staff`, `/position/**`, `/department/**`, `/active` | ✅ | ✅ | | | | | |
-| Nhân sự | `GET /v1/staff`, `/{id}`, `/employee/{id}` ⚠️ | ✅ | ✅ | ✅ | ✅ | | | |
+| Nhân sự | `GET /v1/staff`, `/{id}`, `/employee/{id}` *(salary/PII redact ≠ ADMIN/PRINCIPAL — v4.5)* | ✅ | ✅ | ✅ | | | | |
 | Phân công GD | `POST,PUT,DELETE /v1/teaching-assignments` | ✅ | ✅ | | | | | |
 | Phân công GD | `GET /v1/teaching-assignments`, `/{id}` | ✅ | ✅ | ✅ | | | | |
 | Thời khoá biểu | `POST,PUT,DELETE /v1/timetable/slots` | ✅ | ✅ | | | | | |
@@ -383,6 +390,11 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 
 ## NHẬT KÝ THAY ĐỔI
 
+- **v4.7 (02/09/2026):** **Giai đoạn C hoàn tất** — C3 (C1/C2 đã có từ trước).
+  - **Frontend** — `pages/SelfServicePortal.jsx` (`/portal`), 1 trang cho cả STUDENT & PARENT, 4 tab: Điểm (chọn năm/HK → `summary` + `year-summary`), Điểm danh (`/student/{id}` + tỷ lệ chuyên cần client-side), Học phí (`/student/{id}` + `total-dues`), Hạnh kiểm (`/student/{id}`). PARENT có dropdown chọn con (`GET /v1/parents/{userId}/children`). `navigation.js`: thêm `/portal` (STUDENT/PARENT), **bỏ STUDENT khỏi Dashboard** (403). `LoginPage` điều hướng theo `defaultPathForRole(role)`.
+  - **Backend** — `GET /v1/students/me` (`StudentController` + `StudentService.getStudentByUserId`, `@PreAuthorize hasRole('STUDENT')`, 404 nếu chưa liên kết hồ sơ). Mở `GET` của `AcademicYearController` + `SemesterController` cho STUDENT/PARENT (reference data, read-only).
+  - **Test** — `StudentAccessSecurityTest` +2 ca (`/me` 200 cho STUDENT, 403 cho TEACHER/PARENT); `SelfServicePortal.test.jsx` 4 ca (resolve qua `getMe`, đổi tab tính %, không liên kết hồ sơ, PARENT có picker). `npm test` **32/32** (6 file); `npm run build` sạch; backend `test-compile` OK.
+  - **DoD Giai đoạn C: ĐẠT.** Việc chặn duy nhất còn lại: **B0**.
 - **v4.6 (02/09/2026):** đóng nốt **Giai đoạn A** (A5–A8).
   - **A8** — gỡ hẳn `authService.hasPermission` (dead code: đọc `user.permissions` không tồn tại → luôn `false`). Thêm ghi chú trỏ H.3.2. UI phân quyền theo `role` + `navigation.js`.
   - **A6** — Việt hoá toàn bộ nhãn `NAV_ITEMS` (`config/navigation.js`) + fallback `pageTitleForPath` ("Dashboard"→"Tổng quan"). Không còn nhãn tiếng Anh.

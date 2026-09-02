@@ -122,6 +122,24 @@ class StudentAccessSecurityTest {
                 user, null, List.of(new SimpleGrantedAuthority("ROLE_" + role))));
     }
 
+    // ---- GET /v1/students/me (C3 self-service portal) ----
+
+    @Test
+    void student_readsOwnRecordViaMe_returns200() throws Exception {
+        mockMvc.perform(get("/v1/students/me").with(asUser(studentUser, "STUDENT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(student.getId()))
+                .andExpect(jsonPath("$.rollNumber").value("ITEST-SAS-ROLL"));
+    }
+
+    @Test
+    void nonStudent_callsStudentsMe_returns403() throws Exception {
+        mockMvc.perform(get("/v1/students/me").with(asUser(teacherUser, "TEACHER")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/v1/students/me").with(asUser(parentUser, "PARENT")))
+                .andExpect(status().isForbidden());
+    }
+
     // ---- GET /v1/students/{id} and /roll/{rollNumber} ----
 
     @Test

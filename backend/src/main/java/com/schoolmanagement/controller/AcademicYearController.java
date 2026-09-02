@@ -36,15 +36,19 @@ public class AcademicYearController {
         return new ResponseEntity<>(academicYearService.updateAcademicYear(id, details), HttpStatus.OK);
     }
 
+    // STUDENT/PARENT read-only: the self-service portal (C3) needs the year
+    // list to drive its "học kỳ / năm học" picker for grades. This is
+    // low-sensitivity reference data (year name + date range + ACTIVE flag),
+    // no write access.
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get academic year by ID")
     public ResponseEntity<AcademicYearDTO> getAcademicYearById(@PathVariable Long id) {
         return new ResponseEntity<>(academicYearService.getAcademicYearById(id), HttpStatus.OK);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get all academic years")
     public ResponseEntity<List<AcademicYearDTO>> getAllAcademicYears() {
         return new ResponseEntity<>(academicYearService.getAllAcademicYears(), HttpStatus.OK);

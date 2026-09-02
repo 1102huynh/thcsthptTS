@@ -24,6 +24,7 @@ const NotificationCenter = lazy(() => import('./pages/NotificationCenter'));
 const AdmissionManagement = lazy(() => import('./pages/AdmissionManagement'));
 const AdmissionApplyPage = lazy(() => import('./pages/AdmissionApplyPage'));
 const AuditLogManagement = lazy(() => import('./pages/AuditLogManagement'));
+const SelfServicePortal = lazy(() => import('./pages/SelfServicePortal'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 
@@ -86,6 +87,7 @@ function App() {
           <Suspense fallback={<RoutePageSkeleton />}>
             <Routes>
               <Route path="/" element={guarded('/', <Dashboard user={user} />)} />
+              <Route path="/portal" element={guarded('/portal', <SelfServicePortal />)} />
               <Route path="/staff" element={guarded('/staff', <StaffManagement />)} />
               <Route path="/students" element={guarded('/students', <StudentManagement />)} />
               <Route path="/classes" element={guarded('/classes', <ClassManagement />)} />

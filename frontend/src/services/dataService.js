@@ -35,6 +35,10 @@ export const staffService = {
 export const studentService = {
   getAll: () => api.get('/v1/students'),
   getById: (id) => api.get(`/v1/students/${id}`),
+  // The calling STUDENT's own record (GET /v1/students/me) - the C3
+  // self-service portal has the user id from the JWT but not the student
+  // id every per-student endpoint needs.
+  getMe: () => api.get('/v1/students/me'),
   getByClass: (className, section) => api.get(`/v1/students/class/${className}/section/${section}`),
   create: (data) => api.post('/v1/students', data),
   update: (id, data) => api.put(`/v1/students/${id}`, data),

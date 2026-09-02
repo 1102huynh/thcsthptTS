@@ -14,6 +14,7 @@ import {
   FiBell,
   FiFileText,
   FiActivity,
+  FiUser,
 } from 'react-icons/fi';
 
 // Shared between Sidebar (nav links) and Navbar (page title lookup by
@@ -26,7 +27,17 @@ import {
 // page title shown in Navbar (pageTitleForPath), so they read as page
 // headings, not just nav links.
 export const NAV_ITEMS = [
-  { label: 'Tổng quan', href: '/', icon: FiHome, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'LIBRARIAN', 'ACCOUNTANT'] },
+  // DashboardController.getStats is ADMIN/PRINCIPAL only - TEACHER/STUDENT/
+  // LIBRARIAN/ACCOUNTANT used to be listed here too but every one of them
+  // 403s on the only request the page makes. TEACHER is kept (they have a
+  // real landing need and the page degrades to empty tiles rather than
+  // erroring hard); the self-service roles get "Trang của tôi" below
+  // instead, and LIBRARIAN/ACCOUNTANT fall through to Library/Fees.
+  { label: 'Tổng quan', href: '/', icon: FiHome, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
+  // C3 - the STUDENT/PARENT self-service portal (điểm, điểm danh, học phí,
+  // hạnh kiểm of themselves / their linked children). First item for both
+  // roles so it's where defaultPathForRole() lands them after login.
+  { label: 'Trang của tôi', href: '/portal', icon: FiUser, roles: ['STUDENT', 'PARENT'] },
   { label: 'Quản lý nhân sự', href: '/staff', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL'] },
   { label: 'Quản lý học sinh', href: '/students', icon: FiUsers, roles: ['ADMIN', 'PRINCIPAL', 'TEACHER'] },
   // TEACHER can view (SchoolClassController's GET is ADMIN/PRINCIPAL/

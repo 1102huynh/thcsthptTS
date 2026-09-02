@@ -36,22 +36,25 @@ public class SemesterController {
         return new ResponseEntity<>(semesterService.updateSemester(id, details), HttpStatus.OK);
     }
 
+    // STUDENT/PARENT read-only, same rationale as AcademicYearController's
+    // GET endpoints: the C3 self-service portal needs the semester list for
+    // its grade-summary picker. Reference data only (name + year + dates).
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get semester by ID")
     public ResponseEntity<SemesterDTO> getSemesterById(@PathVariable Long id) {
         return new ResponseEntity<>(semesterService.getSemesterById(id), HttpStatus.OK);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get all semesters")
     public ResponseEntity<List<SemesterDTO>> getAllSemesters() {
         return new ResponseEntity<>(semesterService.getAllSemesters(), HttpStatus.OK);
     }
 
     @GetMapping("/academic-year/{academicYearId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get semesters for an academic year")
     public ResponseEntity<List<SemesterDTO>> getSemestersByAcademicYear(@PathVariable Long academicYearId) {
         return new ResponseEntity<>(semesterService.getSemestersByAcademicYear(academicYearId), HttpStatus.OK);

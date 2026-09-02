@@ -33,8 +33,9 @@ describe('navigation config', () => {
 
   it('defaultPathForRole is the role’s first menu item', () => {
     expect(defaultPathForRole('ADMIN')).toBe('/');
-    // PARENT only has Notifications
-    expect(defaultPathForRole('PARENT')).toBe('/notifications');
+    // STUDENT/PARENT land on the C3 self-service portal
+    expect(defaultPathForRole('PARENT')).toBe('/portal');
+    expect(defaultPathForRole('STUDENT')).toBe('/portal');
   });
 
   it('pageTitleForPath falls back to the dashboard label', () => {

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import { FiBookOpen, FiEye, FiEyeOff, FiLoader } from 'react-icons/fi';
 import authService from '../services/authService';
+import { defaultPathForRole } from '../config/navigation';
 import { useAppForm, AppForm } from '../components/shared/Form';
 import { TextField } from '../components/shared/FormFields';
 import { Button } from '../components/ui/button';
@@ -33,7 +34,10 @@ function LoginPage({ onLogin }) {
       const userData = await authService.login(username, password);
       if (userData?.accessToken) {
         onLogin(userData);
-        navigate('/');
+        // Land each role on a page it can actually use - STUDENT/PARENT have
+        // no Dashboard (it 403s), they go straight to /portal. ProtectedRoute
+        // would bounce them there anyway; this just avoids the visible hop.
+        navigate(defaultPathForRole(userData.role));
       } else {
         toast.error('Đăng nhập thất bại: không nhận được access token');
       }

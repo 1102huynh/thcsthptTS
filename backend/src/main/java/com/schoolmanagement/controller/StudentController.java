@@ -45,6 +45,15 @@ public class StudentController {
         return new ResponseEntity<>(updatedStudent, HttpStatus.OK);
     }
 
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Get the calling student's own record",
+            description = "Resolves the Student row linked to the authenticated STUDENT account - the self-service portal (C3) has the user id from the JWT but not the student id. 404 if the account has no linked student profile.")
+    public ResponseEntity<StudentDTO> getMyStudentRecord(Authentication authentication) {
+        User requester = (User) authentication.getPrincipal();
+        return new ResponseEntity<>(studentService.getStudentByUserId(requester.getId()), HttpStatus.OK);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
     @Operation(summary = "Get student by ID",
