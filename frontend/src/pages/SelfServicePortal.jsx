@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { FiDownload } from 'react-icons/fi';
 import {
   studentService,
   parentService,
@@ -9,7 +11,9 @@ import {
   attendanceService,
   feeService,
   conductService,
+  reportService,
 } from '../services/dataService';
+import { triggerBlobDownload } from '../lib/download';
 import { getCurrentUser } from '../services/authService';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -211,9 +215,9 @@ function SelfServicePortal() {
         <TableRowsSkeleton rows={5} columns={4} />
       ) : (
         <>
-          {tab === 'grades' && <GradesTab studentId={studentId} />}
+          {tab === 'grades' && <GradesTab studentId={studentId} studentName={selected?.name} />}
           {tab === 'attendance' && <AttendanceTab studentId={studentId} />}
-          {tab === 'fees' && <FeesTab studentId={studentId} />}
+          {tab === 'fees' && <FeesTab studentId={studentId} studentName={selected?.name} />}
           {tab === 'conduct' && <ConductTab studentId={studentId} />}
         </>
       )}
@@ -222,7 +226,7 @@ function SelfServicePortal() {
 }
 
 // ---- Grades -------------------------------------------------------------
-function GradesTab({ studentId }) {
+function GradesTab({ studentId, studentName }) {
   const yearsQuery = useQuery({
     queryKey: ['portal', 'years'],
     queryFn: () => academicYearService.getAll().then((r) => r.data),
@@ -236,6 +240,17 @@ function GradesTab({ studentId }) {
       setYearId(active.id);
     }
   }, [years, yearId]);
+
+  const selectedYear = years.find((y) => y.id === yearId);
+
+  const downloadTranscript = useMutation({
+    mutationFn: () =>
+      triggerBlobDownload(
+        reportService.studentTranscript(studentId, yearId),
+        `hoc-ba-${(studentName ?? 'hoc-sinh').replace(/\s+/g, '-')}-${selectedYear?.name ?? yearId}.pdf`
+      ),
+    onError: (err) => toast.error(err.message || 'Không thể tải học bạ'),
+  });
 
   const semestersQuery = useQuery({
     queryKey: ['portal', 'semesters', yearId],
@@ -302,6 +317,16 @@ function GradesTab({ studentId }) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="flex items-end">
+          <Button
+            variant="outline"
+            onClick={() => downloadTranscript.mutate()}
+            disabled={!yearId || downloadTranscript.isPending}
+          >
+            <FiDownload className="mr-2 h-4 w-4" />
+            {downloadTranscript.isPending ? 'Đang tải...' : 'Tải học bạ (PDF)'}
+          </Button>
         </div>
       </div>
 
@@ -475,7 +500,7 @@ function AttendanceTab({ studentId }) {
 }
 
 // ---- Fees ----------------------------------------------------------
-function FeesTab({ studentId }) {
+function FeesTab({ studentId, studentName }) {
   const feesQuery = useQuery({
     queryKey: ['portal', 'fees', studentId],
     queryFn: () => feeService.getByStudent(studentId).then((r) => r.data),
@@ -487,6 +512,15 @@ function FeesTab({ studentId }) {
     enabled: Boolean(studentId),
   });
   const fees = feesQuery.data ?? [];
+
+  const downloadReceipt = useMutation({
+    mutationFn: (fee) =>
+      triggerBlobDownload(
+        reportService.feeReceipt(fee.id),
+        `bien-lai-${(studentName ?? 'hoc-sinh').replace(/\s+/g, '-')}-${fee.id}.pdf`
+      ),
+    onError: (err) => toast.error(err.message || 'Không thể tải biên lai'),
+  });
 
   if (feesQuery.isLoading) return <TableRowsSkeleton rows={6} columns={5} />;
 
@@ -518,6 +552,7 @@ function FeesTab({ studentId }) {
                   <TableHead className="text-right">Còn nợ</TableHead>
                   <TableHead>Hạn nộp</TableHead>
                   <TableHead>Trạng thái</TableHead>
+                  <TableHead className="text-right">Biên lai</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -532,6 +567,23 @@ function FeesTab({ studentId }) {
                       <Badge variant={f.status === 'PAID' ? 'secondary' : f.status === 'OVERDUE' ? 'destructive' : 'outline'}>
                         {FEE_STATUS_LABELS[f.status] ?? f.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {/* The receipt endpoint 400s for a fee with no payment
+                          recorded - only offer it once something's been paid. */}
+                      {(f.paidAmount ?? 0) > 0 ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => downloadReceipt.mutate(f)}
+                          disabled={downloadReceipt.isPending}
+                          aria-label={`Tải biên lai ${f.feeType}`}
+                        >
+                          <FiDownload className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

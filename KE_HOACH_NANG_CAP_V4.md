@@ -1,11 +1,11 @@
 # KẾ HOẠCH PHÁT TRIỂN & NÂNG CẤP HỆ THỐNG QUẢN LÝ TRƯỜNG THCS-THPT (thcsthptTS)
 
-**Phiên bản 4.7 — ngày 02/09/2026**
-*(v4.7: **Giai đoạn C hoàn tất** — C3 (cổng tự phục vụ HS/PH `/portal`: điểm/điểm danh/học phí/hạnh kiểm; PARENT chọn con) + `GET /v1/students/me` + mở year/semester GET cho STUDENT/PARENT. v4.6: Giai đoạn A hoàn tất. v4.5: nhóm bảo mật frontend. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
+**Phiên bản 4.8 — ngày 02/09/2026**
+*(v4.8: **Giai đoạn D rà soát xong** — D1–D5 đã có; D2 bổ sung nút tải học bạ PDF + biên lai PDF vào `SelfServicePortal`. v4.7: Giai đoạn C (C3 cổng tự phục vụ). v4.6: Giai đoạn A. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
 
 > **Tài liệu này là kế hoạch nâng cấp DUY NHẤT** — thay cho `IMPLEMENTATION_PLAN.md` (v3.1) và đã gộp cả 2 file phân quyền lẻ trước đây.
 
-> **⚡ Việc gấp nhất còn lại (chốt v4.7):** Giai đoạn A + C đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Không chặn: **D2** (nút tải báo cáo — rà đã gắn UI chưa), gỡ `Grade` cũ (Quyết định E.1), Mức 2.1 (PRINCIPAL xem dữ liệu học tập).
+> **⚡ Việc gấp nhất còn lại (chốt v4.7):** Giai đoạn A + C + D2 đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Không chặn: gỡ `Grade` cũ (Quyết định E.1), Mức 2.1 (PRINCIPAL xem dữ liệu học tập), D6 (trang quản lý tài khoản riêng — hiện gộp trong luồng nhân sự/phụ huynh).
 
 *Tài liệu này được lập sau khi review lại **toàn bộ** mã nguồn hiện tại trên máy (`D:\sources\thcsthptTS` là **nguồn sự thật chính** — không dựa vào bản sao trong Claude Project). Khác với kế hoạch v3.1 (`IMPLEMENTATION_PLAN.md`) vốn là kế hoạch **xây mới từ đầu**, phiên bản 4.x xuất phát từ thực tế: **phần lớn kế hoạch v3.1 đã được hiện thực hoá ở backend**. Trọng tâm mới là (1) đưa năng lực backend đã có lên giao diện người dùng, (2) **hoàn tất phần backend còn dở** (xếp loại học lực), (3) trả nợ kỹ thuật, (4) nâng cấp lên mức vận hành thật cho một trường.*
 
@@ -49,7 +49,7 @@ Vite + Tailwind + shadcn/ui (bỏ CRA), dark mode, React Query, sonner, bộ com
 
 **Còn thiếu ở frontend:**
 - ~~**Cổng tự phục vụ Học sinh & Phụ huynh (C3)**~~ ✅ **XONG (v4.7)** — trang `SelfServicePortal` (`/portal`): điểm/điểm danh/học phí/hạnh kiểm; PARENT chọn con. Backend thêm `GET /v1/students/me` + mở year/semester GET cho STUDENT/PARENT.
-- **Nút tải báo cáo** (học bạ PDF/điểm danh Excel/biên lai) — cần rà đã gắn vào trang chưa (D2).
+- ~~**Nút tải báo cáo**~~ ✅ **XONG (D2)** — học bạ PDF ở `GradeManagement` + `SelfServicePortal` (tab Điểm); điểm danh Excel ở `AttendanceManagement`; biên lai PDF ở `FeeManagement` + `SelfServicePortal` (tab Học phí, mỗi khoản đã nộp). Tất cả qua `lib/download.js triggerBlobDownload` (blob + tên file tiếng Việt + đọc message lỗi từ blob).
 - ~~**`ProtectedRoute` chặn route theo vai trò**~~ ✅ **XONG (v4.5)** — `components/auth/ProtectedRoute.jsx` tra `rolesForPath()` trong `config/navigation.js`; sai vai trò → redirect về `defaultPathForRole()` (Dashboard, hoặc `/notifications` cho PARENT). `App.jsx` bọc mọi route qua `guarded()`. Có test `ProtectedRoute.test.jsx`.
 - ~~Nhãn menu tiếng Anh~~ ✅ **XONG (v4.6)** — đã Việt hoá toàn bộ `NAV_ITEMS` + `pageTitleForPath`.
 
@@ -157,14 +157,14 @@ Làm trước tất cả vì mọi trang mới đều dựa trên nền này.
 
 ### GIAI ĐOẠN D — Tuyển sinh, Báo cáo, Tài liệu, Vận hành người dùng (2–3 tuần)
 
-- **D1.** Tuyển sinh (4–5 ngày): form nộp hồ sơ **công khai** `POST /v1/admissions` + trang ADMIN duyệt + `POST /v1/admissions/{id}/approve-and-create`; thông báo rate-limit thân thiện.
-- **D2.** Nút tải báo cáo (2–3 ngày): học bạ PDF (`/v1/reports/student/{id}/transcript`), điểm danh Excel (`/v1/reports/class/{id}/attendance`), biên lai PDF (`/v1/reports/fees/receipt/{feeId}`) — xử lý tải blob + tên file tiếng Việt.
-- **D3.** Upload/xem tài liệu đính kèm (3 ngày): component upload dùng lại (multipart ≤10MB), gắn hồ sơ HS/giáo viên (`/v1/documents`).
-- **D4.** Trang Nhật ký hoạt động đầy đủ (1–2 ngày): `/v1/audit-logs` phân trang + lọc actor/entity/thời gian (ADMIN).
-- **D5.** Trang Quên/Đặt lại mật khẩu (1–2 ngày): `/forgot-password` + `/reset-password?token=` khớp `FRONTEND_RESET_PASSWORD_URL`; link ở LoginPage.
-- **D6.** Trang Quản lý tài khoản người dùng (2 ngày): ADMIN tạo/khoá tài khoản với role tuỳ chọn (`POST /v1/users`).
+- **D1.** ✅ **XONG (từ trước)** — `AdmissionApplyPage` (công khai) + `AdmissionManagement` (duyệt + approve-and-create).
+- **D2.** ✅ **XONG (v4.8)** — học bạ PDF (`GradeManagement` + `SelfServicePortal`), điểm danh Excel (`AttendanceManagement`), biên lai PDF (`FeeManagement` + `SelfServicePortal`). Qua `lib/download.js`.
+- **D3.** ✅ **XONG (từ trước)** — `DocumentsDialog` (multipart ≤10MB, gắn owner HS/nhân sự).
+- **D4.** ✅ **XONG (từ trước)** — `AuditLogManagement` (phân trang + lọc entity/actor).
+- **D5.** ✅ **XONG (từ trước)** — `ForgotPasswordPage` + `ResetPasswordPage` + link ở `LoginPage`.
+- **D6.** ⚠️ **MỘT PHẦN** — tạo tài khoản đã có trong luồng `StaffManagement` (nhân sự) và `ParentManagement` (PARENT) qua `POST /v1/users`; **chưa có** trang ADMIN chuyên biệt để khoá/mở tài khoản bất kỳ vai trò. *(Không chặn — hạng mục nhỏ.)*
 
-**DoD:** phụ huynh nộp hồ sơ online → ADMIN duyệt → tài khoản HS tạo tự động; tải học bạ PDF & điểm danh Excel đúng dấu tiếng Việt; đặt lại mật khẩu qua email end-to-end.
+**DoD:** ✅ **PHẦN LỚN ĐẠT** — nộp hồ sơ online → duyệt → tạo tài khoản HS; tải học bạ PDF & điểm danh Excel; đặt lại mật khẩu qua email. Còn lại: D6 (trang quản lý tài khoản riêng).
 
 ### GIAI ĐOẠN E — Nâng cấp tính năng (theo ngân sách/nhu cầu, 3–5 tuần)
 
@@ -390,6 +390,12 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 
 ## NHẬT KÝ THAY ĐỔI
 
+- **v4.8 (02/09/2026):** rà soát **Giai đoạn D** — D1/D3/D4/D5 xác nhận đã có từ trước; **D2 hoàn tất**.
+  - `SelfServicePortal` tab **Điểm**: nút "Tải học bạ (PDF)" → `reportService.studentTranscript(studentId, yearId)`.
+  - `SelfServicePortal` tab **Học phí**: mỗi khoản đã nộp có nút tải **biên lai PDF** → `reportService.feeReceipt(feeId)` (ẩn nếu `paidAmount = 0` vì endpoint 400).
+  - Các trang quản lý (`GradeManagement`/`AttendanceManagement`/`FeeManagement`) đã có sẵn nút tải tương ứng từ trước — D2 chỉ còn thiếu phía self-service.
+  - Test `SelfServicePortal.test.jsx` +1 ca (click "Tải học bạ" → gọi đúng `studentTranscript(42, 1)`). `npm test` **33/33** (6 file); build sạch.
+  - **D6** còn một phần (tạo tài khoản đã nằm trong luồng nhân sự/phụ huynh; chưa có trang khoá/mở tài khoản riêng) — không chặn.
 - **v4.7 (02/09/2026):** **Giai đoạn C hoàn tất** — C3 (C1/C2 đã có từ trước).
   - **Frontend** — `pages/SelfServicePortal.jsx` (`/portal`), 1 trang cho cả STUDENT & PARENT, 4 tab: Điểm (chọn năm/HK → `summary` + `year-summary`), Điểm danh (`/student/{id}` + tỷ lệ chuyên cần client-side), Học phí (`/student/{id}` + `total-dues`), Hạnh kiểm (`/student/{id}`). PARENT có dropdown chọn con (`GET /v1/parents/{userId}/children`). `navigation.js`: thêm `/portal` (STUDENT/PARENT), **bỏ STUDENT khỏi Dashboard** (403). `LoginPage` điều hướng theo `defaultPathForRole(role)`.
   - **Backend** — `GET /v1/students/me` (`StudentController` + `StudentService.getStudentByUserId`, `@PreAuthorize hasRole('STUDENT')`, 404 nếu chưa liên kết hồ sơ). Mở `GET` của `AcademicYearController` + `SemesterController` cho STUDENT/PARENT (reference data, read-only).

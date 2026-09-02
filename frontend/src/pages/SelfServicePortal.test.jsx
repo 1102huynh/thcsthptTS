@@ -21,6 +21,8 @@ const svc = {
   feesByStudent: vi.fn(),
   feeDues: vi.fn(),
   conductByStudent: vi.fn(),
+  transcript: vi.fn(),
+  feeReceipt: vi.fn(),
 };
 
 vi.mock('../services/dataService', () => ({
@@ -38,6 +40,10 @@ vi.mock('../services/dataService', () => ({
     getTotalDues: (...a) => svc.feeDues(...a),
   },
   conductService: { getByStudent: (...a) => svc.conductByStudent(...a) },
+  reportService: {
+    studentTranscript: (...a) => svc.transcript(...a),
+    feeReceipt: (...a) => svc.feeReceipt(...a),
+  },
 }));
 
 import SelfServicePortal from './SelfServicePortal';
@@ -72,6 +78,10 @@ beforeEach(() => {
   svc.feesByStudent.mockResolvedValue({ data: [] });
   svc.feeDues.mockResolvedValue({ data: 0 });
   svc.conductByStudent.mockResolvedValue({ data: [] });
+  // triggerBlobDownload calls .text()/createObjectURL on the resolved value;
+  // a Blob keeps jsdom happy. The tests only assert the endpoint was hit.
+  svc.transcript.mockResolvedValue({ data: new Blob(['%PDF']) });
+  svc.feeReceipt.mockResolvedValue({ data: new Blob(['%PDF']) });
 });
 
 describe('SelfServicePortal', () => {
@@ -83,6 +93,14 @@ describe('SelfServicePortal', () => {
     expect(await screen.findByText('Toán')).toBeInTheDocument();
     expect(screen.getByText('8.4')).toBeInTheDocument();
     expect(svc.getChildren).not.toHaveBeenCalled();
+  });
+
+  it('downloads the học bạ PDF for the selected year from the grades tab', async () => {
+    const user = userEvent.setup();
+    renderPortal();
+    const btn = await screen.findByRole('button', { name: /Tải học bạ/ });
+    await user.click(btn);
+    expect(svc.transcript).toHaveBeenCalledWith(42, 1); // studentId, active yearId
   });
 
   it('switches to the attendance tab and computes the chuyên cần rate', async () => {
