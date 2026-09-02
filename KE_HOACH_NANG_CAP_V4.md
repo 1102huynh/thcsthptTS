@@ -1,11 +1,11 @@
 # KẾ HOẠCH PHÁT TRIỂN & NÂNG CẤP HỆ THỐNG QUẢN LÝ TRƯỜNG THCS-THPT (thcsthptTS)
 
-**Phiên bản 4.5 — ngày 02/09/2026**
-*(v4.5: đã hiện thực xong nhóm bảo mật frontend còn mở của v4.4 — A2 (gỡ log lộ token), A4 (refresh-token interceptor), A3 (`ProtectedRoute`), H.1 #2 (redact `salary`/PII trong `StaffDTO`). Còn chặn: B0 (xếp loại học lực — cần bảng ngưỡng). v4.4: re-review sau khi developer bắt tay sửa. Xem "Nhật ký thay đổi".)*
+**Phiên bản 4.6 — ngày 02/09/2026**
+*(v4.6: **Giai đoạn A hoàn tất** — thêm A5 (dọn file rác + `.gitignore` gốc), A6 (Việt hoá nhãn menu), A7 (test `navigation`), A8 (gỡ `hasPermission` dead-code). v4.5: nhóm bảo mật frontend (A2/A3/A4/H.1 #2). Còn chặn duy nhất: B0 (xếp loại học lực — cần bảng ngưỡng). Xem "Nhật ký thay đổi".)*
 
 > **Tài liệu này là kế hoạch nâng cấp DUY NHẤT** — thay cho `IMPLEMENTATION_PLAN.md` (v3.1) và đã gộp cả 2 file phân quyền lẻ trước đây.
 
-> **⚡ Việc gấp nhất còn lại (chốt v4.5):** (1) ~~gỡ `console.log` lộ access token~~ ✅ **XONG**; (2) ~~refresh-token interceptor (A4)~~ ✅ **XONG**; (3) ~~`ProtectedRoute` chặn route theo vai trò (A3)~~ ✅ **XONG**; (4) ~~redact `salary` trong `StaffDTO` (H.1 #2)~~ ✅ **XONG**; (5) **xếp loại học lực TT22** (B0) — *vẫn chặn*, cần bảng ngưỡng chuyên môn (Quyết định E.2). Kế đến: gỡ `Grade` cũ (E.1) + `hasPermission`/`permissions` (A8).
+> **⚡ Việc gấp nhất còn lại (chốt v4.6):** Giai đoạn A đã xong toàn bộ (A1–A9). Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Không chặn: gỡ `Grade` cũ (Quyết định E.1), C3 (cổng tự phục vụ HS/PH), D2 (nút tải báo cáo).
 
 *Tài liệu này được lập sau khi review lại **toàn bộ** mã nguồn hiện tại trên máy (`D:\sources\thcsthptTS` là **nguồn sự thật chính** — không dựa vào bản sao trong Claude Project). Khác với kế hoạch v3.1 (`IMPLEMENTATION_PLAN.md`) vốn là kế hoạch **xây mới từ đầu**, phiên bản 4.x xuất phát từ thực tế: **phần lớn kế hoạch v3.1 đã được hiện thực hoá ở backend**. Trọng tâm mới là (1) đưa năng lực backend đã có lên giao diện người dùng, (2) **hoàn tất phần backend còn dở** (xếp loại học lực), (3) trả nợ kỹ thuật, (4) nâng cấp lên mức vận hành thật cho một trường.*
 
@@ -51,7 +51,7 @@ Vite + Tailwind + shadcn/ui (bỏ CRA), dark mode, React Query, sonner, bộ com
 - **Cổng tự phục vụ Học sinh & Phụ huynh (C3)** — `navigation.js` ghi rõ STUDENT/PARENT "chưa có trang nào route tới" cho điểm/hạnh kiểm/học phí của mình/con; PARENT hiện chỉ vào được Notifications.
 - **Nút tải báo cáo** (học bạ PDF/điểm danh Excel/biên lai) — cần rà đã gắn vào trang chưa (D2).
 - ~~**`ProtectedRoute` chặn route theo vai trò**~~ ✅ **XONG (v4.5)** — `components/auth/ProtectedRoute.jsx` tra `rolesForPath()` trong `config/navigation.js`; sai vai trò → redirect về `defaultPathForRole()` (Dashboard, hoặc `/notifications` cho PARENT). `App.jsx` bọc mọi route qua `guarded()`. Có test `ProtectedRoute.test.jsx`.
-- Nhãn menu vẫn tiếng Anh ("Staff Management"...) — A6 chưa làm.
+- ~~Nhãn menu tiếng Anh~~ ✅ **XONG (v4.6)** — đã Việt hoá toàn bộ `NAV_ITEMS` + `pageTitleForPath`.
 
 ### A.3. Nợ kỹ thuật — trạng thái cập nhật (v4.4)
 
@@ -71,13 +71,19 @@ Vite + Tailwind + shadcn/ui (bỏ CRA), dark mode, React Query, sonner, bộ com
 - **[A3] `ProtectedRoute`** — xem A.2 ở trên.
 - **[H.1 #2] Redact `StaffDTO`** — `StaffController` 3 GET cho TEACHER (`/{id}`, `/employee/{id}`, `GET /v1/staff`) nhận `Authentication`; `redactSensitiveFields()` null hoá `salary`/`address`/`city`/`state`/`postalCode`/`emergencyContactName`/`emergencyContactPhone` cho vai trò ≠ ADMIN/PRINCIPAL. Thêm test `StaffIntegrationTest`: ADMIN thấy đủ, TEACHER bị redact (đơn + danh sách).
 
-**⚠️ CÒN MỞ (ưu tiên xử lý):**
+**✅ ĐÃ XỬ LÝ kể từ v4.5 (đóng nốt Giai đoạn A, code đổi 02/09):**
 
-1. **`hasPermission` vẫn dead code** — `AuthResponse` vẫn **không có** `permissions` → luôn trả `false`. (A8) — *khuyến nghị: bỏ hàm, phân quyền UI theo `role` (đã có sẵn hạ tầng qua `navigation.js`).*
-2. **Xếp loại học lực TT22/58 vẫn `null`** — `GradeRecordService`/`PromotionService` không đổi → **B0 chưa làm** (chặn bởi bảng ngưỡng chuyên môn — Quyết định E.2).
-3. **Hai mô hình điểm vẫn song song** — `Grade` cũ chưa `@Deprecated`/gỡ dù FE đã dùng `GradeRecord`.
-4. **Token `localStorage`** (XSS) → cân nhắc cookie `HttpOnly` (F3).
-5. **File rác gốc** (4 file 0 byte, `.idea/`, `backend/uploads/test/*.pdf`) vẫn commit; **`IMPLEMENTATION_PLAN.md`/`PROJECT_ANALYSIS_SUMMARY.md`** vẫn lỗi thời; nhãn menu tiếng Anh (A6); `lucide-react ^1.37.0` version lạ; **SMS/Zalo vẫn stub**.
+- **[A8] Gỡ `hasPermission`** — hàm dead-code (đọc `user.permissions`, luôn `false` vì `AuthResponse` không có field đó) đã bỏ khỏi `authService.js`; UI phân quyền qua `getUserRole()` + `navigation.js`. Không nơi nào gọi `hasPermission` (đã grep).
+- **[A6] Việt hoá nhãn menu** — `NAV_ITEMS` trong `config/navigation.js`: "Staff Management"→"Quản lý nhân sự", "Grades"→"Quản lý điểm", "Audit Log"→"Nhật ký hoạt động", ... `pageTitleForPath` fallback "Dashboard"→"Tổng quan". Không còn nhãn tiếng Anh.
+- **[A5] Dọn file rác** — xoá 4 file 0 byte gốc (`DOCUMENTATION_CLEANUP_SUMMARY.md`, `MYSQL_FINAL_SUMMARY.txt`, `PROJECT_INDEX.md`, `SETUP_COMPLETE.html`); `git rm --cached .idea/ thcsthptTS.iml`; thêm `.gitignore` ở repo gốc (`.idea/`, `*.iml`, `.vscode/`, `.env`, `/backend/uploads/`...). *(Ghi chú: `backend/uploads/**` PDF thực ra **chưa từng** bị track — `backend/.gitignore` đã có `/uploads/`; `IMPLEMENTATION_PLAN.md`/`PROJECT_ANALYSIS_SUMMARY.md` đã ở `archive/` từ v4.4.)*
+- **[A7] Test** — thêm `config/navigation.test.js` (5 ca: nhãn không còn tiếng Anh, `navItemsForRole`, `rolesForPath`, `defaultPathForRole`, `pageTitleForPath`). `npm test` xanh **28/28** (5 file).
+
+**⚠️ CÒN MỞ:**
+
+1. **Xếp loại học lực TT22/58 vẫn `null`** — `GradeRecordService`/`PromotionService` không đổi → **B0 chưa làm** (chặn bởi bảng ngưỡng chuyên môn — Quyết định E.2). *Đây là việc chặn duy nhất còn lại.*
+2. **Hai mô hình điểm vẫn song song** — `Grade` cũ chưa `@Deprecated`/gỡ dù FE đã dùng `GradeRecord` (Quyết định E.1).
+3. **Token `localStorage`** (XSS) → cân nhắc cookie `HttpOnly` (F3).
+4. `lucide-react ^1.37.0` version lạ; **SMS/Zalo vẫn stub** (E1).
 
 ---
 
@@ -105,13 +111,13 @@ Làm trước tất cả vì mọi trang mới đều dựa trên nền này.
 - **A2.** ✅ **XONG (v4.5)** — `authService.js` sạch `console.log/error`; `api.js` không log.
 - **A3.** ✅ **XONG (v4.5)** — `components/auth/ProtectedRoute.jsx` + `rolesForPath()`/`defaultPathForRole()` trong `config/navigation.js`; `App.jsx` bọc route qua `guarded()`; có `ProtectedRoute.test.jsx`.
 - **A4.** ✅ **XONG (v4.5)** — interceptor `api.js` gọi `POST /v1/auth/refresh-token`, queue request khi đang refresh, chỉ logout khi refresh hỏng.
-- **A5.** Dọn file rác (4 file 0 byte, `.idea/`, `backend/uploads/test/*.pdf`); thêm `.gitignore` ở repo gốc.
-- **A6.** Chuẩn hoá nhãn menu tiếng Việt trong `config/navigation.js`.
-- **A7.** ✅ **PHẦN LỚN** — Vitest + RTL đã có (`DataTable`/`DatePicker`/`Form`/`ProtectedRoute` test); còn `Form` mới có test cơ bản.
-- **A8.** Xử lý `hasPermission` (A.3.6): thêm `permissions` vào `AuthResponse` **hoặc** bỏ hàm, phân quyền UI theo `role`. *(còn mở — khuyến nghị bỏ hàm)*
+- **A5.** ✅ **XONG (v4.6)** — xoá 4 file 0 byte gốc; `git rm --cached .idea/ thcsthptTS.iml`; thêm `.gitignore` repo gốc.
+- **A6.** ✅ **XONG (v4.6)** — nhãn `NAV_ITEMS` + fallback `pageTitleForPath` đã Việt hoá toàn bộ.
+- **A7.** ✅ **XONG (v4.6)** — Vitest + RTL: `DataTable`/`DatePicker`/`Form`/`ProtectedRoute`/`navigation` (28 test).
+- **A8.** ✅ **XONG (v4.6)** — gỡ hẳn `hasPermission` (dead code), UI phân quyền theo `role`.
 - **A9. (Backend — bảo mật) Vá các lỗ hổng phân quyền ở Phần G:** trước hết là **IDOR hồ sơ học sinh** (G.2 mục 1) — `GET /v1/students/{id}` và `/roll/{rollNumber}` cho STUDENT nhưng **không áp `StudentAccessGuard`**; thêm guard hoặc bỏ STUDENT khỏi 2 endpoint này. Kèm rà `PUT /v1/notifications/{recipientId}/read` và `POST /v1/documents` (chỉ `authenticated()`, cần kiểm tra chủ sở hữu ở tầng service).
 
-**DoD:** build sạch không còn Bootstrap; đăng nhập không lộ token ở console; sai vai trò bị chặn route; token hết hạn tự refresh; `npm test` xanh; repo không còn file rác; **học sinh không đọc được hồ sơ học sinh khác**.
+**DoD:** ~~build sạch không còn Bootstrap; đăng nhập không lộ token ở console; sai vai trò bị chặn route; token hết hạn tự refresh; `npm test` xanh; repo không còn file rác; **học sinh không đọc được hồ sơ học sinh khác**.~~ → ✅ **ĐẠT (v4.6)** — tất cả các mục trên đã xong (IDOR vá ở v4.4; A2/A3/A4/H.1#2 ở v4.5; A5/A6/A7/A8 ở v4.6). *Còn thiếu bằng chứng: integration test khẳng định STUDENT gọi `GET /v1/students/{idNgườiKhác}` → 403 đã có (`StudentAccessSecurityTest`); cần chạy trên CI có MySQL.*
 
 ### GIAI ĐOẠN B — Hoàn tất học vụ TT22 (backend còn dở) + phủ UI học vụ (3–4 tuần)
 
@@ -377,6 +383,12 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 
 ## NHẬT KÝ THAY ĐỔI
 
+- **v4.6 (02/09/2026):** đóng nốt **Giai đoạn A** (A5–A8).
+  - **A8** — gỡ hẳn `authService.hasPermission` (dead code: đọc `user.permissions` không tồn tại → luôn `false`). Thêm ghi chú trỏ H.3.2. UI phân quyền theo `role` + `navigation.js`.
+  - **A6** — Việt hoá toàn bộ nhãn `NAV_ITEMS` (`config/navigation.js`) + fallback `pageTitleForPath` ("Dashboard"→"Tổng quan"). Không còn nhãn tiếng Anh.
+  - **A5** — xoá 4 file 0 byte gốc; `git rm --cached .idea/` (12 file) + `thcsthptTS.iml`; thêm `.gitignore` repo gốc. `backend/uploads` PDF vốn đã không bị track; 2 file tài liệu cũ đã ở `archive/` từ v4.4.
+  - **A7** — thêm `config/navigation.test.js` (5 ca). `npm test` xanh **28/28** (5 file); `npm run build` sạch.
+  - **DoD Giai đoạn A: ĐẠT.** Việc chặn duy nhất còn lại toàn kế hoạch: **B0** (bảng ngưỡng xếp loại học lực — Quyết định E.2).
 - **v4.5 (02/09/2026):** hiện thực xong nhóm bảo mật frontend còn mở của v4.4.
   - **A2** — `authService.login` gỡ hết `console.log`/`console.error` in token/response; `App.jsx handleLogout` xoá thêm `refreshToken`.
   - **A4** — `api.js` thêm refresh-token interceptor: 401 có token & không phải `/v1/auth/*` → 1 lần `POST /v1/auth/refresh-token` (`Authorization: Bearer <refreshToken>`), request đồng thời xếp `pendingQueue` chờ + retry; refresh hỏng → clear + redirect (chặn vòng lặp). Lưu `accessToken`/`refreshToken`/`user` mới.

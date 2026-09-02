@@ -1,0 +1,36 @@
+# Repo-root .gitignore (A5). backend/ and frontend/ keep their own; this
+# one covers things that land at the repository root - chiefly the IDE
+# project files that were committed by accident (.idea/, *.iml).
+
+# JetBrains IDEs (IntelliJ IDEA, DataGrip, ...)
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment / secrets - never commit; .env.example (if any) is the template
+.env
+.env.local
+*.local.env
+
+# Logs
+*.log
+logs/
+
+# Local uploaded files (also ignored under backend/.gitignore's /uploads/)
+/backend/uploads/
+
+# Editor backups
+*.bak
+*.orig
+*~

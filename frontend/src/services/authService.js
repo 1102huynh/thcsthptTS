@@ -75,11 +75,12 @@ export const authService = {
     return user?.role || null;
   },
 
-  // Check user permission
-  hasPermission: (permission) => {
-    const user = authService.getCurrentUser();
-    return user?.permissions?.includes(permission) || false;
-  },
+  // NOTE (A8): the old hasPermission(permission) helper was removed. It read
+  // user.permissions, but AuthResponse has never carried a `permissions`
+  // field (the backend gates everything by Role, and enum Permission /
+  // UserPermission are defined but unused - see KE_HOACH_NANG_CAP_V4.md
+  // H.3.2), so it was dead code that always returned false. UI authorization
+  // goes through getUserRole() + config/navigation.js instead.
 };
 
 export const getCurrentUser = () => authService.getCurrentUser();
