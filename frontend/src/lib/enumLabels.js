@@ -117,6 +117,16 @@ export const SEMESTER_NAME_LABELS = {
   HK2: 'Học kỳ 2',
 };
 
+// GradeRecord.componentType, theo Thông tư 22/2021 (tương thích TT58) -
+// mỗi loại có hệ số riêng, xem GradeComponentConfig / GradeManagement.
+export const GRADE_COMPONENT_TYPE_LABELS = {
+  MIENG: 'Miệng',
+  MUOI_LAM_PHUT: '15 phút',
+  MOT_TIET: '1 tiết',
+  GIUA_KY: 'Giữa kỳ',
+  CUOI_KY: 'Cuối kỳ',
+};
+
 // TimetableSlot.dayOfWeek follows the Vietnamese calendar convention: Thứ
 // Hai (Monday) = 2 ... Thứ Bảy (Saturday) = 7 (no Sunday classes).
 export const DAY_OF_WEEK_LABELS = {

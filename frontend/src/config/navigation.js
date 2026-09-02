@@ -31,11 +31,12 @@ export const NAV_ITEMS = [
   // (Tuần 4 Ngày 2), same root cause as the Dashboard stats bug (Tuần 3).
   { label: 'Attendance', href: '/attendance', icon: FiClipboard, roles: ['ADMIN', 'TEACHER'] },
   // STUDENT excluded for the same reason as PRINCIPAL was on Attendance
-  // above: the only thing at /grades right now is a grade-entry table
-  // (Tuần 4 Ngày 3-4) built on GET /v1/grades/year/{year}, which is
-  // hasAnyRole('ADMIN', 'TEACHER') only - a STUDENT has their own
-  // /v1/grades/student/{id} endpoint, but nothing in the frontend routes
-  // to it yet, so there's no page here for them to land on today.
+  // above: /grades is a grade-entry table (rebuilt Tuần 7 on the TT22/2021
+  // GradeRecord model, GradeRecordController write endpoints are
+  // hasAnyRole('ADMIN', 'TEACHER') only) - a STUDENT/PARENT can read their
+  // own grades via GET /v1/grade-records/student/{id}/..., but nothing in
+  // the frontend routes to it yet (a self-service view is a real future
+  // addition, not this one), so there's no page here for them to land on.
   { label: 'Grades', href: '/grades', icon: FiAward, roles: ['ADMIN', 'TEACHER'] },
   // STUDENT excluded for now, same reasoning pattern as Attendance/Grades
   // above: unlike those two, FeeController genuinely does let a STUDENT

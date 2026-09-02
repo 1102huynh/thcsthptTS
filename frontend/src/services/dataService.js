@@ -183,6 +183,35 @@ export const timetableService = {
   deleteSlot: (id) => api.delete(`/v1/timetable/slots/${id}`),
 };
 
+// Grade Record Service (Điểm số theo TT22/2021, thang điểm 10) - supersedes
+// gradeService's percentage-based model above (kept untouched for Phase
+// 1-2 compatibility, not used by GradeManagement any more). No
+// by-class/by-subject bulk endpoint exists (GradeRecordController only has
+// per-student queries) - GradeManagement fetches per-student in parallel
+// for the selected class roster, same "no bulk endpoint, fetch+filter"
+// pattern as teachingAssignmentService above.
+export const gradeRecordService = {
+  create: (data) => api.post('/v1/grade-records', data),
+  update: (id, data) => api.put(`/v1/grade-records/${id}`, data),
+  delete: (id) => api.delete(`/v1/grade-records/${id}`),
+  getById: (id) => api.get(`/v1/grade-records/${id}`),
+  getStudentSemesterGrades: (studentId, semesterId) =>
+    api.get(`/v1/grade-records/student/${studentId}/semester/${semesterId}`),
+  getStudentSemesterSummary: (studentId, semesterId) =>
+    api.get(`/v1/grade-records/student/${studentId}/summary`, { params: { semesterId } }),
+  getStudentYearSummary: (studentId, academicYearId) =>
+    api.get(`/v1/grade-records/student/${studentId}/year-summary`, { params: { academicYearId } }),
+};
+
+// Grade Component Config Service (hệ số điểm miệng/15 phút/1 tiết/giữa kỳ/
+// cuối kỳ, theo năm học áp dụng) - ADMIN only, see GradeConfigController.
+export const gradeConfigService = {
+  getAll: () => api.get('/v1/grade-config'),
+  create: (data) => api.post('/v1/grade-config', data),
+  update: (id, data) => api.put(`/v1/grade-config/${id}`, data),
+  delete: (id) => api.delete(`/v1/grade-config/${id}`),
+};
+
 // Audit Log Service (ADMIN only - see AuditLogController)
 export const auditLogService = {
   getRecent: (size = 5) => api.get('/v1/audit-logs', { params: { page: 0, size } }),
@@ -202,5 +231,7 @@ export default {
   semesterService,
   teachingAssignmentService,
   timetableService,
+  gradeRecordService,
+  gradeConfigService,
   auditLogService,
 };

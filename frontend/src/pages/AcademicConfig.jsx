@@ -2,14 +2,15 @@ import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
-import { subjectService, semesterService } from '../services/dataService';
+import { subjectService, semesterService, gradeConfigService } from '../services/dataService';
 import DataTable from '../components/shared/DataTable';
 import SubjectFormDialog from './academic/SubjectFormDialog';
 import SemesterFormDialog from './academic/SemesterFormDialog';
+import GradeConfigFormDialog from './academic/GradeConfigFormDialog';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
-import { SUBJECT_CATEGORY_LABELS, SEMESTER_NAME_LABELS } from '../lib/enumLabels';
+import { SUBJECT_CATEGORY_LABELS, SEMESTER_NAME_LABELS, GRADE_COMPONENT_TYPE_LABELS } from '../lib/enumLabels';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -40,6 +41,10 @@ function AcademicConfig() {
     queryKey: ['semesters'],
     queryFn: () => semesterService.getAll().then((r) => r.data),
   });
+  const gradeConfigsQuery = useQuery({
+    queryKey: ['grade-configs'],
+    queryFn: () => gradeConfigService.getAll().then((r) => r.data),
+  });
 
   // Subjects
   const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
@@ -67,6 +72,20 @@ function AcademicConfig() {
     },
     onError: (err) => toast.error(err?.response?.data?.message || err?.message || 'Không thể xóa học kỳ'),
     onSettled: () => setDeletingSemester(null),
+  });
+
+  // Grade component weight configs (Hệ số điểm)
+  const [gradeConfigDialogOpen, setGradeConfigDialogOpen] = useState(false);
+  const [editingGradeConfig, setEditingGradeConfig] = useState(null);
+  const [deletingGradeConfig, setDeletingGradeConfig] = useState(null);
+  const deleteGradeConfigMutation = useMutation({
+    mutationFn: (id) => gradeConfigService.delete(id),
+    onSuccess: () => {
+      toast.success('Đã xóa hệ số điểm');
+      queryClient.invalidateQueries({ queryKey: ['grade-configs'] });
+    },
+    onError: (err) => toast.error(err?.response?.data?.message || err?.message || 'Không thể xóa hệ số điểm'),
+    onSettled: () => setDeletingGradeConfig(null),
   });
 
   const subjectColumns = useMemo(
@@ -159,6 +178,47 @@ function AcademicConfig() {
     []
   );
 
+  const gradeConfigColumns = useMemo(
+    () => [
+      {
+        id: 'componentType',
+        header: 'Loại điểm',
+        cell: ({ row }) => GRADE_COMPONENT_TYPE_LABELS[row.original.componentType] ?? row.original.componentType,
+      },
+      { accessorKey: 'weight', header: 'Hệ số' },
+      { accessorKey: 'appliesFrom', header: 'Áp dụng từ năm học' },
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }) => (
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setEditingGradeConfig(row.original);
+                setGradeConfigDialogOpen(true);
+              }}
+              aria-label="Sửa"
+            >
+              <FiEdit2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setDeletingGradeConfig(row.original)}
+              aria-label="Xóa"
+            >
+              <FiTrash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -226,6 +286,39 @@ function AcademicConfig() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle>Hệ số điểm</CardTitle>
+            <CardDescription>
+              Hệ số nhân theo loại điểm khi tính điểm trung bình môn (Σ(điểm × hệ số) / Σ(hệ số)) — theo Thông tư
+              22/2021, tương thích TT58
+            </CardDescription>
+          </div>
+          <Button
+            onClick={() => {
+              setEditingGradeConfig(null);
+              setGradeConfigDialogOpen(true);
+            }}
+          >
+            <FiPlus className="mr-2 h-4 w-4" /> Thêm hệ số
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {gradeConfigsQuery.isError && (
+            <div className="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
+              Không tải được danh sách hệ số điểm.
+            </div>
+          )}
+          <DataTable
+            columns={gradeConfigColumns}
+            data={gradeConfigsQuery.data ?? []}
+            isLoading={gradeConfigsQuery.isLoading}
+            emptyMessage="Chưa có hệ số điểm nào — bảng điểm sẽ không tính được điểm trung bình cho tới khi cấu hình đủ 5 loại điểm."
+          />
+        </CardContent>
+      </Card>
+
       <SubjectFormDialog
         key={`subject-${editingSubject?.id ?? 'create'}`}
         open={subjectDialogOpen}
@@ -237,6 +330,12 @@ function AcademicConfig() {
         open={semesterDialogOpen}
         onOpenChange={setSemesterDialogOpen}
         semester={editingSemester}
+      />
+      <GradeConfigFormDialog
+        key={`grade-config-${editingGradeConfig?.id ?? 'create'}`}
+        open={gradeConfigDialogOpen}
+        onOpenChange={setGradeConfigDialogOpen}
+        config={editingGradeConfig}
       />
 
       <AlertDialog open={Boolean(deletingSubject)} onOpenChange={(open) => !open && setDeletingSubject(null)}>
@@ -277,6 +376,30 @@ function AcademicConfig() {
               onClick={() => deleteSemesterMutation.mutate(deletingSemester.id)}
             >
               {deleteSemesterMutation.isPending ? 'Đang xóa...' : 'Xóa'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={Boolean(deletingGradeConfig)} onOpenChange={(open) => !open && setDeletingGradeConfig(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa hệ số điểm?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn sắp xóa hệ số{' '}
+              {deletingGradeConfig ? GRADE_COMPONENT_TYPE_LABELS[deletingGradeConfig.componentType] ?? deletingGradeConfig.componentType : ''}{' '}
+              ({deletingGradeConfig?.appliesFrom}). Điểm trung bình sẽ không tính được cho loại điểm này ở năm học đó
+              cho tới khi cấu hình lại. Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteGradeConfigMutation.isPending}
+              onClick={() => deleteGradeConfigMutation.mutate(deletingGradeConfig.id)}
+            >
+              {deleteGradeConfigMutation.isPending ? 'Đang xóa...' : 'Xóa'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

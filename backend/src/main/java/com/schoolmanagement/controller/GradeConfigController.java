@@ -37,14 +37,18 @@ public class GradeConfigController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     @Operation(summary = "Get a grade component weight config by ID")
     public ResponseEntity<GradeComponentConfigDTO> getConfigById(@PathVariable Long id) {
         return new ResponseEntity<>(gradeComponentConfigService.getConfigById(id), HttpStatus.OK);
     }
 
+    // TEACHER (unlike the write endpoints below) can read these - a teacher
+    // entering grades needs the weights to make sense of/preview "TB môn"
+    // averages client-side (GradeManagement.jsx), the same reasoning
+    // TimetableController's read side is broader than its write side.
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     @Operation(summary = "Get all grade component weight configs")
     public ResponseEntity<List<GradeComponentConfigDTO>> getAllConfigs() {
         return new ResponseEntity<>(gradeComponentConfigService.getAllConfigs(), HttpStatus.OK);

@@ -3,46 +3,74 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { FiSave } from 'react-icons/fi';
 import {
-  gradeService,
+  gradeRecordService,
+  gradeConfigService,
   schoolClassService,
   studentService,
   academicYearService,
+  semesterService,
+  subjectService,
   staffService,
 } from '../services/dataService';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { TableRowsSkeleton } from '../components/shared/Skeleton';
+import { GRADE_COMPONENT_TYPE_LABELS, SEMESTER_NAME_LABELS } from '../lib/enumLabels';
 
-const SUBJECTS = ['Toán', 'Ngữ văn', 'Tiếng Anh', 'Vật lý', 'Hóa học', 'Sinh học', 'Lịch sử', 'Địa lý', 'GDCD', 'Tin học', 'Thể dục', 'Công nghệ'];
-const EXAM_TYPES = ['Miệng', '15 phút', '1 tiết', 'Giữa kỳ', 'Cuối kỳ'];
-const DEFAULT_TOTAL_MARKS = 10;
+const COMPONENT_TYPES = Object.keys(GRADE_COMPONENT_TYPE_LABELS);
+// Matches the old page's default (EXAM_TYPES[3] = 'Giữa kỳ') so a teacher
+// used to the previous model lands on a familiar default.
+const DEFAULT_COMPONENT_TYPE = 'GIUA_KY';
 
 function classKey(c) { return `${c.className}|${c.section}`; }
 
-// Mirrors GradeService.calculateGrade() server-side exactly, for an
-// immediate preview - the server recomputes authoritatively on save either
-// way, this is just so the table doesn't sit blank until the round-trip.
-function letterGrade(percentage) {
-  if (percentage == null || Number.isNaN(percentage)) return null;
-  if (percentage >= 90) return 'A+';
-  if (percentage >= 80) return 'A';
-  if (percentage >= 70) return 'B+';
-  if (percentage >= 60) return 'B';
-  if (percentage >= 50) return 'C';
-  if (percentage >= 40) return 'D';
-  return 'F';
+function extractStartYear(academicYearName) {
+  const m = /^(\d{4})-\d{4}$/.exec(academicYearName ?? '');
+  return m ? Number(m[1]) : null;
+}
+
+// Mirrors GradeRecordService.resolveWeight() server-side exactly: the
+// config row for this componentType with the latest appliesFrom <= the
+// target academic year.
+function resolveWeight(componentType, academicYearName, configs) {
+  const target = extractStartYear(academicYearName);
+  if (target == null) return null;
+  return configs
+    .filter((c) => c.componentType === componentType && extractStartYear(c.appliesFrom) <= target)
+    .sort((a, b) => extractStartYear(b.appliesFrom) - extractStartYear(a.appliesFrom))[0]?.weight ?? null;
+}
+
+// Mirrors GradeRecordService.calculateWeightedAverage(): Σ(score × weight)
+// / Σ(weight). Returns null (not a partial guess) if any component type
+// present has no matching config - the real backend summary endpoint would
+// 404 in that same situation (resolveWeight throws), so a silent partial
+// average here would just be wrong, not merely incomplete.
+function weightedAverage(records, academicYearName, configs) {
+  if (!records.length) return null;
+  let weightedSum = 0;
+  let weightSum = 0;
+  for (const r of records) {
+    const weight = resolveWeight(r.componentType, academicYearName, configs);
+    if (weight == null) return null;
+    weightedSum += r.score * weight;
+    weightSum += weight;
+  }
+  return weightSum > 0 ? Math.round((weightedSum / weightSum) * 100) / 100 : null;
+}
+
+function semesterLabel(s) {
+  return `${s.academicYearName} - ${SEMESTER_NAME_LABELS[s.name] ?? s.name}`;
 }
 
 function GradeManagement() {
   const queryClient = useQueryClient();
   const [selectedKey, setSelectedKey] = useState('');
-  const [subject, setSubject] = useState(SUBJECTS[0]);
-  const [examType, setExamType] = useState(EXAM_TYPES[3]);
-  const [totalMarks, setTotalMarks] = useState(DEFAULT_TOTAL_MARKS);
-  const [marksInput, setMarksInput] = useState({});
+  const [semesterId, setSemesterId] = useState('');
+  const [subjectId, setSubjectId] = useState('');
+  const [componentType, setComponentType] = useState(DEFAULT_COMPONENT_TYPE);
+  const [scoreInput, setScoreInput] = useState({});
 
   const classesQuery = useQuery({ queryKey: ['classes'], queryFn: () => schoolClassService.getAll().then((r) => r.data) });
   useEffect(() => {
@@ -51,9 +79,27 @@ function GradeManagement() {
   const selectedClass = classesQuery.data?.find((c) => classKey(c) === selectedKey);
 
   const academicYearsQuery = useQuery({ queryKey: ['academic-years'], queryFn: () => academicYearService.getAll().then((r) => r.data) });
-  const academicYear = academicYearsQuery.data?.find((y) => y.status === 'ACTIVE')?.name;
+  const activeYear = academicYearsQuery.data?.find((y) => y.status === 'ACTIVE');
+
+  const semestersQuery = useQuery({
+    queryKey: ['semesters-by-year', activeYear?.id],
+    queryFn: () => semesterService.getByAcademicYear(activeYear.id).then((r) => r.data),
+    enabled: Boolean(activeYear),
+  });
+  useEffect(() => {
+    if (!semesterId && semestersQuery.data?.length) setSemesterId(String(semestersQuery.data[0].id));
+  }, [semestersQuery.data, semesterId]);
+  const selectedSemester = semestersQuery.data?.find((s) => String(s.id) === semesterId);
+
+  const subjectsQuery = useQuery({ queryKey: ['subjects'], queryFn: () => subjectService.getAll().then((r) => r.data) });
+  useEffect(() => {
+    if (!subjectId && subjectsQuery.data?.length) setSubjectId(String(subjectsQuery.data[0].id));
+  }, [subjectsQuery.data, subjectId]);
+
+  const gradeConfigsQuery = useQuery({ queryKey: ['grade-configs'], queryFn: () => gradeConfigService.getAll().then((r) => r.data) });
 
   const staffQuery = useQuery({ queryKey: ['staff-lookup'], queryFn: () => staffService.getAll().then((r) => r.data) });
+  const myStaffId = staffQuery.data?.find((s) => s.user?.id === JSON.parse(localStorage.getItem('user') || '{}').userId)?.id;
 
   const rosterQuery = useQuery({
     queryKey: ['grade-roster', selectedClass?.className, selectedClass?.section],
@@ -61,80 +107,68 @@ function GradeManagement() {
     enabled: Boolean(selectedClass),
   });
   const roster = rosterQuery.data ?? [];
-  const rosterIds = useMemo(() => new Set(roster.map((s) => s.id)), [roster]);
 
-  // No "grades by class+subject" endpoint exists (GradeController only has
-  // per-student and school-wide-by-year queries) - fetch the whole year's
-  // grades (ADMIN/TEACHER only, matches this page's audience) and filter
-  // client-side to this roster+subject+examType. Same pattern as
-  // AttendanceManagement's getByDate. Fine at this school's data scale;
-  // would need a real by-class endpoint at a much larger scale.
-  const yearGradesQuery = useQuery({
-    queryKey: ['grades-by-year', academicYear],
-    queryFn: () => gradeService.getByYear(academicYear).then((r) => r.data),
-    enabled: Boolean(academicYear),
+  // Per-student grade records for the selected semester (every subject,
+  // every component type) - no by-class bulk endpoint exists
+  // (GradeRecordController only has per-student queries, see
+  // gradeRecordService's comment in dataService.js), so fetch in parallel
+  // for the roster, same "no bulk endpoint, fetch+filter" pattern as
+  // teachingAssignmentService/gradeService's getByYear elsewhere in this
+  // app. Reused for both the editable "Điểm" column (filtered to the
+  // selected subject+componentType) and the read-only "TB môn HK" column
+  // (all of that subject's component types).
+  const rosterGradesQuery = useQuery({
+    queryKey: ['grade-records-roster', semesterId, roster.map((s) => s.id).join(',')],
+    queryFn: async () => {
+      const entries = await Promise.all(
+        roster.map(async (s) => {
+          const res = await gradeRecordService.getStudentSemesterGrades(s.id, semesterId);
+          return [s.id, res.data];
+        })
+      );
+      return new Map(entries);
+    },
+    enabled: Boolean(semesterId) && roster.length > 0,
   });
+  const gradesByStudent = rosterGradesQuery.data ?? new Map();
 
   const existingByStudentId = useMemo(() => {
     const map = new Map();
-    for (const g of yearGradesQuery.data ?? []) {
-      if (rosterIds.has(g.studentId) && g.subject === subject && g.examType === examType) {
-        map.set(g.studentId, g);
-      }
+    for (const [studentId, records] of gradesByStudent) {
+      const match = records.find((r) => String(r.subjectId) === subjectId && r.componentType === componentType);
+      if (match) map.set(studentId, match);
     }
     return map;
-  }, [yearGradesQuery.data, rosterIds, subject, examType]);
+  }, [gradesByStudent, subjectId, componentType]);
 
-  // Re-seed the input state whenever the roster/subject/examType selection
-  // changes - pre-fill from existing records, blank otherwise.
+  // Re-seed the input state whenever the roster/subject/componentType
+  // selection changes - pre-fill from existing records, blank otherwise.
   useEffect(() => {
     const next = {};
     for (const s of roster) {
       const existing = existingByStudentId.get(s.id);
-      next[s.id] = existing ? String(existing.marksObtained) : '';
+      next[s.id] = existing ? String(existing.score) : '';
     }
-    setMarksInput(next);
-    const existingTotal = [...existingByStudentId.values()][0]?.totalMarks;
-    if (existingTotal) setTotalMarks(existingTotal);
+    setScoreInput(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roster, existingByStudentId]);
 
-  const myStaffId = staffQuery.data?.find((s) => s.user?.id === JSON.parse(localStorage.getItem('user') || '{}').userId)?.id;
-
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const entries = Object.entries(marksInput).filter(([, v]) => v !== '' && v != null);
+      const entries = Object.entries(scoreInput).filter(([, v]) => v !== '' && v != null);
       const results = await Promise.allSettled(
-        entries.map(([studentId, marks]) => {
+        entries.map(([studentId, score]) => {
           const existing = existingByStudentId.get(Number(studentId));
-          const payload = existing
-            ? {
-                // GradeController's PUT deserializes into the raw Grade
-                // entity with @Valid, which enforces its full constraint
-                // set (student/subject/examType all @NotNull/@NotBlank)
-                // even though GradeService.updateGrade only ever reads
-                // marksObtained/totalMarks/remarks off this object -
-                // omitting the rest 400s with "must not be null/blank".
-                // Confirmed via a direct curl repro, not assumed. Sending
-                // the record's own unchanged values satisfies validation
-                // without actually changing anything the update ignores.
-                student: { id: existing.studentId },
-                subject: existing.subject,
-                examType: existing.examType,
-                marksObtained: Number(marks),
-                totalMarks: Number(totalMarks),
-                remarks: existing.remarks ?? null,
-              }
-            : {
-                student: { id: Number(studentId) },
-                subject,
-                examType,
-                marksObtained: Number(marks),
-                totalMarks: Number(totalMarks),
-                academicYear,
-                ...(myStaffId ? { teacher: { id: myStaffId } } : {}),
-              };
-          return existing ? gradeService.updateGrade(existing.id, payload) : gradeService.createGrade(payload);
+          const payload = {
+            student: { id: Number(studentId) },
+            subject: { id: Number(subjectId) },
+            semester: { id: Number(semesterId) },
+            componentType,
+            score: Number(score),
+            teacher: { id: existing?.teacherId ?? myStaffId },
+            remarks: existing?.remarks ?? null,
+          };
+          return existing ? gradeRecordService.update(existing.id, payload) : gradeRecordService.create(payload);
         })
       );
       const failed = results.filter((r) => r.status === 'rejected');
@@ -146,29 +180,39 @@ function GradeManagement() {
       } else {
         toast.success(`Đã lưu điểm cho ${total} học sinh`);
       }
-      queryClient.invalidateQueries({ queryKey: ['grades-by-year'] });
+      queryClient.invalidateQueries({ queryKey: ['grade-records-roster'] });
     },
     onError: (err) => toast.error(err?.response?.data?.message || err?.message || 'Không thể lưu điểm'),
   });
 
-  const filledCount = Object.values(marksInput).filter((v) => v !== '' && v != null).length;
-  const average = useMemo(() => {
-    const values = Object.values(marksInput)
-      .filter((v) => v !== '' && v != null)
-      .map(Number)
-      .filter((n) => !Number.isNaN(n));
-    if (!values.length) return null;
-    return Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 100) / 100;
-  }, [marksInput]);
-
-  const loading = rosterQuery.isLoading || yearGradesQuery.isLoading;
+  const filledCount = Object.values(scoreInput).filter((v) => v !== '' && v != null).length;
+  const configsMissing = Boolean(
+    selectedSemester &&
+      COMPONENT_TYPES.some((t) => resolveWeight(t, selectedSemester.academicYearName, gradeConfigsQuery.data ?? []) == null)
+  );
+  const loading = rosterQuery.isLoading || rosterGradesQuery.isLoading;
+  const selectedSubjectName = subjectsQuery.data?.find((s) => String(s.id) === subjectId)?.name;
 
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Bảng điểm</h1>
-        <p className="text-sm text-muted-foreground">Nhập điểm theo lớp và môn học</p>
+        <p className="text-sm text-muted-foreground">
+          Nhập điểm theo lớp, môn học và học kỳ — theo Thông tư 22/2021 (thang điểm 10)
+        </p>
       </div>
+
+      {!activeYear && academicYearsQuery.isSuccess && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
+          Chưa có năm học đang hoạt động.
+        </div>
+      )}
+
+      {!myStaffId && staffQuery.isSuccess && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
+          Tài khoản của bạn chưa được liên kết với hồ sơ nhân sự nên không thể lưu điểm mới (vẫn xem được bảng điểm).
+        </div>
+      )}
 
       <Card>
         <CardContent className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -188,60 +232,68 @@ function GradeManagement() {
             </Select>
           </div>
           <div className="space-y-1.5">
+            <label htmlFor="grade-semester-select" className="text-sm font-medium">Học kỳ</label>
+            <Select value={semesterId} onValueChange={setSemesterId}>
+              <SelectTrigger id="grade-semester-select">
+                <SelectValue placeholder={semestersQuery.isLoading ? 'Đang tải...' : 'Chọn học kỳ'} />
+              </SelectTrigger>
+              <SelectContent>
+                {(semestersQuery.data ?? []).map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>{semesterLabel(s)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
             <label htmlFor="grade-subject-select" className="text-sm font-medium">Môn học</label>
-            <Select value={subject} onValueChange={setSubject}>
+            <Select value={subjectId} onValueChange={setSubjectId}>
               <SelectTrigger id="grade-subject-select">
-                <SelectValue />
+                <SelectValue placeholder={subjectsQuery.isLoading ? 'Đang tải...' : 'Chọn môn học'} />
               </SelectTrigger>
               <SelectContent>
-                {SUBJECTS.map((s) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                {(subjectsQuery.data ?? []).map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="grade-examtype-select" className="text-sm font-medium">Loại bài kiểm tra</label>
-            <Select value={examType} onValueChange={setExamType}>
-              <SelectTrigger id="grade-examtype-select">
+            <label htmlFor="grade-component-select" className="text-sm font-medium">Loại điểm</label>
+            <Select value={componentType} onValueChange={setComponentType}>
+              <SelectTrigger id="grade-component-select">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {EXAM_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                {COMPONENT_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>{GRADE_COMPONENT_TYPE_LABELS[t]}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="grade-total-marks" className="text-sm font-medium">Thang điểm</label>
-            <Input
-              id="grade-total-marks"
-              type="number"
-              min="1"
-              value={totalMarks}
-              onChange={(e) => setTotalMarks(e.target.value)}
-            />
           </div>
         </CardContent>
       </Card>
 
-      {selectedClass && (
+      {configsMissing && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          Chưa cấu hình đủ hệ số cho tất cả loại điểm ở năm học {selectedSemester.academicYearName} — cột "TB môn HK"
+          sẽ để trống cho tới khi cấu hình đủ 5 loại tại trang Cấu hình học tập.
+        </div>
+      )}
+
+      {selectedClass && selectedSemester && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle>
-                {selectedClass.className} - {selectedClass.section} · {subject} · {examType}
+                {selectedClass.className} - {selectedClass.section} · {selectedSubjectName} · {GRADE_COMPONENT_TYPE_LABELS[componentType]}
               </CardTitle>
               <CardDescription>
-                {filledCount}/{roster.length} đã nhập điểm
-                {average != null && ` · Điểm TB: ${average}`}
-                {!academicYear && ' · Chưa có năm học đang hoạt động'}
+                {filledCount}/{roster.length} đã nhập điểm · {semesterLabel(selectedSemester)}
               </CardDescription>
             </div>
             <Button
               onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending || loading || filledCount === 0 || !academicYear}
+              disabled={saveMutation.isPending || loading || filledCount === 0 || !myStaffId}
             >
               <FiSave className="mr-2 h-4 w-4" />
               {saveMutation.isPending ? 'Đang lưu...' : 'Lưu bảng điểm'}
@@ -258,7 +310,7 @@ function GradeManagement() {
                       <th className="p-2 text-left font-medium text-muted-foreground">Số báo danh</th>
                       <th className="p-2 text-left font-medium text-muted-foreground">Họ tên</th>
                       <th className="w-32 p-2 text-left font-medium text-muted-foreground">Điểm</th>
-                      <th className="p-2 text-left font-medium text-muted-foreground">Xếp loại</th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">TB môn HK</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -276,15 +328,13 @@ function GradeManagement() {
                       <th className="p-2 text-left font-medium text-muted-foreground">Số báo danh</th>
                       <th className="p-2 text-left font-medium text-muted-foreground">Họ tên</th>
                       <th className="w-32 p-2 text-left font-medium text-muted-foreground">Điểm</th>
-                      <th className="p-2 text-left font-medium text-muted-foreground">Xếp loại</th>
+                      <th className="p-2 text-left font-medium text-muted-foreground">TB môn HK</th>
                     </tr>
                   </thead>
                   <tbody>
                     {roster.map((s) => {
-                      const raw = marksInput[s.id] ?? '';
-                      const num = raw === '' ? null : Number(raw);
-                      const pct = num != null && !Number.isNaN(num) ? (num / Number(totalMarks || 1)) * 100 : null;
-                      const letter = letterGrade(pct);
+                      const subjectRecords = (gradesByStudent.get(s.id) ?? []).filter((r) => String(r.subjectId) === subjectId);
+                      const avg = weightedAverage(subjectRecords, selectedSemester.academicYearName, gradeConfigsQuery.data ?? []);
                       return (
                         <tr key={s.id} className="border-b last:border-0 hover:bg-muted/30">
                           <td className="p-2">{s.rollNumber}</td>
@@ -293,19 +343,19 @@ function GradeManagement() {
                             <Input
                               type="number"
                               min="0"
-                              max={totalMarks || undefined}
+                              max="10"
                               step="0.1"
-                              value={raw}
+                              value={scoreInput[s.id] ?? ''}
                               onChange={(e) =>
-                                setMarksInput((prev) => ({ ...prev, [s.id]: e.target.value }))
+                                setScoreInput((prev) => ({ ...prev, [s.id]: e.target.value }))
                               }
                               className="h-8 w-24"
                               aria-label={`Điểm ${s.user?.firstName} ${s.user?.lastName}`}
                             />
                           </td>
                           <td className="p-2">
-                            {letter ? (
-                              <Badge variant={letter === 'F' ? 'destructive' : 'secondary'}>{letter}</Badge>
+                            {avg != null ? (
+                              <span className="font-medium">{avg}</span>
                             ) : (
                               <span className="text-muted-foreground">—</span>
                             )}
