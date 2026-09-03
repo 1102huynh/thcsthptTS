@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { FiMenu, FiX, FiLogIn } from 'react-icons/fi';
+import { FiMenu, FiX, FiLogIn, FiGrid } from 'react-icons/fi';
+import { isAuthenticated } from '../../services/authService';
 
 // Safety-net fallback: the public pages are eager-imported (App.jsx) so this
 // normally never renders, but a future lazy child still suspends here inside
@@ -42,6 +43,15 @@ export default function PublicLayout() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
 
+  // If a valid session is already in localStorage, the portal's CTA points
+  // into the app ("/" -> AppShell/dashboard) instead of the login form -
+  // there's nothing to log into. (App.jsx also bounces /login -> "/" for a
+  // logged-in user, so this is just avoiding a pointless round-trip.)
+  const authed = isAuthenticated();
+  const cta = authed
+    ? { to: '/', label: 'Vào hệ thống', Icon: FiGrid }
+    : { to: '/login', label: 'Đăng nhập', Icon: FiLogIn };
+
   // New page = start from the top (not the previous page's scroll position).
   // Keyed on pathname only, so changing ?category= on /tin-tuc doesn't jump.
   useEffect(() => {
@@ -67,10 +77,10 @@ export default function PublicLayout() {
               </NavLink>
             ))}
             <Link
-              to="/login"
+              to={cta.to}
               className="ml-2 inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              <FiLogIn className="h-4 w-4" /> Đăng nhập
+              <cta.Icon className="h-4 w-4" /> {cta.label}
             </Link>
           </nav>
 
@@ -101,11 +111,11 @@ export default function PublicLayout() {
               </NavLink>
             ))}
             <Link
-              to="/login"
+              to={cta.to}
               className="mt-1 flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
               onClick={() => setOpen(false)}
             >
-              <FiLogIn className="h-4 w-4" /> Đăng nhập
+              <cta.Icon className="h-4 w-4" /> {cta.label}
             </Link>
           </nav>
         )}
@@ -145,8 +155,12 @@ export default function PublicLayout() {
           <div>
             <div className="font-semibold">Dành cho nội bộ</div>
             <p className="mt-2 text-sm text-muted-foreground">
-              Cán bộ, giáo viên, học sinh và phụ huynh đăng nhập hệ thống quản lý tại{' '}
-              <Link to="/login" className="text-primary hover:underline">trang đăng nhập</Link>.
+              {authed ? (
+                <>Bạn đang đăng nhập — <Link to="/" className="text-primary hover:underline">vào hệ thống quản lý</Link>.</>
+              ) : (
+                <>Cán bộ, giáo viên, học sinh và phụ huynh đăng nhập hệ thống quản lý tại{' '}
+                <Link to="/login" className="text-primary hover:underline">trang đăng nhập</Link>.</>
+              )}
             </p>
           </div>
         </div>
