@@ -1,9 +1,17 @@
 import React, { useState, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
+// Standalone entry pages (no AppShell around them). Eager, not lazy: each
+// is small and is a landing target on refresh - lazy-loading them only adds
+// a Suspense-fallback flash (the admin-table skeleton, which looks nothing
+// like a login card) on every reload of /login, /apply, etc.
+import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import AdmissionApplyPage from './pages/AdmissionApplyPage';
+
 // Authenticated app pages - lazy per route (Tuần 6 Ngày 2): an admin
 // session only downloads the pages it visits.
-const LoginPage = lazy(() => import('./pages/LoginPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const StaffManagement = lazy(() => import('./pages/StaffManagement'));
 const StudentManagement = lazy(() => import('./pages/StudentManagement'));
@@ -19,11 +27,8 @@ const PromotionManagement = lazy(() => import('./pages/PromotionManagement'));
 const ParentManagement = lazy(() => import('./pages/ParentManagement'));
 const NotificationCenter = lazy(() => import('./pages/NotificationCenter'));
 const AdmissionManagement = lazy(() => import('./pages/AdmissionManagement'));
-const AdmissionApplyPage = lazy(() => import('./pages/AdmissionApplyPage'));
 const AuditLogManagement = lazy(() => import('./pages/AuditLogManagement'));
 const SelfServicePortal = lazy(() => import('./pages/SelfServicePortal'));
-const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
-const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const NewsManagement = lazy(() => import('./pages/NewsManagement'));
 const EventManagement = lazy(() => import('./pages/EventManagement'));
 
@@ -81,7 +86,11 @@ function App() {
 
   return (
     <Router>
-      <Suspense fallback={<RoutePageSkeleton />}>
+      {/* Root fallback is null on purpose: everything that can suspend here
+          is either eager (login/apply/portal pages) or lives behind
+          AppShell's own inner <Suspense> below. A stray blank frame beats
+          flashing an admin-table skeleton over a login card. */}
+      <Suspense fallback={null}>
         <Routes>
           {/* ---- Public portal: available to everyone, its own chrome ---- */}
           <Route element={<PublicLayout />}>
