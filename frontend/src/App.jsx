@@ -29,8 +29,12 @@ const EventManagement = lazy(() => import('./pages/EventManagement'));
 
 // Public portal (KE_HOACH_TRANG_TIN_TUC_CONG_KHAI.md) - "/" is the portal
 // home for anonymous visitors; internal users log in at "/login".
-const PublicLayout = lazy(() => import('./components/public/PublicLayout'));
-const PublicHome = lazy(() => import('./pages/public/PublicHome'));
+// PublicLayout + PublicHome are eager (every anonymous visitor needs them
+// on first paint) so there's no Suspense fallback flash landing on "/";
+// the secondary public pages stay lazy but suspend inside PublicLayout's
+// own <main> boundary, not the root one.
+import PublicLayout from './components/public/PublicLayout';
+import PublicHome from './pages/public/PublicHome';
 const NewsListPage = lazy(() => import('./pages/public/NewsListPage'));
 const NewsDetailPage = lazy(() => import('./pages/public/NewsDetailPage'));
 const EventListPage = lazy(() => import('./pages/public/EventListPage'));

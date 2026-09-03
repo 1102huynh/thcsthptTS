@@ -1,6 +1,24 @@
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { FiMenu, FiX, FiLogIn } from 'react-icons/fi';
+
+// Fallback for lazy public pages. Scoped to the <main> content area (below)
+// so switching tabs never unmounts the header/footer - the previous setup
+// let the ROOT <Suspense> in App.jsx catch it, which swapped the whole
+// page (header + footer included) for an admin-table skeleton = a visible
+// full-page flash on every first navigation between /tin-tuc, /su-kien, ...
+function ContentFallback() {
+  return (
+    <div className="space-y-4" aria-hidden="true">
+      <div className="h-8 w-56 animate-pulse rounded bg-muted" />
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-64 animate-pulse rounded-xl border bg-muted/50" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // Public-facing chrome for the school portal - completely separate from the
 // authenticated app's AppShell. Mobile-first: most parents browse on a
@@ -89,7 +107,9 @@ export default function PublicLayout() {
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-        <Outlet />
+        <Suspense fallback={<ContentFallback />}>
+          <Outlet />
+        </Suspense>
       </main>
 
       <footer className="border-t bg-muted/40">
