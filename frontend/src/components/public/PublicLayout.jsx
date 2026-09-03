@@ -1,12 +1,10 @@
-import React, { Suspense, useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import React, { Suspense, useEffect, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { FiMenu, FiX, FiLogIn } from 'react-icons/fi';
 
-// Fallback for lazy public pages. Scoped to the <main> content area (below)
-// so switching tabs never unmounts the header/footer - the previous setup
-// let the ROOT <Suspense> in App.jsx catch it, which swapped the whole
-// page (header + footer included) for an admin-table skeleton = a visible
-// full-page flash on every first navigation between /tin-tuc, /su-kien, ...
+// Safety-net fallback: the public pages are eager-imported (App.jsx) so this
+// normally never renders, but a future lazy child still suspends here inside
+// <main> - never at the App root, which would swap header+footer too.
 function ContentFallback() {
   return (
     <div className="space-y-4" aria-hidden="true">
@@ -42,6 +40,13 @@ function navClass({ isActive }) {
 
 export default function PublicLayout() {
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+
+  // New page = start from the top (not the previous page's scroll position).
+  // Keyed on pathname only, so changing ?category= on /tin-tuc doesn't jump.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -108,7 +113,11 @@ export default function PublicLayout() {
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         <Suspense fallback={<ContentFallback />}>
-          <Outlet />
+          {/* Keyed by pathname: a gentle fade/rise on each page change so
+              navigation feels like a transition, not a hard swap. */}
+          <div key={location.pathname} className="animate-in fade-in slide-in-from-bottom-1 duration-300">
+            <Outlet />
+          </div>
         </Suspense>
       </main>
 

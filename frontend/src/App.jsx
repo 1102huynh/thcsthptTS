@@ -1,8 +1,8 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// Pages - lazy-loaded per route (Tuần 6 Ngày 2) so a session only ever
-// downloads the page(s) it actually visits.
+// Authenticated app pages - lazy per route (Tuần 6 Ngày 2): an admin
+// session only downloads the pages it visits.
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const StaffManagement = lazy(() => import('./pages/StaffManagement'));
@@ -27,39 +27,41 @@ const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const NewsManagement = lazy(() => import('./pages/NewsManagement'));
 const EventManagement = lazy(() => import('./pages/EventManagement'));
 
-// Public portal (KE_HOACH_TRANG_TIN_TUC_CONG_KHAI.md) - "/" is the portal
-// home for anonymous visitors; internal users log in at "/login".
-// PublicLayout + PublicHome are eager (every anonymous visitor needs them
-// on first paint) so there's no Suspense fallback flash landing on "/";
-// the secondary public pages stay lazy but suspend inside PublicLayout's
-// own <main> boundary, not the root one.
+// Public portal (KE_HOACH_TRANG_TIN_TUC_CONG_KHAI.md). Eager-imported, NOT
+// lazy: a visitor browses these back-to-back, and each is small - lazy just
+// adds a Suspense-fallback flash on every menu click and on refresh. As one
+// bundle, navigating between them is a plain re-render (no loader).
 import PublicLayout from './components/public/PublicLayout';
 import PublicHome from './pages/public/PublicHome';
-const NewsListPage = lazy(() => import('./pages/public/NewsListPage'));
-const NewsDetailPage = lazy(() => import('./pages/public/NewsDetailPage'));
-const EventListPage = lazy(() => import('./pages/public/EventListPage'));
-const EventDetailPage = lazy(() => import('./pages/public/EventDetailPage'));
-const AdmissionsInfoPage = lazy(() => import('./pages/public/AdmissionsInfoPage'));
-const AboutPage = lazy(() => import('./pages/public/AboutPage'));
-const ContactPage = lazy(() => import('./pages/public/ContactPage'));
+import NewsListPage from './pages/public/NewsListPage';
+import NewsDetailPage from './pages/public/NewsDetailPage';
+import EventListPage from './pages/public/EventListPage';
+import EventDetailPage from './pages/public/EventDetailPage';
+import AdmissionsInfoPage from './pages/public/AdmissionsInfoPage';
+import AboutPage from './pages/public/AboutPage';
+import ContactPage from './pages/public/ContactPage';
 
 // Layout
 import AppShell from './components/layout/AppShell';
-import { AppShellSkeleton, RoutePageSkeleton } from './components/shared/Skeleton';
+import { RoutePageSkeleton } from './components/shared/Skeleton';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Services
 import { getCurrentUser } from './services/authService';
 
-function App() {
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+function readUser() {
+  try {
+    return getCurrentUser();
+  } catch {
+    return null;
+  }
+}
 
-  useEffect(() => {
-    const storedUser = getCurrentUser();
-    if (storedUser) setUser(storedUser);
-    setIsLoading(false);
-  }, []);
+function App() {
+  // Resolved synchronously from localStorage on first render - no loading
+  // frame, so a refresh lands straight on the right tree (public vs app)
+  // instead of flashing the admin-shell skeleton first.
+  const [user, setUser] = useState(readUser);
 
   const handleLogin = (userData) => setUser(userData);
 
@@ -76,8 +78,6 @@ function App() {
       {element}
     </ProtectedRoute>
   );
-
-  if (isLoading) return <AppShellSkeleton />;
 
   return (
     <Router>
