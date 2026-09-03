@@ -2,10 +2,7 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // Pages - lazy-loaded per route (Tuần 6 Ngày 2) so a session only ever
-// downloads the page(s) it actually visits instead of one bundle with
-// every page (Dashboard's recharts, every *Management page's forms/dialogs,
-// ...) upfront. React.lazy()'s default export requirement is why every
-// page module still needs `export default` (already true for all of them).
+// downloads the page(s) it actually visits.
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const StaffManagement = lazy(() => import('./pages/StaffManagement'));
@@ -27,6 +24,20 @@ const AuditLogManagement = lazy(() => import('./pages/AuditLogManagement'));
 const SelfServicePortal = lazy(() => import('./pages/SelfServicePortal'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const NewsManagement = lazy(() => import('./pages/NewsManagement'));
+const EventManagement = lazy(() => import('./pages/EventManagement'));
+
+// Public portal (KE_HOACH_TRANG_TIN_TUC_CONG_KHAI.md) - "/" is the portal
+// home for anonymous visitors; internal users log in at "/login".
+const PublicLayout = lazy(() => import('./components/public/PublicLayout'));
+const PublicHome = lazy(() => import('./pages/public/PublicHome'));
+const NewsListPage = lazy(() => import('./pages/public/NewsListPage'));
+const NewsDetailPage = lazy(() => import('./pages/public/NewsDetailPage'));
+const EventListPage = lazy(() => import('./pages/public/EventListPage'));
+const EventDetailPage = lazy(() => import('./pages/public/EventDetailPage'));
+const AdmissionsInfoPage = lazy(() => import('./pages/public/AdmissionsInfoPage'));
+const AboutPage = lazy(() => import('./pages/public/AboutPage'));
+const ContactPage = lazy(() => import('./pages/public/ContactPage'));
 
 // Layout
 import AppShell from './components/layout/AppShell';
@@ -36,23 +47,17 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 // Services
 import { getCurrentUser } from './services/authService';
 
-
 function App() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
     const storedUser = getCurrentUser();
-    if (storedUser) {
-      setUser(storedUser);
-    }
+    if (storedUser) setUser(storedUser);
     setIsLoading(false);
   }, []);
 
-  const handleLogin = (userData) => {
-    setUser(userData);
-  };
+  const handleLogin = (userData) => setUser(userData);
 
   const handleLogout = () => {
     setUser(null);
@@ -61,70 +66,80 @@ function App() {
     localStorage.removeItem('refreshToken');
   };
 
-  // Wraps a routed page in the role gate (A3). `path` must match the route's
-  // own `path` so ProtectedRoute can look up its allow-list in
-  // config/navigation.js.
+  // Role gate (A3) - `path` must match the route's own path.
   const guarded = (path, element) => (
     <ProtectedRoute user={user} path={path}>
       {element}
     </ProtectedRoute>
   );
 
-  if (isLoading) {
-    // The one true full-page spinner in the app (Bootstrap's
-    // .spinner-border, on a bare centered flex div) - replaced with a
-    // skeleton shaped like the AppShell it's about to become, per Tuần 5
-    // Ngày 5. In practice this frame is near-instant (getCurrentUser()
-    // just reads localStorage synchronously) but it's still the literal
-    // "spinner toàn trang" the plan calls out.
-    return <AppShellSkeleton />;
-  }
+  if (isLoading) return <AppShellSkeleton />;
 
   return (
     <Router>
-      {user ? (
-        <AppShell user={user} onLogout={handleLogout}>
-          <Suspense fallback={<RoutePageSkeleton />}>
-            <Routes>
-              <Route path="/" element={guarded('/', <Dashboard user={user} />)} />
-              <Route path="/portal" element={guarded('/portal', <SelfServicePortal />)} />
-              <Route path="/staff" element={guarded('/staff', <StaffManagement />)} />
-              <Route path="/students" element={guarded('/students', <StudentManagement />)} />
-              <Route path="/classes" element={guarded('/classes', <ClassManagement />)} />
-              <Route path="/library" element={guarded('/library', <LibraryManagement user={user} />)} />
-              <Route path="/attendance" element={guarded('/attendance', <AttendanceManagement />)} />
-              <Route path="/grades" element={guarded('/grades', <GradeManagement />)} />
-              <Route path="/fees" element={guarded('/fees', <FeeManagement />)} />
-              <Route path="/academic-config" element={guarded('/academic-config', <AcademicConfig />)} />
-              <Route path="/timetable" element={guarded('/timetable', <TimetableManagement />)} />
-              <Route path="/conduct" element={guarded('/conduct', <ConductManagement />)} />
-              <Route path="/promotions" element={guarded('/promotions', <PromotionManagement />)} />
-              <Route path="/parents" element={guarded('/parents', <ParentManagement />)} />
-              <Route path="/notifications" element={guarded('/notifications', <NotificationCenter />)} />
-              <Route path="/admissions" element={guarded('/admissions', <AdmissionManagement />)} />
-              <Route path="/audit-log" element={guarded('/audit-log', <AuditLogManagement />)} />
+      <Suspense fallback={<RoutePageSkeleton />}>
+        <Routes>
+          {/* ---- Public portal: available to everyone, its own chrome ---- */}
+          <Route element={<PublicLayout />}>
+            <Route path="/tin-tuc" element={<NewsListPage />} />
+            <Route path="/tin-tuc/:slug" element={<NewsDetailPage />} />
+            <Route path="/su-kien" element={<EventListPage />} />
+            <Route path="/su-kien/:slug" element={<EventDetailPage />} />
+            <Route path="/tuyen-sinh" element={<AdmissionsInfoPage />} />
+            <Route path="/gioi-thieu" element={<AboutPage />} />
+            <Route path="/lien-he" element={<ContactPage />} />
+            {/* "/" is the portal home only when NOT logged in - a logged-in
+                user's "/" is the dashboard (handled in the authed branch). */}
+            {!user && <Route path="/" element={<PublicHome />} />}
+          </Route>
+
+          {/* ---- Public, standalone (no portal chrome) ---- */}
+          <Route path="/apply" element={<AdmissionApplyPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+          {user ? (
+            <Route
+              path="/*"
+              element={
+                <AppShell user={user} onLogout={handleLogout}>
+                  <Suspense fallback={<RoutePageSkeleton />}>
+                    <Routes>
+                      <Route path="/" element={guarded('/', <Dashboard user={user} />)} />
+                      <Route path="/portal" element={guarded('/portal', <SelfServicePortal />)} />
+                      <Route path="/staff" element={guarded('/staff', <StaffManagement />)} />
+                      <Route path="/students" element={guarded('/students', <StudentManagement />)} />
+                      <Route path="/classes" element={guarded('/classes', <ClassManagement />)} />
+                      <Route path="/library" element={guarded('/library', <LibraryManagement user={user} />)} />
+                      <Route path="/attendance" element={guarded('/attendance', <AttendanceManagement />)} />
+                      <Route path="/grades" element={guarded('/grades', <GradeManagement />)} />
+                      <Route path="/fees" element={guarded('/fees', <FeeManagement />)} />
+                      <Route path="/academic-config" element={guarded('/academic-config', <AcademicConfig />)} />
+                      <Route path="/timetable" element={guarded('/timetable', <TimetableManagement />)} />
+                      <Route path="/conduct" element={guarded('/conduct', <ConductManagement />)} />
+                      <Route path="/promotions" element={guarded('/promotions', <PromotionManagement />)} />
+                      <Route path="/parents" element={guarded('/parents', <ParentManagement />)} />
+                      <Route path="/notifications" element={guarded('/notifications', <NotificationCenter />)} />
+                      <Route path="/admissions" element={guarded('/admissions', <AdmissionManagement />)} />
+                      <Route path="/news" element={guarded('/news', <NewsManagement />)} />
+                      <Route path="/events" element={guarded('/events', <EventManagement />)} />
+                      <Route path="/audit-log" element={guarded('/audit-log', <AuditLogManagement />)} />
+                      <Route path="*" element={<Navigate to="/" />} />
+                    </Routes>
+                  </Suspense>
+                </AppShell>
+              }
+            />
+          ) : (
+            <>
+              <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
               <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </Suspense>
-        </AppShell>
-      ) : (
-        <Suspense fallback={null}>
-          <Routes>
-            <Route path="/" element={<LoginPage onLogin={handleLogin} />} />
-            {/* Public tuyển sinh đầu cấp form (IMPLEMENTATION_PLAN.md 3.7) -
-                no login required, so it only needs to exist in this
-                unauthenticated branch; a logged-in user manages
-                applications at /admissions instead. */}
-            <Route path="/apply" element={<AdmissionApplyPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </Suspense>
-      )}
+            </>
+          )}
+        </Routes>
+      </Suspense>
     </Router>
   );
 }
 
 export default App;
-

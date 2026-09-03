@@ -15,6 +15,7 @@ import {
   FiFileText,
   FiActivity,
   FiUser,
+  FiRss,
 } from 'react-icons/fi';
 
 // Shared between Sidebar (nav links) and Navbar (page title lookup by
@@ -104,6 +105,10 @@ export const NAV_ITEMS = [
   // at /apply instead (outside AppShell entirely, no nav entry - an
   // applicant isn't logged in).
   { label: 'Tuyển sinh', href: '/admissions', icon: FiFileText, roles: ['ADMIN'] },
+  // CMS for the public portal (KE_HOACH_TRANG_TIN_TUC_CONG_KHAI.md) -
+  // /v1/news + /v1/events write endpoints are ADMIN/PRINCIPAL.
+  { label: 'Tin tức (công khai)', href: '/news', icon: FiRss, roles: ['ADMIN', 'PRINCIPAL'] },
+  { label: 'Sự kiện (công khai)', href: '/events', icon: FiCalendar, roles: ['ADMIN', 'PRINCIPAL'] },
   // ADMIN only - AuditLogController's one endpoint is ADMIN-only.
   { label: 'Nhật ký hoạt động', href: '/audit-log', icon: FiActivity, roles: ['ADMIN'] },
 ];

@@ -37,9 +37,11 @@ function clearSessionAndRedirect() {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('user');
-  // Guard against a redirect loop when we're already on the login page.
-  if (window.location.pathname !== '/') {
-    window.location.href = '/';
+  // Session expired mid-use -> back to the login page. ("/" is the public
+  // news portal now, not the login form - see App.jsx routing.) Guard
+  // against a redirect loop when we're already there.
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
   }
 }
 

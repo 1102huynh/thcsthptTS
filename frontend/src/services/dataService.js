@@ -319,6 +319,64 @@ export const documentService = {
   delete: (id) => api.delete(`/v1/documents/${id}`),
 };
 
+// ---- Public portal CMS (ADMIN/PRINCIPAL) ----------------------------
+// The read side for anonymous visitors is services/publicService.js (a bare
+// axios instance); these are the authenticated write endpoints.
+
+export const newsCmsService = {
+  list: ({ page = 0, size = 50 } = {}) =>
+    api.get('/v1/news', { params: { page, size } }).then((r) => ({
+      items: r.data,
+      total: Number(r.headers['x-total-count'] ?? r.data.length),
+    })),
+  get: (id) => api.get(`/v1/news/${id}`).then((r) => r.data),
+  create: (data) => api.post('/v1/news', data).then((r) => r.data),
+  update: (id, data) => api.put(`/v1/news/${id}`, data).then((r) => r.data),
+  publish: (id) => api.put(`/v1/news/${id}/publish`).then((r) => r.data),
+  unpublish: (id) => api.put(`/v1/news/${id}/unpublish`).then((r) => r.data),
+  remove: (id) => api.delete(`/v1/news/${id}`),
+  categories: () => api.get('/v1/news-categories').then((r) => r.data),
+  createCategory: (data) => api.post('/v1/news-categories', data).then((r) => r.data),
+  updateCategory: (id, data) => api.put(`/v1/news-categories/${id}`, data).then((r) => r.data),
+  deleteCategory: (id) => api.delete(`/v1/news-categories/${id}`),
+};
+
+export const eventCmsService = {
+  list: ({ page = 0, size = 50 } = {}) =>
+    api.get('/v1/events', { params: { page, size } }).then((r) => ({
+      items: r.data,
+      total: Number(r.headers['x-total-count'] ?? r.data.length),
+    })),
+  get: (id) => api.get(`/v1/events/${id}`).then((r) => r.data),
+  create: (data) => api.post('/v1/events', data).then((r) => r.data),
+  update: (id, data) => api.put(`/v1/events/${id}`, data).then((r) => r.data),
+  publish: (id) => api.put(`/v1/events/${id}/publish`).then((r) => r.data),
+  unpublish: (id) => api.put(`/v1/events/${id}/unpublish`).then((r) => r.data),
+  remove: (id) => api.delete(`/v1/events/${id}`),
+};
+
+export const mediaCmsService = {
+  // Returns { id, url, fileName, contentType, sizeBytes }. `url` is the
+  // relative /v1/public/media/{id}.
+  upload: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api
+      .post('/v1/media', formData, { headers: { 'Content-Type': undefined } })
+      .then((r) => r.data);
+  },
+};
+
+export const contactMessageCmsService = {
+  list: ({ page = 0, size = 50 } = {}) =>
+    api.get('/v1/contact-messages', { params: { page, size } }).then((r) => ({
+      items: r.data,
+      total: Number(r.headers['x-total-count'] ?? r.data.length),
+    })),
+  setHandled: (id, handled = true) =>
+    api.put(`/v1/contact-messages/${id}/handled`, null, { params: { handled } }).then((r) => r.data),
+};
+
 // Audit Log Service (ADMIN only - see AuditLogController)
 export const auditLogService = {
   getRecent: (size = 5) => api.get('/v1/audit-logs', { params: { page: 0, size } }),
@@ -352,5 +410,9 @@ export default {
   admissionService,
   reportService,
   documentService,
+  newsCmsService,
+  eventCmsService,
+  mediaCmsService,
+  contactMessageCmsService,
   auditLogService,
 };

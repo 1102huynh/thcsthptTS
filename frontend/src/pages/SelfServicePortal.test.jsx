@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -98,9 +98,11 @@ describe('SelfServicePortal', () => {
   it('downloads the học bạ PDF for the selected year from the grades tab', async () => {
     const user = userEvent.setup();
     renderPortal();
+    // The button is disabled until the active year resolves - wait for that.
     const btn = await screen.findByRole('button', { name: /Tải học bạ/ });
+    await waitFor(() => expect(btn).toBeEnabled());
     await user.click(btn);
-    expect(svc.transcript).toHaveBeenCalledWith(42, 1); // studentId, active yearId
+    await waitFor(() => expect(svc.transcript).toHaveBeenCalledWith(42, 1)); // studentId, active yearId
   });
 
   it('switches to the attendance tab and computes the chuyên cần rate', async () => {
