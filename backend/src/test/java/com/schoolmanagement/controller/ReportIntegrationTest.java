@@ -238,16 +238,30 @@ class ReportIntegrationTest {
     }
 
     @Test
-    void studentTranscript_asPrincipal_returns403() throws Exception {
-        // Deliberately the SAME role set as GradeRecordController.getStudentYearSummary
-        // (ADMIN/TEACHER/STUDENT/PARENT, no PRINCIPAL) - a report is a different
-        // *shape* of that same data, not a different access policy. Regression
-        // test for a self-review finding: this endpoint originally granted
-        // PRINCIPAL access the underlying grades endpoint never has.
-        mockMvc.perform(get("/v1/reports/student/{id}/transcript", student.getId())
+    void studentTranscript_asPrincipal_returnsPdf() throws Exception {
+        // Mức 2.1 (v4.9): PRINCIPAL now has READ access to learning data and
+        // its reports (GradeRecordController GETs + this transcript endpoint
+        // were widened to include PRINCIPAL) - "hiệu trưởng xem toàn cảnh,
+        // giáo viên nhập liệu". Writes stay with TEACHER. This used to assert
+        // 403 (KE_HOACH_NANG_CAP_V4.md H.2.1 flipped it).
+        gradeRecordRepository.save(GradeRecord.builder()
+                .student(student).subject(subject).semester(hk1)
+                .componentType(GradeComponentType.MIENG).score(8.0).teacher(staff).build());
+        gradeRecordRepository.save(GradeRecord.builder()
+                .student(student).subject(subject).semester(hk2)
+                .componentType(GradeComponentType.MIENG).score(9.0).teacher(staff).build());
+        promotionRecordRepository.save(PromotionRecord.builder()
+                .student(student).academicYear(academicYear)
+                .decision(PromotionDecision.LEN_LOP).decisionDate(LocalDate.now())
+                .decidedBy(staff).remarks("itest").build());
+
+        byte[] pdf = mockMvc.perform(get("/v1/reports/student/{id}/transcript", student.getId())
                         .param("academicYearId", academicYear.getId().toString())
                         .with(asUser(principalUser, "PRINCIPAL")))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
+
+        assertIsPdf(pdf);
     }
 
     @Test
@@ -334,14 +348,21 @@ class ReportIntegrationTest {
     }
 
     @Test
-    void classAttendance_asPrincipal_returns403() throws Exception {
-        // Same role set as ConductController.getClassSemesterRoster (ADMIN/TEACHER
-        // only) - regression test for the PRINCIPAL-widening self-review finding.
-        mockMvc.perform(get("/v1/reports/class/{id}/attendance", schoolClass.getId())
+    void classAttendance_asPrincipal_returnsExcel() throws Exception {
+        // Mức 2.1 (v4.9): PRINCIPAL now reads attendance + its exports
+        // (AttendanceController GETs + this endpoint widened to PRINCIPAL).
+        // Was 403 before H.2.1.
+        attendanceRepository.save(Attendance.builder()
+                .student(student).attendanceDate(LocalDate.of(2099, 9, 1)).status(AttendanceStatus.PRESENT).build());
+
+        byte[] excel = mockMvc.perform(get("/v1/reports/class/{id}/attendance", schoolClass.getId())
                         .param("from", "2099-09-01")
                         .param("to", "2099-09-05")
                         .with(asUser(principalUser, "PRINCIPAL")))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
+
+        assertIsXlsx(excel);
     }
 
     @Test
@@ -430,18 +451,23 @@ class ReportIntegrationTest {
     }
 
     @Test
-    void feeReceipt_asPrincipal_returns403() throws Exception {
-        // Same role set as FeeController.getFeeById (ADMIN/ACCOUNTANT/STUDENT/
-        // PARENT, no PRINCIPAL) - regression test for the PRINCIPAL-widening
-        // self-review finding on financial data specifically.
+    void feeReceipt_asPrincipal_returnsPdf() throws Exception {
+        // Mức 2.1 (v4.9): PRINCIPAL now reads fee data + receipts for
+        // oversight (FeeController GETs + this endpoint widened to PRINCIPAL);
+        // writing/recording payments stays ADMIN/ACCOUNTANT. Was 403 before
+        // H.2.1.
         Fee fee = feeRepository.save(Fee.builder()
                 .student(student).academicYear("2099-2100").feeType("Học phí học kỳ 1")
                 .amount(500000.0).paidAmount(500000.0).remainingAmount(0.0)
+                .paidDate(LocalDate.now()).paymentMethod("Tiền mặt").transactionId("ITEST-TXN-PRIN")
                 .status(FeeStatus.PAID).build());
 
-        mockMvc.perform(get("/v1/reports/fees/receipt/{feeId}", fee.getId())
+        byte[] pdf = mockMvc.perform(get("/v1/reports/fees/receipt/{feeId}", fee.getId())
                         .with(asUser(principalUser, "PRINCIPAL")))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
+
+        assertIsPdf(pdf);
     }
 
     private void assertIsPdf(byte[] content) {
