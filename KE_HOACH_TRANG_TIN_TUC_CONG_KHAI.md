@@ -1,8 +1,11 @@
 # KẾ HOẠCH: CỔNG THÔNG TIN CÔNG KHAI (TIN TỨC – SỰ KIỆN – TUYỂN SINH) — thcsthptTS
 
-**Phiên bản 1.0 — ngày 02/09/2026**
+**Phiên bản 1.1 — ngày 03/09/2026**
+*(v1.1: **đã hiện thực P1 + P2 + P3** — backend `/v1/public/**` + CMS; portal công khai (`/` = trang chủ tin tức, `/login` = đăng nhập); trang quản trị News/Event. Chỉ còn **P4** (prerender + cache nâng cao). Xem "TRẠNG THÁI TRIỂN KHAI" cuối tài liệu.)*
 
 *Module mới: trang tin tức/sự kiện/tuyển sinh của trường mà **người ngoài hệ thống xem được KHÔNG cần đăng nhập**. Là một phần của dự án `thcsthptTS`, tái sử dụng hạ tầng backend (Spring Boot + MySQL + Flyway + FileStorage) và frontend (Vite + Tailwind + shadcn) sẵn có. Bổ sung cho `KE_HOACH_NANG_CAP_V4.md` — không thay thế.*
+
+> **Quyết định mục 11 đã chốt (v1.1, theo khuyến nghị của kế hoạch):** (1) `/` = cổng công khai, đăng nhập chuyển `/login` — ✅; (2) phạm vi 1.0 gồm cả Trang chủ + Giới thiệu + Liên hệ; (3) **có** form Liên hệ + `ContactMessage` + rate-limit; (4) editor: **textarea HTML + xem trước** (WYSIWYG để sau, tránh thêm dependency); (5) SEO: `<Seo>` (helmet-lite) + `sitemap.xml`/`robots.txt` trước, prerender ở P4; (6) quản trị: **ADMIN/PRINCIPAL** (chưa `CONTENT_EDITOR`); (7) domain: env `APP_CORS_ALLOWED_ORIGINS` (mặc định localhost). Flyway dùng **`V11`** (V11 không dành cho migration điểm).
 
 ---
 
@@ -199,4 +202,42 @@ Frontend hiện là **SPA render phía client (Vite)** → mặc định **kém 
 
 ---
 
-*Tài liệu này là kế hoạch cho module Cổng thông tin công khai, bổ sung cho `KE_HOACH_NANG_CAP_V4.md`. Sau khi chốt mục 11, có thể bắt tay Giai đoạn P1.*
+*Tài liệu này là kế hoạch cho module Cổng thông tin công khai, bổ sung cho `KE_HOACH_NANG_CAP_V4.md`.*
+
+---
+
+## TRẠNG THÁI TRIỂN KHAI (v1.1 — 03/09/2026)
+
+### ✅ P1 — Backend nền tảng (XONG)
+- **Entity + Flyway `V11__public_portal.sql`**: `news_categories`, `news_articles`, `school_events`, `media_assets`, `contact_messages` (utf8mb4; index `status,published_at` + `slug`; seed 3 chuyên mục "Tuyển sinh/Hoạt động/Thông báo"). Enum `ContentStatus` (DRAFT/PUBLISHED/ARCHIVED).
+- **Service**: `SlugService` (slugify tiếng Việt + chống trùng), `HtmlSanitizerService` (**OWASP Java HTML Sanitizer** — làm sạch `content`/`description` lúc GHI, allow-list, bỏ `<script>`/`javascript:`/`on*`), `NewsService`/`SchoolEventService` (CRUD + publish/unpublish + lọc `PUBLISHED AND publishedAt<=now`), `MediaAssetService` (upload ảnh JPEG/PNG/WebP/GIF ≤10MB qua `FileStorageService`), `ContactMessageService`, `PublicPortalService` (gộp trang chủ).
+- **Controller công khai** (`permitAll`, `/v1/public/**`): `GET /home`, `/news`(+`?category=`, phân trang, bare array + `X-Total-Count` + `Cache-Control`), `/news/{slug}` (tăng `viewCount`), `/news/categories`, `/events`(+`?when=upcoming|past`), `/events/{slug}`, `/media/{id}` (bytes + Content-Type + cache 30 ngày), `POST /contact`.
+- **Controller CMS** (`@PreAuthorize` ADMIN/PRINCIPAL): `/v1/news`(+`/{id}/publish`,`/unpublish`), `/v1/news-categories`, `/v1/events`, `/v1/media`, `/v1/contact-messages`(+`/{id}/handled`).
+- **SecurityConfig**: thêm `/v1/public/**` vào `permitAll` (cả bản `/api/`); CORS đọc từ `app.cors.allowed-origins` (env `APP_CORS_ALLOWED_ORIGINS`); `ContactRateLimitFilter` (SlidingWindowRateLimiter) cho `POST /v1/public/contact`.
+- **Test**: `PublicPortalIntegrationTest` (public ẩn DRAFT + tin hẹn giờ; sanitize loại `<script>`/`javascript:`; CMS cần ADMIN; contact form; home aggregate). *(Chạy đầy đủ cần MySQL / CI.)*
+
+### ✅ P2 — Frontend công khai (XONG)
+- **Định tuyến lại** (mục 2): `App.jsx` — nhánh public (`PublicLayout` + `<Outlet>`) **luôn có** cho mọi khách; `/` = `PublicHome` khi chưa đăng nhập; `/login` = `LoginPage`. Nhánh đã-đăng-nhập giữ nguyên `AppShell`. `api.js`: 401 redirect `/` → `/login`.
+- **Trang**: `PublicHome` (hero + tin nổi bật + tin mới + sự kiện sắp tới, 1 request `/home`), `NewsListPage` (lọc chuyên mục + phân trang), `NewsDetailPage`, `EventListPage` (sắp tới/đã qua), `EventDetailPage`, `AdmissionsInfoPage` (CTA → `/apply` + tin mục `tuyen-sinh`), `AboutPage` (tĩnh), `ContactPage` (form → `POST /v1/public/contact`, xử lý 429).
+- **`publicService.js`**: axios trần (không dính interceptor auth).
+- **SEO**: `components/public/Seo.jsx` — không phụ thuộc thư viện, set `<title>` + `description` + Open Graph + Twitter Card, tự revert khi unmount. `public/robots.txt` + `public/sitemap.xml` (route tĩnh). `RichHtml` render HTML đã sanitize qua `dangerouslySetInnerHTML` (an toàn vì backend đã lọc).
+- **Test**: `Seo.test.jsx`.
+
+### ✅ P3 — CMS quản trị nội dung (XONG)
+- `pages/NewsManagement.jsx` + `pages/EventManagement.jsx` (trong `AppShell`): `DataTable` + `Dialog` + editor **textarea HTML + nút "Xem trước"** (render `RichHtml`) + upload ảnh bìa (`/v1/media`) + đăng/gỡ/xoá; News có ô quản lý chuyên mục.
+- `dataService.js`: `newsCmsService` / `eventCmsService` / `mediaCmsService` / `contactMessageCmsService`.
+- `config/navigation.js`: thêm **"Tin tức (công khai)"** (`/news`) + **"Sự kiện (công khai)"** (`/events`) — ADMIN/PRINCIPAL.
+- `npm test` **36/36**; `npm run build` sạch.
+
+### ⏳ P4 — SEO nâng cao & hoàn thiện (CHƯA)
+- Prerender route công khai (bot Zalo/Facebook không chạy JS → hiện chưa có preview khi share).
+- `sitemap.xml` động (mỗi bài/sự kiện một URL) — hiện chỉ có route tĩnh.
+- Spring Cache cho danh sách/trang chủ (hiện đã có `Cache-Control` HTTP, chưa có cache tầng ứng dụng).
+- `viewCount` hiện `@Modifying UPDATE ... +1` mỗi lượt xem (chưa gộp/bất đồng bộ).
+- QA responsive thật + đo tốc độ + kiểm tra unfurl Facebook/Zalo.
+- WYSIWYG editor (TipTap/quill) thay cho textarea.
+- Điền thông tin thật: địa chỉ/SĐT/email trường trong `PublicLayout` + `ContactPage`; tên trường trong `Seo.jsx` (`SITE_NAME`).
+
+### Việc cấu hình khi lên thật
+- `APP_CORS_ALLOWED_ORIGINS` = domain cổng công khai (cho phép trình duyệt khách gọi API).
+- Ảnh OG cần URL tuyệt đối — `publicService.mediaUrl()` đã ghép `VITE_API_BASE_URL`; đảm bảo biến này trỏ domain thật.
