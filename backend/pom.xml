@@ -156,6 +156,17 @@
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
+
+        <!-- HTML sanitizer for the public portal's rich-text content
+             (news/events body). Editor HTML is cleaned on write so nothing
+             but an allow-listed tag/attribute set is ever stored or served
+             (public XSS is the module's top risk — see
+             KE_HOACH_TRANG_TIN_TUC_CONG_KHAI.md §8). -->
+        <dependency>
+            <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+            <artifactId>owasp-java-html-sanitizer</artifactId>
+            <version>20240325.1</version>
+        </dependency>
     </dependencies>
 
     <build>

@@ -1,10 +1,12 @@
 package com.schoolmanagement.config;
 
 import com.schoolmanagement.security.AdmissionRateLimitFilter;
+import com.schoolmanagement.security.ContactRateLimitFilter;
 import com.schoolmanagement.security.ForgotPasswordRateLimitFilter;
 import com.schoolmanagement.security.JwtAuthenticationFilter;
 import com.schoolmanagement.security.JwtTokenProvider;
 import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -37,6 +39,7 @@ public class SecurityConfig {
     private JwtTokenProvider jwtTokenProvider;
     private AdmissionRateLimitFilter admissionRateLimitFilter;
     private ForgotPasswordRateLimitFilter forgotPasswordRateLimitFilter;
+    private ContactRateLimitFilter contactRateLimitFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -62,9 +65,14 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:3001}") String allowedOrigins) {
+        // Comma-separated; set APP_CORS_ALLOWED_ORIGINS to the real
+        // public-portal domain(s) in prod — the portal serves anonymous
+        // users so its browser calls to this API must be allowed.
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:3001"));
+        configuration.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).toList());
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
@@ -77,15 +85,19 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
                 // Auth endpoints
                 .requestMatchers("/v1/auth/**").permitAll()
                 .requestMatchers("/api/v1/auth/**").permitAll()
+                // Public portal read API + contact form (permitAll; the CMS
+                // write endpoints /v1/news, /v1/events, /v1/media are NOT
+                // under /public and stay @PreAuthorize ADMIN/PRINCIPAL).
+                .requestMatchers("/v1/public/**").permitAll()
                 .requestMatchers("/api/v1/public/**").permitAll()
                 // Public admission submission (3.7) — rate-limited by AdmissionRateLimitFilter,
                 // added to the chain below. GET/PUT/other /v1/admissions paths stay authenticated.
@@ -111,7 +123,8 @@ public class SecurityConfig {
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(admissionRateLimitFilter, JwtAuthenticationFilter.class)
-            .addFilterBefore(forgotPasswordRateLimitFilter, JwtAuthenticationFilter.class);
+            .addFilterBefore(forgotPasswordRateLimitFilter, JwtAuthenticationFilter.class)
+            .addFilterBefore(contactRateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
