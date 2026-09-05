@@ -28,6 +28,13 @@ app:
     forgot-password-rate-limit:
       # Same reasoning as admissions.rate-limit.max-requests above.
       max-requests: 1000
+    login-rate-limit:
+      # Same reasoning as admissions.rate-limit.max-requests above — unlike
+      # change-password-rate-limit (keyed by userId, naturally isolated per
+      # test since each test creates its own user), this one is keyed by IP
+      # like admissions/forgot-password, so every test hitting /v1/auth/login
+      # shares the same counter across the whole shared Spring context.
+      max-requests: 1000
   uploads:
     # Isolated from the real dev ./uploads dir (still covered by .gitignore's
     # /uploads/ pattern) so test runs never touch real uploaded files.
