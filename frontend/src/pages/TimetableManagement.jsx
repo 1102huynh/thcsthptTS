@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
 import { schoolClassService, semesterService, teachingAssignmentService, timetableService } from '../services/dataService';
 import { getCurrentUser } from '../services/authService';
+import { useMyHomeroomClasses } from '../hooks/useMyHomeroomClasses';
 import TeachingAssignmentFormDialog from './timetable/TeachingAssignmentFormDialog';
 import TimetableSlotFormDialog from './timetable/TimetableSlotFormDialog';
 import { Button } from '../components/ui/button';
@@ -37,10 +38,16 @@ function TimetableManagement() {
   const queryClient = useQueryClient();
   const role = getCurrentUser()?.role;
   // Matches the backend exactly: TeachingAssignmentController/
-  // TimetableController restrict every POST/PUT/DELETE to ADMIN/PRINCIPAL;
-  // TEACHER can GET both, so they land on this page read-only rather than
-  // being excluded from it the way Attendance excludes PRINCIPAL.
+  // TimetableController restrict every POST/PUT/DELETE to ADMIN/PRINCIPAL,
+  // so only they ever see the add/edit/delete controls on this page.
   const canManage = role === 'ADMIN' || role === 'PRINCIPAL';
+  // H.3.1 - thời khoá biểu do hiệu trưởng quyết định, TEACHER chỉ được xem
+  // lịch dạy của chính mình (tiết mấy, lớp nào) chứ không browse theo lớp
+  // bất kỳ nữa: GET /v1/timetable/class/{id} is ADMIN/PRINCIPAL-only now,
+  // and GET /v1/timetable/teacher/{id} 403s a TEACHER passing any id but
+  // their own - so this page swaps to a fixed "my own schedule" view for
+  // TEACHER instead of the class+semester picker.
+  const isTeacherView = role === 'TEACHER';
 
   const [classId, setClassId] = useState('');
   const [semesterId, setSemesterId] = useState('');
@@ -54,9 +61,15 @@ function TimetableManagement() {
   const [presetCell, setPresetCell] = useState(null); // { dayOfWeek, period }
   const [deletingSlot, setDeletingSlot] = useState(null);
 
+  // Only needed for the "am I linked to a Staff profile" (myStaffId) lookup
+  // here - Timetable scoping is "my own teaching schedule", not homeroom, so
+  // `homeroomClasses` itself is irrelevant to this page.
+  const { myStaffId, isSuccess: myStaffLookupDone } = useMyHomeroomClasses();
+
   const classesQuery = useQuery({
     queryKey: ['classes'],
     queryFn: () => schoolClassService.getAll().then((r) => r.data),
+    enabled: !isTeacherView,
   });
   const semestersQuery = useQuery({
     queryKey: ['semesters'],
@@ -65,6 +78,7 @@ function TimetableManagement() {
   const assignmentsQuery = useQuery({
     queryKey: ['teaching-assignments'],
     queryFn: () => teachingAssignmentService.getAll().then((r) => r.data),
+    enabled: !isTeacherView,
   });
 
   const selectedClass = classesQuery.data?.find((c) => String(c.id) === classId);
@@ -82,11 +96,17 @@ function TimetableManagement() {
     label: `${a.subjectName} - ${a.teacherName}`,
   }));
 
-  const timetableQuery = useQuery({
+  const classTimetableQuery = useQuery({
     queryKey: ['timetable', classId, semesterId],
     queryFn: () => timetableService.getByClass(classId, semesterId).then((r) => r.data),
-    enabled: Boolean(classId && semesterId),
+    enabled: !isTeacherView && Boolean(classId && semesterId),
   });
+  const teacherTimetableQuery = useQuery({
+    queryKey: ['timetable-teacher', myStaffId, semesterId],
+    queryFn: () => timetableService.getByTeacher(myStaffId, semesterId).then((r) => r.data),
+    enabled: isTeacherView && Boolean(myStaffId && semesterId),
+  });
+  const timetableQuery = isTeacherView ? teacherTimetableQuery : classTimetableQuery;
   const slotByCell = useMemo(() => {
     const map = new Map();
     for (const slot of timetableQuery.data ?? []) {
@@ -94,6 +114,9 @@ function TimetableManagement() {
     }
     return map;
   }, [timetableQuery.data]);
+  // Whether there's enough picked (class+semester for ADMIN/PRINCIPAL, just
+  // semester for a TEACHER viewing their own schedule) to show the grid.
+  const scheduleReady = isTeacherView ? Boolean(semesterId) : Boolean(classId && semesterId);
 
   const deleteAssignmentMutation = useMutation({
     mutationFn: (id) => teachingAssignmentService.delete(id),
@@ -138,21 +161,23 @@ function TimetableManagement() {
 
       <Card>
         <CardContent className="grid grid-cols-1 gap-4 pt-6 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="timetable-class-select">Lớp</Label>
-            <Select value={classId} onValueChange={setClassId}>
-              <SelectTrigger id="timetable-class-select">
-                <SelectValue placeholder={classesQuery.isLoading ? 'Đang tải...' : 'Chọn lớp'} />
-              </SelectTrigger>
-              <SelectContent>
-                {(classesQuery.data ?? []).map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {c.className} - {c.section}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!isTeacherView && (
+            <div className="space-y-1.5">
+              <Label htmlFor="timetable-class-select">Lớp</Label>
+              <Select value={classId} onValueChange={setClassId}>
+                <SelectTrigger id="timetable-class-select">
+                  <SelectValue placeholder={classesQuery.isLoading ? 'Đang tải...' : 'Chọn lớp'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {(classesQuery.data ?? []).map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.className} - {c.section}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="timetable-semester-select">Học kỳ</Label>
             <Select value={semesterId} onValueChange={setSemesterId}>
@@ -171,78 +196,86 @@ function TimetableManagement() {
         </CardContent>
       </Card>
 
-      {classId && semesterId && (
+      {isTeacherView && myStaffLookupDone && !myStaffId && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
+          Tài khoản của bạn chưa được liên kết với hồ sơ nhân sự nên không thể xem lịch dạy.
+        </div>
+      )}
+
+      {scheduleReady && (
         <>
-          <Card>
-            <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <CardTitle>Phân công giảng dạy</CardTitle>
-                <CardDescription>Lớp {classLabel}</CardDescription>
-              </div>
-              {canManage && (
-                <Button
-                  onClick={() => {
-                    setEditingAssignment(null);
-                    setAssignmentDialogOpen(true);
-                  }}
-                >
-                  <FiPlus className="mr-2 h-4 w-4" /> Thêm phân công
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              {assignmentsQuery.isLoading ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">Đang tải...</p>
-              ) : classAssignments.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">
-                  Lớp này chưa có phân công giảng dạy trong học kỳ đã chọn.
-                </p>
-              ) : (
-                <div className="divide-y rounded-md border">
-                  {classAssignments.map((a) => (
-                    <div key={a.id} className="flex items-center justify-between gap-4 px-4 py-2.5">
-                      <div>
-                        <span className="font-medium">{a.subjectName}</span>
-                        <span className="text-muted-foreground"> · {a.teacherName}</span>
-                      </div>
-                      {canManage && (
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEditingAssignment(a);
-                              setAssignmentDialogOpen(true);
-                            }}
-                            aria-label="Sửa"
-                          >
-                            <FiEdit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setDeletingAssignment(a)}
-                            aria-label="Xóa"
-                          >
-                            <FiTrash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+          {!isTeacherView && (
+            <Card>
+              <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle>Phân công giảng dạy</CardTitle>
+                  <CardDescription>Lớp {classLabel}</CardDescription>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                {canManage && (
+                  <Button
+                    onClick={() => {
+                      setEditingAssignment(null);
+                      setAssignmentDialogOpen(true);
+                    }}
+                  >
+                    <FiPlus className="mr-2 h-4 w-4" /> Thêm phân công
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {assignmentsQuery.isLoading ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">Đang tải...</p>
+                ) : classAssignments.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    Lớp này chưa có phân công giảng dạy trong học kỳ đã chọn.
+                  </p>
+                ) : (
+                  <div className="divide-y rounded-md border">
+                    {classAssignments.map((a) => (
+                      <div key={a.id} className="flex items-center justify-between gap-4 px-4 py-2.5">
+                        <div>
+                          <span className="font-medium">{a.subjectName}</span>
+                          <span className="text-muted-foreground"> · {a.teacherName}</span>
+                        </div>
+                        {canManage && (
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingAssignment(a);
+                                setAssignmentDialogOpen(true);
+                              }}
+                              aria-label="Sửa"
+                            >
+                              <FiEdit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setDeletingAssignment(a)}
+                              aria-label="Xóa"
+                            >
+                              <FiTrash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
               <CardTitle>Lịch học trong tuần</CardTitle>
-              <CardDescription>Lớp {classLabel}</CardDescription>
+              <CardDescription>{isTeacherView ? 'Lịch dạy của tôi' : `Lớp ${classLabel}`}</CardDescription>
             </CardHeader>
             <CardContent>
-              {classAssignments.length === 0 ? (
+              {!isTeacherView && classAssignments.length === 0 ? (
                 <p className="py-4 text-center text-sm text-muted-foreground">
                   Thêm phân công giảng dạy ở trên trước khi xếp lịch học.
                 </p>
@@ -299,7 +332,9 @@ function TimetableManagement() {
                                       ) : (
                                         <div className="font-medium">{slot.subjectName}</div>
                                       )}
-                                      <div className="text-muted-foreground">{slot.teacherName}</div>
+                                      <div className="text-muted-foreground">
+                                        {isTeacherView ? slot.schoolClassLabel : slot.teacherName}
+                                      </div>
                                       <div className="text-muted-foreground">{slot.room}</div>
                                       {canManage && (
                                         <button

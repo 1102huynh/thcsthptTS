@@ -3,6 +3,7 @@ package com.schoolmanagement.controller;
 import com.schoolmanagement.dto.SchoolClassDTO;
 import com.schoolmanagement.dto.StudentDTO;
 import com.schoolmanagement.entity.SchoolClass;
+import com.schoolmanagement.entity.User;
 import com.schoolmanagement.service.SchoolClassService;
 import com.schoolmanagement.util.PaginationUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -77,9 +79,11 @@ public class SchoolClassController {
 
     @GetMapping("/{id}/students")
     @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
-    @Operation(summary = "Get students in a class")
-    public ResponseEntity<List<StudentDTO>> getStudentsInClass(@PathVariable Long id) {
-        List<StudentDTO> students = schoolClassService.getStudentsInClass(id);
+    @Operation(summary = "Get students in a class",
+            description = "A TEACHER may only fetch the roster of a class they are GVCN (homeroom teacher) of (403 otherwise).")
+    public ResponseEntity<List<StudentDTO>> getStudentsInClass(@PathVariable Long id, Authentication authentication) {
+        User requester = (User) authentication.getPrincipal();
+        List<StudentDTO> students = schoolClassService.getStudentsInClass(id, requester);
         return new ResponseEntity<>(students, HttpStatus.OK);
     }
 

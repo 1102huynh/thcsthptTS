@@ -116,6 +116,7 @@ class PromotionIntegrationTest {
     private SchoolClass schoolClass;
     private Student student;
     private Staff staff;
+    private User adminUser;
     private User studentUser;
     private User otherStudentUser;
 
@@ -140,10 +141,13 @@ class PromotionIntegrationTest {
         subject = subjectRepository.save(Subject.builder()
                 .code("ITEST-PROMO-SUBJ").name("ITEST Subject").category(SubjectCategory.BAT_BUOC).build());
 
-        // gradeLevel 9 (a graduating grade) so the TOT_NGHIEP-suggestion branch is exercised.
-        schoolClass = schoolClassRepository.save(SchoolClass.builder()
-                .className("ITEST-PROMO-9").section("A").academicYear("2099-2100").gradeLevel(9).build());
+        adminUser = userRepository.save(User.builder()
+                .username("itest.promo.admin").email("itest.promo.admin@school.com")
+                .password(passwordEncoder.encode("Str0ngPassw0rd!"))
+                .firstName("Integration").lastName("Admin").role(Role.ADMIN).enabled(true).build());
 
+        // staff is made this class's GVCN below (classTeacher(staff)) so the
+        // TEACHER-role tests exercise the H.3.1 homeroom-preview scoping.
         User teacherUser = userRepository.save(User.builder()
                 .username("itest.promo.teacher").email("itest.promo.teacher@school.com")
                 .password(passwordEncoder.encode("Str0ngPassw0rd!"))
@@ -151,6 +155,11 @@ class PromotionIntegrationTest {
         staff = staffRepository.save(Staff.builder()
                 .employeeId("ITEST-PROMO-EMP").user(teacherUser)
                 .position(StaffPosition.TEACHER).status(EmploymentStatus.ACTIVE).build());
+
+        // gradeLevel 9 (a graduating grade) so the TOT_NGHIEP-suggestion branch is exercised.
+        schoolClass = schoolClassRepository.save(SchoolClass.builder()
+                .className("ITEST-PROMO-9").section("A").academicYear("2099-2100").gradeLevel(9)
+                .classTeacher(staff).build());
 
         studentUser = userRepository.save(User.builder()
                 .username("itest.promo.student").email("itest.promo.student@school.com")
@@ -201,10 +210,10 @@ class PromotionIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "TEACHER")
     void previewClassPromotions_noThresholdConfig_noSuggestion() throws Exception {
         mockMvc.perform(get("/v1/promotions/class/{classId}/preview", schoolClass.getId())
-                        .param("academicYearId", academicYear.getId().toString()))
+                        .param("academicYearId", academicYear.getId().toString())
+                        .with(asUser(staff.getUser(), "TEACHER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].meetsThresholds").doesNotExist())
                 .andExpect(jsonPath("$[0].suggestedDecision").doesNotExist())
@@ -212,15 +221,14 @@ class PromotionIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
     void previewClassPromotions_classAcademicYearMismatch_returns400() throws Exception {
         mockMvc.perform(get("/v1/promotions/class/{classId}/preview", schoolClass.getId())
-                        .param("academicYearId", otherAcademicYear.getId().toString()))
+                        .param("academicYearId", otherAcademicYear.getId().toString())
+                        .with(asUser(adminUser, "ADMIN")))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
     void previewClassPromotions_graduatingGradeMeetsThresholds_suggestsTotNghiep() throws Exception {
         saveThresholdConfig();
         giveStudentQualifyingRecord();
@@ -228,7 +236,8 @@ class PromotionIntegrationTest {
         markAttendance(4, 1);
 
         mockMvc.perform(get("/v1/promotions/class/{classId}/preview", schoolClass.getId())
-                        .param("academicYearId", academicYear.getId().toString()))
+                        .param("academicYearId", academicYear.getId().toString())
+                        .with(asUser(adminUser, "ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].studentId").value(student.getId()))
                 .andExpect(jsonPath("$[0].lowestSubjectAverage").value(9.0))
@@ -240,16 +249,33 @@ class PromotionIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
     void previewClassPromotions_belowThreshold_suggestsOLaiWithReasons() throws Exception {
         saveThresholdConfig();
         // No grades/conduct/attendance at all for this student.
         mockMvc.perform(get("/v1/promotions/class/{classId}/preview", schoolClass.getId())
-                        .param("academicYearId", academicYear.getId().toString()))
+                        .param("academicYearId", academicYear.getId().toString())
+                        .with(asUser(adminUser, "ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].meetsThresholds").value(false))
                 .andExpect(jsonPath("$[0].suggestedDecision").value("O_LAI"))
                 .andExpect(jsonPath("$[0].reasons", org.hamcrest.Matchers.hasSize(3)));
+    }
+
+    @Test
+    void previewClassPromotions_asNonHomeroomTeacher_returns403() throws Exception {
+        User otherTeacherUser = userRepository.save(User.builder()
+                .username("itest.promo.other-teacher").email("itest.promo.other-teacher@school.com")
+                .password(passwordEncoder.encode("Str0ngPassw0rd!"))
+                .firstName("Integration").lastName("OtherTeacher").role(Role.TEACHER).enabled(true).build());
+        staffRepository.save(Staff.builder()
+                .employeeId("ITEST-PROMO-OTHER").user(otherTeacherUser)
+                .position(StaffPosition.TEACHER).status(EmploymentStatus.ACTIVE).build());
+        // otherTeacherUser has a Staff profile but is not GVCN of any class.
+
+        mockMvc.perform(get("/v1/promotions/class/{classId}/preview", schoolClass.getId())
+                        .param("academicYearId", academicYear.getId().toString())
+                        .with(asUser(otherTeacherUser, "TEACHER")))
+                .andExpect(status().isForbidden());
     }
 
     @Test

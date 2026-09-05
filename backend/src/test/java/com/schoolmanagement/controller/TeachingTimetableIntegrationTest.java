@@ -29,14 +29,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -117,6 +122,11 @@ class TeachingTimetableIntegrationTest {
                 .position(StaffPosition.TEACHER)
                 .status(EmploymentStatus.ACTIVE)
                 .build());
+    }
+
+    private RequestPostProcessor asUser(User user, String role) {
+        return authentication(new UsernamePasswordAuthenticationToken(
+                user, null, List.of(new SimpleGrantedAuthority("ROLE_" + role))));
     }
 
     private User newUser(String username) {
@@ -291,16 +301,49 @@ class TeachingTimetableIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
     void getTeacherTimetable_returnsScheduledSlots() throws Exception {
         TeachingAssignment assignment = teachingAssignmentRepository.save(resolvedAssignment(classA, teacher1));
         timetableSlotRepository.save(TimetableSlot.builder()
                 .teachingAssignment(assignment).dayOfWeek(4).period(3).room("ITEST-P101").build());
 
-        mockMvc.perform(get("/v1/timetable/teacher/{teacherId}", teacher1.getId()))
+        mockMvc.perform(get("/v1/timetable/teacher/{teacherId}", teacher1.getId())
+                        .with(asUser(teacher1.getUser(), "TEACHER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].teacherName").value("Integration Teacher"))
                 .andExpect(jsonPath("$[0].dayOfWeek").value(4));
+    }
+
+    // H.3.1 — TEACHER may only view their own teaching timetable, never any
+    // other teacher's, and never a class's (browsing by class is ADMIN/
+    // PRINCIPAL only now - the principal sets the schedule, not the teacher).
+    @Test
+    void getTeacherTimetable_asOwnTeacher_returns200() throws Exception {
+        TeachingAssignment assignment = teachingAssignmentRepository.save(resolvedAssignment(classA, teacher1));
+        timetableSlotRepository.save(TimetableSlot.builder()
+                .teachingAssignment(assignment).dayOfWeek(4).period(3).room("ITEST-P101").build());
+
+        mockMvc.perform(get("/v1/timetable/teacher/{teacherId}", teacher1.getId())
+                        .with(asUser(teacher1.getUser(), "TEACHER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].dayOfWeek").value(4));
+    }
+
+    @Test
+    void getTeacherTimetable_asDifferentTeacher_returns403() throws Exception {
+        TeachingAssignment assignment = teachingAssignmentRepository.save(resolvedAssignment(classA, teacher1));
+        timetableSlotRepository.save(TimetableSlot.builder()
+                .teachingAssignment(assignment).dayOfWeek(4).period(3).room("ITEST-P101").build());
+
+        mockMvc.perform(get("/v1/timetable/teacher/{teacherId}", teacher1.getId())
+                        .with(asUser(teacher2.getUser(), "TEACHER")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getClassTimetable_asTeacher_returns403() throws Exception {
+        mockMvc.perform(get("/v1/timetable/class/{classId}", classA.getId())
+                        .with(asUser(teacher1.getUser(), "TEACHER")))
+                .andExpect(status().isForbidden());
     }
 
     @Test

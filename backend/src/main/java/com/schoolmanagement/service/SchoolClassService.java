@@ -4,12 +4,14 @@ import com.schoolmanagement.dto.SchoolClassDTO;
 import com.schoolmanagement.dto.StudentDTO;
 import com.schoolmanagement.entity.SchoolClass;
 import com.schoolmanagement.entity.Staff;
+import com.schoolmanagement.entity.User;
 import com.schoolmanagement.exception.DuplicateResourceException;
 import com.schoolmanagement.exception.ResourceInUseException;
 import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.SchoolClassRepository;
 import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.StudentRepository;
+import com.schoolmanagement.security.TeacherHomeroomGuard;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +30,7 @@ public class SchoolClassService {
     private StaffRepository staffRepository;
     private StudentRepository studentRepository;
     private StudentService studentService;
+    private TeacherHomeroomGuard teacherHomeroomGuard;
 
     public SchoolClassDTO createClass(SchoolClass schoolClass) {
         assertNoDuplicate(schoolClass.getClassName(), schoolClass.getSection(), schoolClass.getAcademicYear(), null);
@@ -87,10 +90,11 @@ public class SchoolClassService {
         return mapToDTO(updatedClass);
     }
 
-    public List<StudentDTO> getStudentsInClass(Long classId) {
+    public List<StudentDTO> getStudentsInClass(Long classId, User requester) {
         SchoolClass schoolClass = schoolClassRepository.findById(classId)
                 .orElseThrow(() -> new ResourceNotFoundException("Class not found with id: " + classId));
-        return studentService.getStudentsByClassAndSection(schoolClass.getClassName(), schoolClass.getSection());
+        teacherHomeroomGuard.enforceHomeroomClassId(classId, requester);
+        return studentService.getStudentsByClassAndSection(schoolClass.getClassName(), schoolClass.getSection(), requester);
     }
 
     public void deleteClass(Long id) {

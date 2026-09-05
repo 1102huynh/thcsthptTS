@@ -19,15 +19,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -78,6 +83,11 @@ class SchoolClassControllerIntegrationTest {
                 .position(StaffPosition.TEACHER)
                 .status(EmploymentStatus.ACTIVE)
                 .build());
+    }
+
+    private RequestPostProcessor asUser(User user, String role) {
+        return authentication(new UsernamePasswordAuthenticationToken(
+                user, null, List.of(new SimpleGrantedAuthority("ROLE_" + role))));
     }
 
     private SchoolClass newClassPayload(String className, String section) {
@@ -216,5 +226,38 @@ class SchoolClassControllerIntegrationTest {
         mockMvc.perform(get("/v1/classes"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(greaterThanOrEqualTo(1))));
+    }
+
+    // H.3.1 - GET /{id}/students is the roster view used by ClassManagement;
+    // a TEACHER may only fetch it for a class they are GVCN (homeroom
+    // teacher) of.
+    @Test
+    void getStudentsInClass_asHomeroomTeacher_returns200() throws Exception {
+        SchoolClass saved = schoolClassRepository.save(SchoolClass.builder()
+                .className("ITEST-19").section("A").academicYear("2099-2100")
+                .classTeacher(teacher).build());
+        User studentUser = userRepository.save(User.builder()
+                .username("itest.cls19.student").email("itest.cls19.student@school.com")
+                .password(passwordEncoder.encode("Str0ngPassw0rd!"))
+                .firstName("Integration").lastName("Student").role(Role.STUDENT).enabled(true).build());
+        studentRepository.save(Student.builder()
+                .rollNumber("ITEST-CLS19-ROLL").admissionNumber("ITEST-CLS19-ADM")
+                .user(studentUser).className(saved.getClassName()).section(saved.getSection())
+                .status(StudentStatus.ACTIVE).dateOfAdmission(LocalDate.now()).build());
+
+        mockMvc.perform(get("/v1/classes/{id}/students", saved.getId())
+                        .with(asUser(teacher.getUser(), "TEACHER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].rollNumber").value("ITEST-CLS19-ROLL"));
+    }
+
+    @Test
+    void getStudentsInClass_asNonHomeroomTeacher_returns403() throws Exception {
+        SchoolClass saved = schoolClassRepository.save(newClassPayload("ITEST-20", "A"));
+        // `saved` has no classTeacher set - `teacher` is GVCN of nothing.
+
+        mockMvc.perform(get("/v1/classes/{id}/students", saved.getId())
+                        .with(asUser(teacher.getUser(), "TEACHER")))
+                .andExpect(status().isForbidden());
     }
 }

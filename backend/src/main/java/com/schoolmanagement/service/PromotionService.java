@@ -29,6 +29,7 @@ import com.schoolmanagement.repository.SemesterRepository;
 import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.security.StudentAccessGuard;
+import com.schoolmanagement.security.TeacherHomeroomGuard;
 import com.schoolmanagement.util.AcademicYearMatcher;
 import com.schoolmanagement.util.EntityResolver;
 import lombok.AllArgsConstructor;
@@ -76,6 +77,7 @@ public class PromotionService {
     private StaffRepository staffRepository;
     private GradeRecordService gradeRecordService;
     private StudentAccessGuard studentAccessGuard;
+    private TeacherHomeroomGuard teacherHomeroomGuard;
 
     /**
      * Bảng xét lên lớp cho cả lớp — computed live, nothing here is saved yet.
@@ -84,7 +86,8 @@ public class PromotionService {
      * (tens of students), but would need batching to scale to a whole-school
      * report across many classes at once.
      */
-    public List<PromotionPreviewEntryDTO> previewClassPromotions(Long classId, Long academicYearId) {
+    public List<PromotionPreviewEntryDTO> previewClassPromotions(Long classId, Long academicYearId, User requester) {
+        teacherHomeroomGuard.enforceHomeroomClassId(classId, requester);
         SchoolClass schoolClass = schoolClassRepository.findById(classId)
                 .orElseThrow(() -> new ResourceNotFoundException("Class not found with id: " + classId));
         AcademicYear academicYear = academicYearRepository.findById(academicYearId)

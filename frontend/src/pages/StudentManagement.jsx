@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { FiEdit2, FiTrash2, FiPlus, FiPaperclip } from 'react-icons/fi';
 import { studentService } from '../services/dataService';
+import { getCurrentUser } from '../services/authService';
+import { useMyHomeroomClasses } from '../hooks/useMyHomeroomClasses';
 import DataTable from '../components/shared/DataTable';
 import StudentFormDialog from './student/StudentFormDialog';
 import DocumentsDialog from '../components/shared/DocumentsDialog';
@@ -24,6 +26,13 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 function StudentManagement() {
   const queryClient = useQueryClient();
+  const role = getCurrentUser()?.role;
+  // H.3.1 - the backend already scopes GET /v1/students to a TEACHER's own
+  // homeroom class(es) (StudentService.getAllStudents(User) via
+  // TeacherHomeroomGuard.filterToHomeroom); this only adds the "you aren't
+  // GVCN of any class" message, same UX as ConductManagement/Attendance/
+  // PromotionManagement.
+  const { homeroomClasses, isSuccess: homeroomSuccess } = useMyHomeroomClasses();
   const [search, setSearch] = useState('');
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
@@ -145,6 +154,12 @@ function StudentManagement() {
       {studentsQuery.isError && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
           Không tải được danh sách học sinh.
+        </div>
+      )}
+
+      {role === 'TEACHER' && homeroomSuccess && homeroomClasses.length === 0 && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
+          Bạn chưa là giáo viên chủ nhiệm của lớp nào nên không có học sinh nào để quản lý.
         </div>
       )}
 

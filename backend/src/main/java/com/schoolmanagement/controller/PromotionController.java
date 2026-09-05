@@ -28,10 +28,11 @@ public class PromotionController {
     @GetMapping("/class/{classId}/preview")
     @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
     @Operation(summary = "Bảng đề xuất xét lên lớp cho cả lớp",
-            description = "One row per student in the class — not persisted. suggestedDecision is null if no PromotionThresholdConfig applies to this academic year yet.")
+            description = "One row per student in the class — not persisted. suggestedDecision is null if no PromotionThresholdConfig applies to this academic year yet. A TEACHER may only preview a class they are GVCN (homeroom teacher) of (403 otherwise).")
     public ResponseEntity<List<PromotionPreviewEntryDTO>> previewClassPromotions(
-            @PathVariable Long classId, @RequestParam Long academicYearId) {
-        return new ResponseEntity<>(promotionService.previewClassPromotions(classId, academicYearId), HttpStatus.OK);
+            @PathVariable Long classId, @RequestParam Long academicYearId, Authentication authentication) {
+        User requester = (User) authentication.getPrincipal();
+        return new ResponseEntity<>(promotionService.previewClassPromotions(classId, academicYearId, requester), HttpStatus.OK);
     }
 
     @PostMapping("/confirm")

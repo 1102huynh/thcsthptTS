@@ -84,15 +84,17 @@ public class StudentController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'ACCOUNTANT')")
     @Operation(summary = "Get all students",
-            description = "Optional page/size query params paginate the result (0-indexed page); omit both to get the full list. Total count is returned in the X-Total-Count header when paginated.")
+            description = "Optional page/size query params paginate the result (0-indexed page); omit both to get the full list. Total count is returned in the X-Total-Count header when paginated. A TEACHER only ever sees students in the class(es) they are GVCN (homeroom teacher) of.")
     public ResponseEntity<List<StudentDTO>> getAllStudents(
             @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size) {
+            @RequestParam(required = false) Integer size,
+            Authentication authentication) {
+        User requester = (User) authentication.getPrincipal();
         Pageable pageable = PaginationUtil.toPageable(page, size);
         if (pageable == null) {
-            return new ResponseEntity<>(studentService.getAllStudents(), HttpStatus.OK);
+            return new ResponseEntity<>(studentService.getAllStudents(requester), HttpStatus.OK);
         }
-        Page<StudentDTO> result = studentService.getAllStudents(pageable);
+        Page<StudentDTO> result = studentService.getAllStudents(pageable, requester);
         return ResponseEntity.ok()
                 .header("X-Total-Count", String.valueOf(result.getTotalElements()))
                 .body(result.getContent());
@@ -100,19 +102,24 @@ public class StudentController {
 
     @GetMapping("/class/{className}")
     @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
-    @Operation(summary = "Get students by class")
-    public ResponseEntity<List<StudentDTO>> getStudentsByClass(@PathVariable String className) {
-        List<StudentDTO> students = studentService.getStudentsByClass(className);
+    @Operation(summary = "Get students by class",
+            description = "A TEACHER only ever sees the students of this class that are also in one of their homeroom classes (may be empty; a className can span multiple sections not all of which are theirs).")
+    public ResponseEntity<List<StudentDTO>> getStudentsByClass(@PathVariable String className, Authentication authentication) {
+        User requester = (User) authentication.getPrincipal();
+        List<StudentDTO> students = studentService.getStudentsByClass(className, requester);
         return new ResponseEntity<>(students, HttpStatus.OK);
     }
 
     @GetMapping("/class/{className}/section/{section}")
     @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
-    @Operation(summary = "Get students by class and section")
+    @Operation(summary = "Get students by class and section",
+            description = "A TEACHER may only fetch a class/section they are GVCN (homeroom teacher) of (403 otherwise).")
     public ResponseEntity<List<StudentDTO>> getStudentsByClassAndSection(
             @PathVariable String className,
-            @PathVariable String section) {
-        List<StudentDTO> students = studentService.getStudentsByClassAndSection(className, section);
+            @PathVariable String section,
+            Authentication authentication) {
+        User requester = (User) authentication.getPrincipal();
+        List<StudentDTO> students = studentService.getStudentsByClassAndSection(className, section, requester);
         return new ResponseEntity<>(students, HttpStatus.OK);
     }
 
