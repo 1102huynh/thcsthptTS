@@ -1,11 +1,11 @@
 # KẾ HOẠCH PHÁT TRIỂN & NÂNG CẤP HỆ THỐNG QUẢN LÝ TRƯỜNG THCS-THPT (thcsthptTS)
 
-**Phiên bản 4.17 — ngày 05/09/2026**
-*(v4.17: **vá `POST /v1/auth/login` không có rate-limit** (phát hiện ở review v4.16) — `LoginRateLimitFilter` mới, 20 lần/5 phút mỗi IP, theo đúng pattern 4 filter rate-limit đã có sẵn. `mvn test` 230/230 (baseline 229 + 1), `npm test` 50/50 không đổi. v4.16: review bổ sung sau D6 — sửa 2 mục tài liệu lỗi thời (ownership check notifications/documents, frontend route-guard — cả hai hoá ra đã vá từ trước), phát hiện thêm `vite`/`esbuild` CVE mức trung bình (chỉ dev server). v4.15: D6 xong. v4.14: Spring Boot 3.5.3 + react-router-dom 7.18.3. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
+**Phiên bản 4.18 — ngày 05/09/2026**
+*(v4.18: **kiểm tra thủ công toàn bộ chức năng trên trình duyệt thật** (cả 7 vai trò: ADMIN/PRINCIPAL/TEACHER/STUDENT/PARENT/LIBRARIAN/ACCOUNTANT) — lần đầu tiên test bằng cách click qua app thật thay vì chỉ đọc code/test tự động. Tìm và vá **4 lỗi thật**: (1) mở dialog "Bài tin mới"/"Sự kiện mới" **crash trắng trang** (Tiptap + React StrictMode, không có Error Boundary); (2) đổi mật khẩu sai bị **đăng xuất nhầm** thay vì báo lỗi (bug promise-chaining trong `api.js`); (3) **ACCOUNTANT không thấy khoản thu nào** (0/207) do thiếu quyền đọc `/v1/academic-years` — lỗi nghiêm trọng nhất, chặn hoàn toàn nghiệp vụ chính của vai trò Kế toán; (4) thông báo đăng nhập sai vẫn tiếng Anh. `mvn test` 232/232, `npm test` 52/52. Xem "Nhật ký thay đổi" để biết chi tiết + nguyên nhân từng lỗi. v4.17: rate-limit `/v1/auth/login`. v4.16: review phát hiện B0 vẫn chặn. v4.15: D6 xong. v4.14: Spring Boot 3.5.3 + react-router-dom 7.18.3. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
 
 > **Tài liệu này là kế hoạch nâng cấp DUY NHẤT** — thay cho `IMPLEMENTATION_PLAN.md` (v3.1) và đã gộp cả 2 file phân quyền lẻ trước đây.
 
-> **⚡ Việc gấp nhất còn lại:** Giai đoạn A + C + D + **Mức 1–2** + dọn nợ điểm + CI backend-có-DB đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2) — quyết định ngoài phạm vi code, cần người có chuyên môn giáo dục xác nhận. Đã xong: nâng Spring Boot lên 3.5.3 + `react-router-dom` lên 7.18.3 (Quyết định 7–8) + D6 (trang quản lý tài khoản) + rate-limit cho `/v1/auth/login`. Không chặn: xoá hẳn class `Grade` cũ + `V11` (Quyết định E.1), bật branch-protection trên GitHub, Giai đoạn E (cần ngân sách/nhà cung cấp — SMS/Zalo, cổng thanh toán), Spring Boot 4.x (Quyết định 9, sáng kiến riêng), nâng `vite`/`esbuild` (CVE mức trung bình, chỉ ảnh hưởng dev server — Phần F).
+> **⚡ Việc gấp nhất còn lại:** Giai đoạn A + C + D + **Mức 1–2** + dọn nợ điểm + CI backend-có-DB đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2) — quyết định ngoài phạm vi code, cần người có chuyên môn giáo dục xác nhận. Đã xong: nâng Spring Boot lên 3.5.3 + `react-router-dom` lên 7.18.3 (Quyết định 7–8) + D6 (trang quản lý tài khoản) + rate-limit `/v1/auth/login` + kiểm tra UI thật cả 7 vai trò, vá 4 lỗi tìm được (v4.18). Không chặn: xoá hẳn class `Grade` cũ + `V11` (Quyết định E.1), bật branch-protection trên GitHub, Giai đoạn E (cần ngân sách/nhà cung cấp — SMS/Zalo, cổng thanh toán), Spring Boot 4.x (Quyết định 9, sáng kiến riêng), nâng `vite`/`esbuild` (CVE mức trung bình, chỉ ảnh hưởng dev server — Phần F), thêm Error Boundary tổng (đã giảm rủi ro cho ca RichTextEditor nhưng nguyên nhân gốc — 1 lỗi bất kỳ làm trắng cả app — vẫn còn, xem Quyết định 10).
 
 *Tài liệu này được lập sau khi review lại **toàn bộ** mã nguồn hiện tại trên máy (`D:\sources\thcsthptTS` là **nguồn sự thật chính** — không dựa vào bản sao trong Claude Project). Khác với kế hoạch v3.1 (`IMPLEMENTATION_PLAN.md`) vốn là kế hoạch **xây mới từ đầu**, phiên bản 4.x xuất phát từ thực tế: **phần lớn kế hoạch v3.1 đã được hiện thực hoá ở backend**. Trọng tâm mới là (1) đưa năng lực backend đã có lên giao diện người dùng, (2) **hoàn tất phần backend còn dở** (xếp loại học lực), (3) trả nợ kỹ thuật, (4) nâng cấp lên mức vận hành thật cho một trường.*
 
@@ -89,6 +89,7 @@ Vite + Tailwind + shadcn/ui (bỏ CRA), dark mode, React Query, sonner, bộ com
 7. ~~`react-router-dom ^6.14.0` có 2 CVE mức trung bình~~ ✅ **[v4.14] Đã lên 7.18.3** — `npm audit --omit=dev` nay sạch (0 vulnerabilities). App chỉ dùng Declarative Mode (`BrowserRouter`/`Routes`/`Route`/`Navigate`/`Link`/`useNavigate`/`useParams`/`useSearchParams`, mọi path đều absolute, không data router/loader/action/`useBlocker`) — API không đổi giữa v6/v7 cho kiểu dùng này nên **không cần sửa 1 dòng code**; `npm run build` + `npm test` (45/45) xanh nguyên.
 8. ~~`POST /v1/auth/login` không có rate-limit~~ ✅ **[v4.17] Đã thêm `LoginRateLimitFilter`** — xem G.4 mục 8.
 9. **[MỚI — v4.16] `esbuild`/`vite` có CVE mức trung bình** (`npm audit`, toàn bộ deps kể cả devDependencies: `esbuild <=0.24.2` qua `vite <=6.4.2` cho phép 1 website bất kỳ gửi request tới dev server và đọc phản hồi). Chỉ ảnh hưởng `npm run dev` (dev server cục bộ), **không ảnh hưởng production build** — `npm audit --omit=dev` không thấy vì đây là devDependency. Bản vá chính thức là nâng **major vite v5 → v8** (`vite@8.2.2`, kéo theo khả năng cần nâng `vitest`/`@vitejs/plugin-react` đi kèm) — việc lớn hơn "sửa nhanh", để dành làm nhánh riêng như Spring Boot/react-router, không vá mù quáng.
+10. **[MỚI — v4.18] Toàn app không có React Error Boundary nào.** Phát hiện khi mở dialog CMS bị crash trắng trang (đã vá nguyên nhân cụ thể — xem G.5 mục 1) — nhưng lỗ hổng gốc rộng hơn: **bất kỳ** lỗi render/commit không bắt được ở bất kỳ component nào (kể cả lỗi mới phát sinh sau này, không chỉ ca đã vá) sẽ làm **toàn bộ app trắng trang**, không có màn hình "Đã có lỗi xảy ra, tải lại trang" nào để người dùng thực (không phải dev) phục hồi. Nên thêm 1 `ErrorBoundary` bọc quanh nội dung route (`App.jsx`) — việc nhỏ, độc lập, không phụ thuộc quyết định gì.
 
 ---
 
@@ -275,6 +276,17 @@ Dù bảng phân quyền đánh dấu STUDENT/PARENT được vào endpoint đi�
 
 > `Permission` enum + `UserPermission` **đã định nghĩa nhưng chưa dùng** — hệ thống phân quyền theo `Role`. Xem hướng xử lý ở H.3.2.
 
+### G.5. Lỗi phát hiện qua kiểm tra UI thực tế trên trình duyệt (v4.18)
+
+*Lần đầu tiên trong dự án kiểm tra bằng cách đăng nhập thật + click qua từng chức năng ở cả 7 vai trò (Claude-in-Chrome), thay vì chỉ đọc code/chạy test tự động. 4 lỗi dưới đây **chỉ lộ ra khi thao tác thật** — cả `mvn test`/`npm test` (232/232, 52/52) đều xanh trước đó vì không có test nào phủ đúng những đường này.*
+
+1. **✅ [ĐÃ VÁ] ACCOUNTANT không thấy khoản thu nào (0/207) — lỗi nghiêm trọng nhất.** `FeeManagement.jsx` chỉ gọi `GET /v1/fees/year/{năm}` sau khi biết năm học hiện hành qua `GET /v1/academic-years`, nhưng endpoint đó **chưa từng cấp cho ACCOUNTANT** (chỉ ADMIN/PRINCIPAL/TEACHER/STUDENT/PARENT) → luôn 403 → `academicYear` luôn `undefined` → query học phí `enabled: Boolean(academicYear)` **không bao giờ chạy** → bảng trống im lặng, không cả thông báo lỗi (banner "chưa có năm học" cũng bị che vì nó chỉ hiện khi lời gọi *thành công*). Cùng loại lỗi với Mức 2.2 (v4.10, học sinh) nhưng chưa ai phát hiện vì phải **thật sự đăng nhập bằng tài khoản `accountant` và mở trang Học phí** mới thấy — code review/test tự động không lộ ra. Vá: thêm `ACCOUNTANT` vào `@PreAuthorize` của `GET /v1/academic-years` + `/{id}` (`AcademicYearController`). Test mới `getAcademicYears_asAccountant_returns200`, `createAcademicYear_asAccountant_returns403`.
+2. **✅ [ĐÃ VÁ] Mở dialog "Bài tin mới"/"Sự kiện mới" (CMS Tin tức/Sự kiện) làm trắng toàn bộ app.** `RichTextEditor.jsx`'s effect gọi `editor.getHTML()` ngay khi mount; React 18 StrictMode (dev) double-invoke effect (mount→cleanup→mount) khiến `useEditor()` huỷ editor cũ giữa chừng, closure cũ gọi `.getHTML()` trên editor đã `destroy()` (schema = null) → `TypeError: Cannot read properties of null (reading 'cached')` từ ProseMirror, không ai bắt (không có Error Boundary — xem Quyết định 10) → React bỏ trắng toàn cây. Vá: thêm guard `editor.isDestroyed` trước khi gọi `getHTML()`/`setContent()`.
+3. **✅ [ĐÃ VÁ] Đổi mật khẩu sai mật khẩu hiện tại → bị đăng xuất nhầm thay vì báo lỗi.** Lỗi promise-chaining trong `api.js`: `requestNewToken().then(success).catch(failure)` — khi request gốc (401 do sai mật khẩu, không liên quan token) được **refresh xong rồi thử lại** và **vẫn 401** (vì mật khẩu vẫn sai), `.catch()` bắt luôn cả lỗi retry đó, tưởng nhầm là "refresh thất bại" → `clearSessionAndRedirect()`. Vá: đổi sang `.then(onFulfilled, onRejected)` 2 tham số — `onRejected` giờ chỉ bắt lỗi thật của `requestNewToken()`, không bắt lỗi từ bên trong `onFulfilled`. Test mới `api.test.js` (2 ca, mock axios).
+4. **✅ [ĐÃ VÁ] Thông báo đăng nhập sai vẫn tiếng Anh** ("Invalid username or password") dù toàn bộ app đã Việt hoá (A6) — sửa thành "Sai tên đăng nhập hoặc mật khẩu" trong `GlobalExceptionHandler`.
+
+Ngoài 4 lỗi trên, kiểm tra thêm: Chrome tự dịch trang (do `lang="vi"` khác ngôn ngữ trình duyệt) làm React `removeChild` crash khi chuyển trang — thêm `<meta name="google" content="notranslate">` vào `index.html` để chặn hẳn (bảo vệ cả người dùng thật có bật auto-translate, không chỉ vấn đề lúc test).
+
 ---
 
 ## PHẦN H — ĐỀ XUẤT MA TRẬN PHÂN QUYỀN MỤC TIÊU
@@ -346,7 +358,7 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 | Dashboard | `GET /v1/dashboard/stats` | ✅ | ✅ | | | | | |
 | Nhật ký | `GET /v1/audit-logs` | ✅ | | | | | | |
 | Năm học | `POST,PUT,DELETE /v1/academic-years`, `/{id}/close` | ✅ | ✅ | | | | | |
-| Năm học | `GET /v1/academic-years`, `/{id}` *(STUDENT/PARENT read-only, C3)* | ✅ | ✅ | ✅ | ✅ | ✅ | | |
+| Năm học | `GET /v1/academic-years`, `/{id}` *(STUDENT/PARENT read-only, C3; ACCOUNTANT — v4.18, cho `FeeManagement.jsx`)* | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ |
 | Học kỳ | `POST,PUT,DELETE /v1/semesters` | ✅ | ✅ | | | | | |
 | Học kỳ | `GET /v1/semesters`, `/{id}`, `/academic-year/{id}` *(STUDENT/PARENT read-only, C3)* | ✅ | ✅ | ✅ | ✅ | ✅ | | |
 | Môn học | `POST,PUT,DELETE /v1/subjects` | ✅ | ✅ | | | | | |
@@ -400,6 +412,16 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 
 ## NHẬT KÝ THAY ĐỔI
 
+- **v4.18 (05/09/2026):** kiểm tra thủ công toàn bộ chức năng trên trình duyệt thật (Claude-in-Chrome), người dùng yêu cầu "kiểm tra lại hết các chức năng có trên UI, nếu cái nào lỗi thì sẽ sửa" — lần đầu test bằng cách đăng nhập + click qua từng trang ở cả 7 vai trò thay vì chỉ đọc code.
+  - Khởi động lại backend (`mvn spring-boot:run`, profile `dev`) + frontend (`npm run dev`) với code mới nhất trên `main`, dùng tài khoản seed có sẵn (`admin/principal/teacher1/student1/librarian/accountant`, mật khẩu `Test@123` từ `TEST_DATA_CORRECTED.sql`).
+  - Click qua toàn bộ trang của ADMIN (19 mục sidebar) rồi lần lượt đăng nhập PRINCIPAL/TEACHER/STUDENT/LIBRARIAN/ACCOUNTANT để xác nhận RBAC + trải nghiệm đúng vai trò.
+  - **4 lỗi thật tìm được và đã vá ngay** (chi tiết ở G.5 mới):
+    1. **ACCOUNTANT không thấy khoản thu nào** (0/207) do thiếu quyền đọc `GET /v1/academic-years` — lỗi nghiêm trọng nhất, chặn hoàn toàn nghiệp vụ chính của Kế toán, im lặng không báo lỗi.
+    2. Mở dialog CMS "Bài tin mới"/"Sự kiện mới" **crash trắng trang** — bug Tiptap + React StrictMode double-invoke effect, gọi `.getHTML()` trên editor đã huỷ.
+    3. Đổi mật khẩu sai → **bị đăng xuất nhầm** thay vì báo lỗi — bug promise-chaining kinh điển (`.then().catch()` bắt nhầm lỗi retry) trong `api.js`.
+    4. Thông báo đăng nhập sai vẫn tiếng Anh, không nhất quán với phần còn lại của app.
+  - Nhân tiện phát hiện: **toàn app không có React Error Boundary nào** (Quyết định 10, mới) — bất kỳ lỗi render nào cũng làm trắng cả app, không chỉ ca #2 đã vá; và Chrome tự dịch trang gây crash `removeChild` khi chuyển route (chặn bằng `<meta name="google" content="notranslate">`).
+  - Test mới: `AcademicStructureIntegrationTest` (+2, ACCOUNTANT), `api.test.js` (+2, mock axios, tái hiện đúng bug đăng xuất nhầm). `mvn test` **232/232** (2 lỗi cũ không đổi); `npm test` **52/52**; `npm run build` sạch.
 - **v4.17 (05/09/2026):** vá lỗ hổng phát hiện ở v4.16 — `POST /v1/auth/login` không có rate-limit.
   - `LoginRateLimitFilter` mới (theo đúng pattern `ForgotPasswordRateLimitFilter`, khoá theo IP), đăng ký `addFilterBefore(..., JwtAuthenticationFilter.class)` trong `SecurityConfig`. Mặc định **20 lần/5 phút/IP** — cố ý rộng rãi hơn `forgot-password`/`admission` (3-5/60 phút) vì đăng nhập là hành động hợp lệ làm liên tục, thường từ IP NAT chung của trường (không muốn khoá nhầm cả trường thay vì chỉ kẻ tấn công).
   - `application-test.yml` thêm override `app.auth.login-rate-limit.max-requests: 1000` (bộ đếm khoá theo IP dùng chung Spring context giữa các test — cùng lý do với `admissions`/`forgot-password`, khác với `change-password-rate-limit` vốn khoá theo userId nên tự cô lập).

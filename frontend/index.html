@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#667eea" />
     <meta name="description" content="Hệ thống Quản lý Trường học THCS/THPT" />
+    <!-- Chrome's built-in auto-translate (offered whenever the browser's UI
+         language differs from this page's Vietnamese content) rewrites text
+         nodes in place - React's reconciler then finds nodes it rendered no
+         longer where it left them and throws "Failed to execute 'removeChild'
+         on 'Node'" on the next re-render/navigation, which (with no error
+         boundary in the tree - see App.jsx) blanks the entire app for any
+         real user who has translate on. `notranslate` stops Chrome from
+         offering/running translation on this page at all. -->
+    <meta name="google" content="notranslate" />
     <link rel="icon" href="/favicon.ico" />
     <title>Hệ thống Quản lý Trường học</title>
   </head>
