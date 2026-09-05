@@ -1,11 +1,11 @@
 # KẾ HOẠCH PHÁT TRIỂN & NÂNG CẤP HỆ THỐNG QUẢN LÝ TRƯỜNG THCS-THPT (thcsthptTS)
 
-**Phiên bản 4.11 — ngày 02/09/2026**
-*(v4.11: **nợ kỹ thuật + CI/CD** — gỡ `gradeService` chết khỏi FE + `@Deprecated` `Grade` cũ ở BE; viết lại `build.yml` (MySQL service container cho `mvn verify`, gitleaks, actions v4). v4.10: Mức 2.2/2.3. v4.9: Mức 2.1. v4.8: D2. v4.7: C3. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
+**Phiên bản 4.12 — ngày 05/09/2026**
+*(v4.12: **review toàn bộ hệ thống + PR #17** — sáp nhập tính năng Hồ sơ & đổi mật khẩu (`/v1/users/me*`); vá bug thông báo sai ngữ cảnh khi đổi mật khẩu sai + thêm rate-limit chống brute-force + chặn newPassword = mật khẩu cũ (kèm test); ghi nhận 2 phát hiện mới chưa từng có trong tài liệu — Spring Boot 3.1.5 đã hết hỗ trợ OSS (nâng cấp cần nhánh riêng) và `react-router-dom` có CVE mức trung bình (rủi ro thực tế thấp ở app này, vá cần nâng major v6→v7); đóng nghi vấn version `lucide-react`. v4.11: nợ kỹ thuật + CI/CD. v4.10: Mức 2.2/2.3. v4.9: Mức 2.1. v4.8: D2. v4.7: C3. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
 
 > **Tài liệu này là kế hoạch nâng cấp DUY NHẤT** — thay cho `IMPLEMENTATION_PLAN.md` (v3.1) và đã gộp cả 2 file phân quyền lẻ trước đây.
 
-> **⚡ Việc gấp nhất còn lại (chốt v4.11):** Giai đoạn A + C + D2 + **Mức 1–2** + dọn nợ điểm + CI backend-có-DB đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Không chặn: xoá hẳn class `Grade` cũ + `V11` (Quyết định E.1), D6, bật branch-protection trên GitHub, Giai đoạn E (cần ngân sách/nhà cung cấp).
+> **⚡ Việc gấp nhất còn lại (chốt v4.12):** Giai đoạn A + C + D2 + **Mức 1–2** + dọn nợ điểm + CI backend-có-DB đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Không chặn nhưng nên làm sớm: nâng **Spring Boot 3.1.5** (hết hỗ trợ OSS) lên bản LTS mới hơn + vá `react-router-dom` (CVE mức trung bình) — cả hai cần nhánh riêng + hồi quy đầy đủ, xem Quyết định 7–8. Không chặn: xoá hẳn class `Grade` cũ + `V11` (Quyết định E.1), D6, bật branch-protection trên GitHub, Giai đoạn E (cần ngân sách/nhà cung cấp).
 
 *Tài liệu này được lập sau khi review lại **toàn bộ** mã nguồn hiện tại trên máy (`D:\sources\thcsthptTS` là **nguồn sự thật chính** — không dựa vào bản sao trong Claude Project). Khác với kế hoạch v3.1 (`IMPLEMENTATION_PLAN.md`) vốn là kế hoạch **xây mới từ đầu**, phiên bản 4.x xuất phát từ thực tế: **phần lớn kế hoạch v3.1 đã được hiện thực hoá ở backend**. Trọng tâm mới là (1) đưa năng lực backend đã có lên giao diện người dùng, (2) **hoàn tất phần backend còn dở** (xếp loại học lực), (3) trả nợ kỹ thuật, (4) nâng cấp lên mức vận hành thật cho một trường.*
 
@@ -82,8 +82,11 @@ Vite + Tailwind + shadcn/ui (bỏ CRA), dark mode, React Query, sonner, bộ com
 
 1. **Xếp loại học lực TT22/58 vẫn `null`** — `GradeRecordService`/`PromotionService` không đổi → **B0 chưa làm** (chặn bởi bảng ngưỡng chuyên môn — Quyết định E.2). *Đây là việc chặn duy nhất còn lại.*
 2. **✅ [v4.11] Mô hình điểm — FE đã dứt điểm.** `gradeService` (dead code) đã gỡ khỏi `dataService.js`; `GradeController`/`GradeService` backend đã đánh dấu `@Deprecated` (trỏ `GradeRecord`). *Còn lại: xoá hẳn `GradeController`/`Grade`/`GradeService`/`GradeRepository` + migration `V11` (nếu có dữ liệu điểm cũ) — Quyết định E.1.*
-3. **Token `localStorage`** (XSS) → cân nhắc cookie `HttpOnly` (F3).
-4. `lucide-react ^1.37.0` version lạ; **SMS/Zalo vẫn stub** (E1).
+3. **Token `localStorage`** (XSS) → cân nhắc cookie `HttpOnly` (F3). *(v4.12: bổ sung — đổi mật khẩu hiện KHÔNG thu hồi JWT access/refresh token đã phát hành trước đó (auth stateless thuần) — nếu 1 token bị lộ, đổi mật khẩu không chặn được kẻ đó tới khi token hết hạn tự nhiên. Nên gộp xử lý cùng lúc với F3: thêm `tokenVersion` trên `User`, tăng mỗi lần đổi mật khẩu, JWT filter kiểm tra version.)*
+4. ~~`lucide-react ^1.37.0` version lạ~~ ✅ **[v4.12] Đã xác minh hợp lệ** — không phải gói giả mạo, thư viện đã đổi sang versioning 1.x (bản mới nhất 1.41.0, khớp lockfile). Đóng nghi vấn.
+5. **SMS/Zalo vẫn stub** (E1).
+6. **[MỚI — v4.12] `spring-boot-starter-parent` 3.1.5 đã hết vòng hỗ trợ OSS miễn phí** (phát hành 10/2023) — không còn nhận bản vá bảo mật miễn phí. Cần nâng lên bản LTS mới hơn (3.3.x/3.4.x), kèm rà breaking-change Spring Security 6.x/Hibernate. Việc lớn, cần nhánh riêng + chạy lại toàn bộ ~20 lớp integration test trên MySQL thật trước khi merge — xem Quyết định 7.
+7. **[MỚI — v4.12] `react-router-dom ^6.14.0` có 2 CVE mức trung bình** (`npm audit`: open-redirect qua backslash trong `<Link>`/`useNavigate`; arbitrary constructor injection qua `deserializeErrors()` khi SSR hydrate). Đã xác minh rủi ro thực tế **thấp** ở app này: dùng `BrowserRouter` khai báo tĩnh (không `createBrowserRouter`/`RouterProvider`/SSR) nên CVE #2 không áp dụng; mọi `navigate()` (LoginPage/Navbar/ResetPasswordPage) đều tới path cố định (`defaultPathForRole`), không lấy từ query/param người dùng. Bản vá chính thức là nâng **major v6 → v7** (`npm audit fix --force` → `react-router-dom@7.18.3`) — cần test lại toàn bộ điều hướng + `ProtectedRoute`/`guarded()`, không vá mù quáng. Xem Quyết định 8.
 
 ---
 
@@ -209,6 +212,8 @@ Làm trước tất cả vì mọi trang mới đều dựa trên nền này.
 4. **Cổng thanh toán:** VNPay/Momo/khác + tài khoản merchant (E2).
 5. **Bảo mật token:** giữ `localStorage` hay chuyển cookie `HttpOnly` (F3, nên chốt sớm vì ảnh hưởng toàn bộ tầng auth frontend).
 6. **`AuthResponse.permissions`:** bổ sung field permissions hay bỏ hẳn `hasPermission` và phân quyền UI theo `role` (A8).
+7. **[MỚI — v4.12] Nâng Spring Boot 3.1.5 lên bản LTS mới hơn** — khi nào làm (đã hết hỗ trợ OSS, không chặn chức năng nhưng là nợ bảo mật thực sự); cần thống nhất khung thời gian cho 1 nhánh nâng cấp riêng + hồi quy đầy đủ.
+8. **[MỚI — v4.12] Nâng `react-router-dom` v6 → v7** — cùng nhóm với quyết định 7 (đổi lớn, cần test lại toàn bộ điều hướng), hay giữ nguyên v6 vì rủi ro CVE thực tế thấp ở app này (xem A.3 mục 7)?
 
 ---
 
@@ -391,6 +396,12 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 
 ## NHẬT KÝ THAY ĐỔI
 
+- **v4.12 (05/09/2026):** review lại toàn bộ hệ thống (backend + frontend) sau khi merge PR #17 (tính năng Hồ sơ & cài đặt tài khoản) — xác minh lại các claim "đã xong" bằng cách chạy thật (`mvn test`, `npm test`, `npm audit`), không chỉ đọc code.
+  - **Vá 3 việc nhỏ phát hiện khi review tính năng đổi mật khẩu** (`/v1/users/me/change-password`): (1) `GlobalExceptionHandler` trước đây hard-code message "Invalid username or password" cho mọi `BadCredentialsException`, khiến người dùng đổi sai mật khẩu hiện tại thấy thông báo kiểu lỗi đăng nhập — tách riêng `InvalidCurrentPasswordException` + handler trả đúng "Mật khẩu hiện tại không đúng"; (2) thêm `ChangePasswordRateLimitFilter` (theo pattern `ForgotPasswordRateLimitFilter`, khoá theo `userId` thay vì IP vì endpoint đã authenticated) chống brute-force `currentPassword` bằng JWT rò rỉ — trước đó không giới hạn số lần thử; (3) chặn `newPassword == currentPassword`. Kèm test: `AuthenticationServiceTest` (+4 ca), `UserControllerIntegrationTest` (mới, 4 ca — xác nhận `@Valid` → 400 và message đúng ngữ cảnh), `ChangePasswordRateLimitIntegrationTest` (mới, xác nhận 429), `ProfilePage.test.jsx` (+2 ca lỗi `onError`).
+  - **Đóng nghi vấn `lucide-react ^1.37.0`** — xác minh qua npm registry: hợp lệ, không phải gói giả mạo (thư viện đã đổi versioning sang 1.x, mới nhất 1.41.0).
+  - **Phát hiện mới, ghi vào A.3/Phần E:** `spring-boot-starter-parent` 3.1.5 đã hết hỗ trợ OSS (Quyết định 7); `react-router-dom ^6.14.0` có 2 CVE mức trung bình qua `npm audit`, rủi ro thực tế thấp ở app này nhưng bản vá chính thức là nâng major v6→v7 (Quyết định 8); chưa có cơ chế thu hồi JWT khi đổi mật khẩu (bổ sung vào F3).
+  - `mvn test` **222/222** xanh (trừ 2 test cũ `GradeRecordIntegrationTest`/`PromotionIntegrationTest` fail vì dữ liệu có sẵn trong DB dev cục bộ, không liên quan review này — đã xác minh fail độc lập với mọi thay đổi của v4.12); `npm test` **45/45** xanh.
+  - Xác nhận `scripts/mock-api.mjs` (thêm ở commit trước v4.12, ngoài phạm vi 2 tài liệu kế hoạch) là công cụ dev độc lập (625 dòng, chỉ `node:http`), không được build/CI nào tham chiếu — không có rủi ro lọt dữ liệu giả vào production.
 - **v4.11 (02/09/2026):** dọn nợ kỹ thuật + CI/CD (F1).
   - **Mô hình điểm** — gỡ `export const gradeService` (percentage-based `/v1/grades`, không còn nơi gọi) khỏi `frontend/src/services/dataService.js` + entry trong default export; sửa 3 comment tham chiếu. BE: `@Deprecated` trên `GradeController` + `GradeService` (Javadoc trỏ `GradeRecordController`/E.1). Chưa xoá class (giữ tương thích tới khi chốt E.1).
   - **F1 CI/CD** — `.github/workflows/build.yml` viết lại: `build-backend` chạy trên **MySQL 8 service container** + env `DB_*` → `mvn -B clean verify` chạy thật toàn bộ `@SpringBootTest` (trước không có DB); `application-test.yml` thêm `app.jwt.secret` test-only (suite tự chứa, không cần `JWT_SECRET`). `build-frontend`: Node 20, `npm ci` + `npm run build` + `npm test`. Job mới `secret-scan` (gitleaks-action). Actions v3→v4, `adopt`→`temurin`, `docker compose` v2, `concurrency` cancel-in-progress.

@@ -9,6 +9,7 @@ import com.schoolmanagement.dto.UserDTO;
 import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.User;
 import com.schoolmanagement.exception.DuplicateResourceException;
+import com.schoolmanagement.exception.InvalidCurrentPasswordException;
 import com.schoolmanagement.repository.UserRepository;
 import com.schoolmanagement.security.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -259,6 +260,55 @@ class AuthenticationServiceTest {
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(principal));
         when(passwordEncoder.matches("WrongPassword!", "old-hash")).thenReturn(false);
+
+        // InvalidCurrentPasswordException, NOT BadCredentialsException - the latter is
+        // what login failures throw, and GlobalExceptionHandler hard-codes its response
+        // to the generic "Invalid username or password", which would be a confusing
+        // message on the "đổi mật khẩu" screen. See GlobalExceptionHandler's dedicated
+        // handleInvalidCurrentPasswordException + UserControllerIntegrationTest for the
+        // end-to-end HTTP-message assertion.
+        assertThrows(InvalidCurrentPasswordException.class, () -> authenticationService.changePassword(principal, request));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void changePassword_throwsWhenNewPasswordIsSameAsCurrent() {
+        User principal = User.builder().id(1L).username("student1").password("old-hash").role(Role.STUDENT).build();
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("Str0ngPassw0rd!").newPassword("Str0ngPassw0rd!").build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(principal));
+        // Both matches() calls compare the plaintext candidate against the SAME stored
+        // hash (current-password check, then new-password-differs check) - real
+        // BCryptPasswordEncoder would naturally return true for both here since it's
+        // the same plaintext, so stub it that way rather than relying on Mockito's
+        // default `false` for an unstubbed call (which would make this test pass for
+        // the wrong reason if the guard were ever removed).
+        when(passwordEncoder.matches("Str0ngPassw0rd!", "old-hash")).thenReturn(true);
+
+        assertThrows(IllegalArgumentException.class, () -> authenticationService.changePassword(principal, request));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateProfile_throwsWhenPrincipalNoLongerExists() {
+        User principal = User.builder().id(1L).username("student1").email("old@school.com").role(Role.STUDENT).build();
+        UpdateProfileRequest request = UpdateProfileRequest.builder()
+                .firstName("New").lastName("Name").email("old@school.com").build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(BadCredentialsException.class, () -> authenticationService.updateProfile(principal, request));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void changePassword_throwsWhenPrincipalNoLongerExists() {
+        User principal = User.builder().id(1L).username("student1").password("old-hash").role(Role.STUDENT).build();
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("Str0ngPassw0rd!").newPassword("N3wPassw0rd!").build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(BadCredentialsException.class, () -> authenticationService.changePassword(principal, request));
         verify(userRepository, never()).save(any());
