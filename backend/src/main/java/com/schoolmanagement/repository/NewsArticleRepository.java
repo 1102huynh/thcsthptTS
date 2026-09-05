@@ -62,7 +62,14 @@ public interface NewsArticleRepository extends JpaRepository<NewsArticle, Long> 
             countQuery = "SELECT count(a) FROM NewsArticle a")
     Page<NewsArticle> findAllForCms(Pageable pageable);
 
-    @Modifying
-    @Query("UPDATE NewsArticle a SET a.viewCount = a.viewCount + 1 WHERE a.id = :id")
-    void incrementViewCount(@Param("id") Long id);
+    // Batched by NewsViewCountAggregator - one UPDATE per article per flush
+    // instead of one per page view (P4, KE_HOACH_TRANG_TIN_TUC_CONG_KHAI.md §8).
+    // clearAutomatically: a bulk update bypasses the persistence context, so
+    // without this an article already loaded earlier in the same
+    // transaction (e.g. the detail view that triggered this flush) would
+    // keep showing its stale pre-flush viewCount from Hibernate's
+    // first-level cache instead of the fresh DB value.
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE NewsArticle a SET a.viewCount = a.viewCount + :delta WHERE a.id = :id")
+    void incrementViewCountBy(@Param("id") Long id, @Param("delta") long delta);
 }

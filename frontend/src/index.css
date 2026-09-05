@@ -125,3 +125,15 @@ html, body, #root {
   height: 100%;
   width: 100%;
 }
+
+/* components/shared/RichTextEditor.jsx (TipTap) - the Placeholder extension
+   marks the empty first paragraph with is-editor-empty + data-placeholder;
+   showing it is left to CSS (no Tailwind utility reaches ::before content
+   cleanly here), so it lives in this one global rule instead. */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: hsl(var(--muted-foreground));
+}

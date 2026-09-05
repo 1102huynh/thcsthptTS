@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiMenu, FiBell, FiLogOut, FiSettings, FiUser, FiSun, FiMoon } from 'react-icons/fi';
+import { FiMenu, FiBell, FiLogOut, FiUser, FiSun, FiMoon } from 'react-icons/fi';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -102,11 +102,8 @@ function Navbar({ user, onLogout, onToggleSidebar }) {
                 <span className="text-xs font-normal text-muted-foreground">{user.role}</span>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <FiUser className="mr-2 h-4 w-4" /> Hồ sơ của tôi
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <FiSettings className="mr-2 h-4 w-4" /> Cài đặt tài khoản
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
+                <FiUser className="mr-2 h-4 w-4" /> Hồ sơ &amp; cài đặt tài khoản
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

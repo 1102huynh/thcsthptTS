@@ -31,6 +31,7 @@ const AuditLogManagement = lazy(() => import('./pages/AuditLogManagement'));
 const SelfServicePortal = lazy(() => import('./pages/SelfServicePortal'));
 const NewsManagement = lazy(() => import('./pages/NewsManagement'));
 const EventManagement = lazy(() => import('./pages/EventManagement'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
 // Public portal (KE_HOACH_TRANG_TIN_TUC_CONG_KHAI.md). Eager-imported, NOT
 // lazy: a visitor browses these back-to-back, and each is small - lazy just
@@ -69,6 +70,17 @@ function App() {
   const [user, setUser] = useState(readUser);
 
   const handleLogin = (userData) => setUser(userData);
+
+  // Passed down to ProfilePage so a profile save (Navbar > "Hồ sơ của tôi")
+  // is reflected immediately in Navbar/Sidebar and survives a refresh,
+  // without forcing a full re-login just to pick up the new name/email.
+  const handleUserUpdate = (updatedFields) => {
+    setUser((prev) => {
+      const next = { ...prev, ...updatedFields };
+      localStorage.setItem('user', JSON.stringify(next));
+      return next;
+    });
+  };
 
   const handleLogout = () => {
     setUser(null);
@@ -119,6 +131,7 @@ function App() {
                   <Suspense fallback={<RoutePageSkeleton />}>
                     <Routes>
                       <Route path="/" element={guarded('/', <Dashboard user={user} />)} />
+                      <Route path="/profile" element={guarded('/profile', <ProfilePage onUserUpdate={handleUserUpdate} />)} />
                       <Route path="/portal" element={guarded('/portal', <SelfServicePortal />)} />
                       <Route path="/staff" element={guarded('/staff', <StaffManagement />)} />
                       <Route path="/students" element={guarded('/students', <StudentManagement />)} />

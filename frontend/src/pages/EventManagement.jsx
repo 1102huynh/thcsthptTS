@@ -2,10 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { FiPlus, FiEdit2, FiTrash2, FiUploadCloud, FiEye, FiEyeOff } from 'react-icons/fi';
-import { eventCmsService, mediaCmsService } from '../services/dataService';
+import { eventCmsService } from '../services/dataService';
 import { mediaUrl } from '../services/publicService';
+import { useMediaUpload } from '../hooks/useMediaUpload';
 import DataTable from '../components/shared/DataTable';
-import RichHtml from '../components/public/RichHtml';
+import RichTextEditor from '../components/shared/RichTextEditor';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
@@ -36,7 +37,6 @@ function toLocalInput(v) {
 function EventDialog({ open, onOpenChange, event, onSaved }) {
   const isEdit = Boolean(event?.id);
   const [form, setForm] = useState(EMPTY);
-  const [preview, setPreview] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fieldCls = 'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40';
 
@@ -50,7 +50,6 @@ function EventDialog({ open, onOpenChange, event, onSaved }) {
             isFeatured: Boolean(event.isFeatured),
           }
         : EMPTY);
-      setPreview(false);
     }
   }, [open, event]);
 
@@ -60,21 +59,7 @@ function EventDialog({ open, onOpenChange, event, onSaved }) {
     onError: (e) => toast.error(e?.response?.data?.message || 'Không lưu được sự kiện'),
   });
 
-  const uploadCover = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const asset = await mediaCmsService.upload(file);
-      setForm((f) => ({ ...f, coverImageUrl: asset.url }));
-      toast.success('Đã tải ảnh bìa');
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Không tải được ảnh');
-    } finally {
-      setUploading(false);
-      e.target.value = '';
-    }
-  };
+  const { uploadCover, uploadInlineImage } = useMediaUpload({ setForm, setUploading });
 
   const submit = (e) => {
     e.preventDefault();
@@ -135,19 +120,16 @@ function EventDialog({ open, onOpenChange, event, onSaved }) {
             </div>
           </div>
           <div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Mô tả (HTML)</label>
-              <button type="button" className="text-xs text-primary" onClick={() => setPreview((p) => !p)}>
-                {preview ? 'Soạn thảo' : 'Xem trước'}
-              </button>
+            <label className="text-sm font-medium">Mô tả</label>
+            <div className="mt-1">
+              <RichTextEditor
+                value={form.description}
+                onChange={(html) => setForm((f) => ({ ...f, description: html }))}
+                onUploadImage={uploadInlineImage}
+                placeholder="Mô tả sự kiện…"
+              />
             </div>
-            {preview ? (
-              <div className="mt-1 min-h-[8rem] rounded-md border p-3"><RichHtml html={form.description} /></div>
-            ) : (
-              <textarea className={`${fieldCls} font-mono`} rows={8}
-                value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
-            )}
-            <p className="mt-1 text-xs text-muted-foreground">HTML được máy chủ làm sạch khi lưu.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Nội dung được máy chủ làm sạch khi lưu.</p>
           </div>
 
           <DialogFooter>

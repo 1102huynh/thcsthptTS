@@ -1,8 +1,11 @@
 package com.schoolmanagement.service;
 
 import com.schoolmanagement.dto.AuthResponse;
+import com.schoolmanagement.dto.ChangePasswordRequest;
 import com.schoolmanagement.dto.CreateUserRequest;
 import com.schoolmanagement.dto.RegisterRequest;
+import com.schoolmanagement.dto.UpdateProfileRequest;
+import com.schoolmanagement.dto.UserDTO;
 import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.User;
 import com.schoolmanagement.exception.DuplicateResourceException;
@@ -179,5 +182,85 @@ class AuthenticationServiceTest {
 
         assertThat(response.getAccessToken()).isEqualTo("new-access-token");
         assertThat(response.getRefreshToken()).isEqualTo("new-refresh-token");
+    }
+
+    @Test
+    void updateProfile_savesTheNewFieldsAndReturnsThem() {
+        User principal = User.builder().id(1L).username("student1").email("old@school.com")
+                .firstName("Old").lastName("Name").role(Role.STUDENT).build();
+        UpdateProfileRequest request = UpdateProfileRequest.builder()
+                .firstName("New").lastName("Name").email("new@school.com").phoneNumber("0900000000").build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(principal));
+        when(userRepository.existsByEmail("new@school.com")).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserDTO result = authenticationService.updateProfile(principal, request);
+
+        assertThat(result.getFirstName()).isEqualTo("New");
+        assertThat(result.getEmail()).isEqualTo("new@school.com");
+        assertThat(result.getPhoneNumber()).isEqualTo("0900000000");
+    }
+
+    @Test
+    void updateProfile_keepingTheSameEmailDoesNotTripTheDuplicateCheck() {
+        // Regression guard: existsByEmail("same@school.com") would itself be true
+        // (it's this user's own row), so the check must be skipped when the email
+        // isn't actually changing - otherwise nobody could ever save their profile
+        // without also changing their email.
+        User principal = User.builder().id(1L).username("student1").email("same@school.com")
+                .firstName("Old").lastName("Name").role(Role.STUDENT).build();
+        UpdateProfileRequest request = UpdateProfileRequest.builder()
+                .firstName("New").lastName("Name").email("same@school.com").build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(principal));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        authenticationService.updateProfile(principal, request);
+
+        verify(userRepository, never()).existsByEmail(anyString());
+    }
+
+    @Test
+    void updateProfile_throwsWhenTheNewEmailBelongsToSomeoneElse() {
+        User principal = User.builder().id(1L).username("student1").email("old@school.com")
+                .firstName("Old").lastName("Name").role(Role.STUDENT).build();
+        UpdateProfileRequest request = UpdateProfileRequest.builder()
+                .firstName("Old").lastName("Name").email("taken@school.com").build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(principal));
+        when(userRepository.existsByEmail("taken@school.com")).thenReturn(true);
+
+        assertThrows(DuplicateResourceException.class, () -> authenticationService.updateProfile(principal, request));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void changePassword_reencodesOnceTheCurrentPasswordMatches() {
+        User principal = User.builder().id(1L).username("student1").password("old-hash").role(Role.STUDENT).build();
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("OldPassw0rd!").newPassword("N3wPassw0rd!").build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(principal));
+        when(passwordEncoder.matches("OldPassw0rd!", "old-hash")).thenReturn(true);
+        when(passwordEncoder.encode("N3wPassw0rd!")).thenReturn("new-hash");
+
+        authenticationService.changePassword(principal, request);
+
+        assertThat(principal.getPassword()).isEqualTo("new-hash");
+        verify(userRepository).save(principal);
+    }
+
+    @Test
+    void changePassword_throwsAndDoesNotSaveWhenTheCurrentPasswordIsWrong() {
+        User principal = User.builder().id(1L).username("student1").password("old-hash").role(Role.STUDENT).build();
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("WrongPassword!").newPassword("N3wPassw0rd!").build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(principal));
+        when(passwordEncoder.matches("WrongPassword!", "old-hash")).thenReturn(false);
+
+        assertThrows(BadCredentialsException.class, () -> authenticationService.changePassword(principal, request));
+        verify(userRepository, never()).save(any());
     }
 }

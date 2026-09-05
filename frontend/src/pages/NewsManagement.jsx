@@ -2,10 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { FiPlus, FiEdit2, FiTrash2, FiUploadCloud, FiEye, FiEyeOff } from 'react-icons/fi';
-import { newsCmsService, mediaCmsService } from '../services/dataService';
+import { newsCmsService } from '../services/dataService';
 import { mediaUrl } from '../services/publicService';
+import { useMediaUpload } from '../hooks/useMediaUpload';
 import DataTable from '../components/shared/DataTable';
-import RichHtml from '../components/public/RichHtml';
+import RichTextEditor from '../components/shared/RichTextEditor';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
@@ -32,7 +33,6 @@ function formatDate(v) {
 function ArticleDialog({ open, onOpenChange, article, categories, onSaved }) {
   const isEdit = Boolean(article?.id);
   const [form, setForm] = useState(EMPTY);
-  const [preview, setPreview] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fieldCls = 'mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40';
 
@@ -46,7 +46,6 @@ function ArticleDialog({ open, onOpenChange, article, categories, onSaved }) {
             isFeatured: Boolean(article.isFeatured),
           }
         : EMPTY);
-      setPreview(false);
     }
   }, [open, article]);
 
@@ -56,21 +55,7 @@ function ArticleDialog({ open, onOpenChange, article, categories, onSaved }) {
     onError: (e) => toast.error(e?.response?.data?.message || 'Không lưu được bài tin'),
   });
 
-  const uploadCover = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const asset = await mediaCmsService.upload(file);
-      setForm((f) => ({ ...f, coverImageUrl: asset.url }));
-      toast.success('Đã tải ảnh bìa');
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Không tải được ảnh');
-    } finally {
-      setUploading(false);
-      e.target.value = '';
-    }
-  };
+  const { uploadCover, uploadInlineImage } = useMediaUpload({ setForm, setUploading });
 
   const submit = (e) => {
     e.preventDefault();
@@ -134,23 +119,17 @@ function ArticleDialog({ open, onOpenChange, article, categories, onSaved }) {
             </div>
           </div>
           <div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Nội dung (HTML)</label>
-              <button type="button" className="text-xs text-primary" onClick={() => setPreview((p) => !p)}>
-                {preview ? 'Soạn thảo' : 'Xem trước'}
-              </button>
+            <label className="text-sm font-medium">Nội dung</label>
+            <div className="mt-1">
+              <RichTextEditor
+                value={form.content}
+                onChange={(html) => setForm((f) => ({ ...f, content: html }))}
+                onUploadImage={uploadInlineImage}
+                placeholder="Nội dung bài viết…"
+              />
             </div>
-            {preview ? (
-              <div className="mt-1 min-h-[8rem] rounded-md border p-3">
-                <RichHtml html={form.content} />
-              </div>
-            ) : (
-              <textarea className={`${fieldCls} font-mono`} rows={10}
-                value={form.content} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-                placeholder="<p>Nội dung bài viết…</p>" />
-            )}
             <p className="mt-1 text-xs text-muted-foreground">
-              HTML sẽ được máy chủ làm sạch (bỏ script, thẻ nguy hiểm) khi lưu.
+              Nội dung sẽ được máy chủ làm sạch (bỏ script, thẻ nguy hiểm) khi lưu.
             </p>
           </div>
 

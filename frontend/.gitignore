@@ -44,7 +44,9 @@ Thumbs.db
 *.sln
 *.sw?
 
-# Lock files (optional)
-package-lock.json
+# Lock files
+# package-lock.json is committed on purpose: CI (actions/setup-node cache
+# and `npm ci`) needs it to exist in the repo, and it pins dependency
+# versions for reproducible installs.
 yarn.lock
 
