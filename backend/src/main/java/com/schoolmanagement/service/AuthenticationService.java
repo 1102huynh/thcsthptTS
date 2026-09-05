@@ -9,13 +9,17 @@ import com.schoolmanagement.dto.UpdateProfileRequest;
 import com.schoolmanagement.dto.UserDTO;
 import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.User;
+import com.schoolmanagement.dto.SetUserEnabledRequest;
 import com.schoolmanagement.exception.DuplicateResourceException;
 import com.schoolmanagement.exception.InvalidCurrentPasswordException;
+import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.UserRepository;
 import com.schoolmanagement.security.JwtTokenProvider;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -118,6 +122,41 @@ public class AuthenticationService {
      */
     public List<UserDTO> getUsersByRole(Role role) {
         return userRepository.findByRole(role).stream().map(this::mapToUserDTO).collect(Collectors.toList());
+    }
+
+    /**
+     * ADMIN account browser (D6 — GET /v1/users/search) — deliberately a
+     * separate endpoint/method from {@link #getUsersByRole}, which
+     * ParentManagement.jsx already calls expecting a flat unpaginated
+     * {@code List<UserDTO>}; changing that shape would break it. Both
+     * filters are optional so ADMIN can browse every account, one role, a
+     * name/username/email search, or a combination.
+     */
+    public Page<UserDTO> searchUsers(Role role, String q, Pageable pageable) {
+        String likePattern = (q == null || q.isBlank()) ? null : "%" + q.trim().toLowerCase() + "%";
+        return userRepository.search(role, likePattern, pageable).map(this::mapToUserDTO);
+    }
+
+    /**
+     * ADMIN lock/unlock (D6 — PUT /v1/users/{id}/enabled). `enabled=false`
+     * blocks login going forward via the existing UserDetails.isEnabled()
+     * wiring (see SetUserEnabledRequest's Javadoc) — no filter/security
+     * config changes needed. `actor` is always the caller resolved from the
+     * JWT (see UserController), never a client-supplied value, so the
+     * self-lockout guard below can't be bypassed by lying about who's asking.
+     */
+    public UserDTO setUserEnabled(Long targetId, SetUserEnabledRequest request, User actor) {
+        if (targetId.equals(actor.getId())) {
+            throw new IllegalArgumentException("Không thể tự khoá tài khoản của chính mình");
+        }
+        User target = userRepository.findById(targetId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
+
+        target.setEnabled(request.getEnabled());
+        User saved = userRepository.save(target);
+        auditLogService.log(actor, request.getEnabled() ? "ENABLE" : "DISABLE", "User", saved.getId(),
+                java.util.Map.of("username", saved.getUsername()));
+        return mapToUserDTO(saved);
     }
 
     /**

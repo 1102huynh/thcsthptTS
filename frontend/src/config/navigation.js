@@ -16,6 +16,7 @@ import {
   FiActivity,
   FiUser,
   FiRss,
+  FiLock,
 } from 'react-icons/fi';
 
 // Shared between Sidebar (nav links) and Navbar (page title lookup by
@@ -111,6 +112,7 @@ export const NAV_ITEMS = [
   { label: 'Sự kiện (công khai)', href: '/events', icon: FiCalendar, roles: ['ADMIN', 'PRINCIPAL'] },
   // ADMIN only - AuditLogController's one endpoint is ADMIN-only.
   { label: 'Nhật ký hoạt động', href: '/audit-log', icon: FiActivity, roles: ['ADMIN'] },
+  { label: 'Quản lý tài khoản', href: '/accounts', icon: FiLock, roles: ['ADMIN'] },
 ];
 
 export function navItemsForRole(role) {
