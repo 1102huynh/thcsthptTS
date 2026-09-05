@@ -218,6 +218,7 @@ Làm trước tất cả vì mọi trang mới đều dựa trên nền này.
 7. ~~Nâng Spring Boot 3.1.5 lên bản LTS mới hơn~~ ✅ **[v4.14] Đã chốt và làm: lên 3.5.3.**
 8. ~~Nâng `react-router-dom` v6 → v7~~ ✅ **[v4.14] Đã chốt và làm: lên 7.18.3.**
 9. **[MỚI — v4.14] Lên Spring Boot 4.x (Spring Framework 7 / Jackson 3 / Spring Security 7 / Hibernate 7.1)** — 3.5.3 (v4.14) cũng đã hết hỗ trợ OSS, chỉ 4.x còn được hỗ trợ thật. Đây là major upgrade riêng, rủi ro cao nhất là **Jackson 3** (ảnh hưởng gần như mọi DTO/controller trả JSON) — cần thống nhất có làm không, làm khi nào, và tách thành sáng kiến riêng với thời gian ước lượng rộng rãi hơn (không phải 1 phiên).
+10. ~~Toàn app không có React Error Boundary~~ ✅ **[v4.19] Đã vá: `ErrorBoundary.jsx` bọc toàn bộ router trong `App.jsx`.**
 
 ---
 

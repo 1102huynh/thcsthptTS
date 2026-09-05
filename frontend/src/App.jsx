@@ -52,6 +52,7 @@ import ContactPage from './pages/public/ContactPage';
 import AppShell from './components/layout/AppShell';
 import { RoutePageSkeleton } from './components/shared/Skeleton';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import ErrorBoundary from './components/shared/ErrorBoundary';
 
 // Services
 import { getCurrentUser } from './services/authService';
@@ -103,6 +104,7 @@ function App() {
           is either eager (login/apply/portal pages) or lives behind
           AppShell's own inner <Suspense> below. A stray blank frame beats
           flashing an admin-table skeleton over a login card. */}
+      <ErrorBoundary>
       <Suspense fallback={null}>
         <Routes>
           {/* ---- Public portal: available to everyone, its own chrome ---- */}
@@ -166,6 +168,7 @@ function App() {
           )}
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     </Router>
   );
 }
