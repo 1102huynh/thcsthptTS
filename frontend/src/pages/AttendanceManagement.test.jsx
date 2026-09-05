@@ -1,8 +1,8 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { itScopesClassPickerToHomeroom } from '../test-utils/homeroomClassPickerScenario';
 
 // H.3.1 - a TEACHER may only take attendance for the class(es) they are
 // GVCN (homeroom teacher) of; AttendanceService 403s any other class
@@ -59,22 +59,10 @@ beforeEach(() => {
 });
 
 describe('AttendanceManagement - TEACHER homeroom scoping (H.3.1)', () => {
-  it('only offers the class(es) the TEACHER is GVCN of in the class picker', async () => {
-    const user = userEvent.setup();
-    renderPage();
-
-    await user.click(await screen.findByRole('combobox', { name: 'Lớp' }));
-    expect(await screen.findByRole('option', { name: /10 - A1/ })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: /10 - A2/ })).not.toBeInTheDocument();
-  });
-
-  it('shows a message instead of a class picker when the TEACHER is not GVCN of any class', async () => {
-    svc.classesGetAll.mockResolvedValue({
-      data: [{ id: 11, className: '10', section: 'A2', classTeacherId: 99, studentCount: 3 }],
-    });
-    renderPage();
-
-    expect(await screen.findByText(/chưa là giáo viên chủ nhiệm/i)).toBeInTheDocument();
+  itScopesClassPickerToHomeroom({
+    renderPage,
+    classesService: svc.classesGetAll,
+    nonHomeroomClass: { id: 11, className: '10', section: 'A2', classTeacherId: 99, studentCount: 3 },
   });
 
   it('fetches the roster for the auto-selected homeroom class', async () => {

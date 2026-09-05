@@ -1,8 +1,8 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { itScopesClassPickerToHomeroom } from '../test-utils/homeroomClassPickerScenario';
 
 // H.3.1 - a TEACHER may only preview lên lớp for the class(es) they are
 // GVCN (homeroom teacher) of; PromotionService 403s any other class
@@ -58,22 +58,10 @@ beforeEach(() => {
 });
 
 describe('PromotionManagement - TEACHER homeroom scoping (H.3.1)', () => {
-  it('only offers the class(es) the TEACHER is GVCN of in the class picker', async () => {
-    const user = userEvent.setup();
-    renderPage();
-
-    await user.click(await screen.findByRole('combobox', { name: 'Lớp' }));
-    expect(await screen.findByRole('option', { name: /10 - A1/ })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: /10 - A2/ })).not.toBeInTheDocument();
-  });
-
-  it('shows a message when the TEACHER is not GVCN of any class', async () => {
-    svc.classesGetAll.mockResolvedValue({
-      data: [{ id: 11, className: '10', section: 'A2', academicYear: '2025-2026', classTeacherId: 99 }],
-    });
-    renderPage();
-
-    expect(await screen.findByText(/chưa là giáo viên chủ nhiệm/i)).toBeInTheDocument();
+  itScopesClassPickerToHomeroom({
+    renderPage,
+    classesService: svc.classesGetAll,
+    nonHomeroomClass: { id: 11, className: '10', section: 'A2', academicYear: '2025-2026', classTeacherId: 99 },
   });
 
   it('does not show the "Người quyết định" picker for a TEACHER (read-only preview)', async () => {
