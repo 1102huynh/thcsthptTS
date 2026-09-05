@@ -103,6 +103,20 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(InvalidCurrentPasswordException.class)
+    public ResponseEntity<ApiError> handleInvalidCurrentPasswordException(
+            InvalidCurrentPasswordException ex,
+            HttpServletRequest request) {
+        ApiError error = ApiError.builder()
+                .status("UNAUTHORIZED")
+                .message(ex.getMessage())
+                .code(401)
+                .path(request.getRequestURI())
+                .timestamp(LocalDateTime.now())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiError> handleAccessDeniedException(
             AccessDeniedException ex,

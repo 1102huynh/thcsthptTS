@@ -10,6 +10,7 @@ import com.schoolmanagement.dto.UserDTO;
 import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.User;
 import com.schoolmanagement.exception.DuplicateResourceException;
+import com.schoolmanagement.exception.InvalidCurrentPasswordException;
 import com.schoolmanagement.repository.UserRepository;
 import com.schoolmanagement.security.JwtTokenProvider;
 import lombok.AllArgsConstructor;
@@ -166,7 +167,15 @@ public class AuthenticationService {
                 .orElseThrow(() -> new BadCredentialsException("User not found"));
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            throw new BadCredentialsException("Current password is incorrect");
+            // Deliberately NOT BadCredentialsException here — GlobalExceptionHandler maps
+            // that to the generic login message "Invalid username or password", which is
+            // confusing on the "đổi mật khẩu" screen (this is an authenticated user
+            // re-proving their password, not a login attempt).
+            throw new InvalidCurrentPasswordException("Mật khẩu hiện tại không đúng");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại");
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));

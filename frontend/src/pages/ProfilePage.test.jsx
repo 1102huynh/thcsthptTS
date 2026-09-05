@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 const svc = {
   getMe: vi.fn(),
@@ -16,6 +17,13 @@ vi.mock('@/services/dataService', () => ({
     updateMe: (...a) => svc.updateMe(...a),
     changePassword: (...a) => svc.changePassword(...a),
   },
+}));
+
+// ProfilePage doesn't mount its own <Toaster/> (that lives at the App root),
+// so toast.success/error calls have nothing to render into in this test tree
+// - mock the module and assert on the calls directly instead.
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
 }));
 
 import ProfilePage from './ProfilePage';
@@ -41,6 +49,8 @@ function renderPage(props = {}) {
 
 beforeEach(() => {
   Object.values(svc).forEach((fn) => fn.mockReset());
+  toast.success.mockReset();
+  toast.error.mockReset();
   svc.getMe.mockResolvedValue({ data: { ...profile } });
 });
 
@@ -103,5 +113,32 @@ describe('ProfilePage', () => {
         newPassword: 'N3wPassw0rd!',
       })
     );
+  });
+
+  it('shows the server error and does not call onUserUpdate when the profile save fails', async () => {
+    const onUserUpdate = vi.fn();
+    svc.updateMe.mockRejectedValue({ response: { data: { message: 'Email already exists' } } });
+    const user = userEvent.setup();
+    renderPage({ onUserUpdate });
+
+    await screen.findByDisplayValue('Van');
+    await user.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Email already exists'));
+    expect(onUserUpdate).not.toHaveBeenCalled();
+  });
+
+  it('shows the server error when changing the password fails (e.g. wrong current password)', async () => {
+    svc.changePassword.mockRejectedValue({ response: { data: { message: 'Mật khẩu hiện tại không đúng' } } });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByDisplayValue('Van');
+
+    await user.type(screen.getByLabelText('Mật khẩu hiện tại'), 'WrongPassword!');
+    await user.type(screen.getByLabelText('Mật khẩu mới'), 'N3wPassw0rd!');
+    await user.type(screen.getByLabelText('Nhập lại mật khẩu mới'), 'N3wPassw0rd!');
+    await user.click(screen.getByRole('button', { name: 'Đổi mật khẩu' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Mật khẩu hiện tại không đúng'));
   });
 });
