@@ -9,6 +9,7 @@ import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.AttendanceRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.security.StudentAccessGuard;
+import com.schoolmanagement.security.TeacherHomeroomGuard;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,16 +25,23 @@ public class AttendanceService {
     private AttendanceRepository attendanceRepository;
     private StudentRepository studentRepository;
     private StudentAccessGuard studentAccessGuard;
+    private TeacherHomeroomGuard teacherHomeroomGuard;
 
-    public Attendance markAttendance(Attendance attendance) {
+    /**
+     * GVCN scoping (H.3.1): a TEACHER may only mark attendance for students in
+     * the class(es) they are homeroom teacher of; ADMIN is unrestricted.
+     */
+    public Attendance markAttendance(Attendance attendance, User requester) {
         Student student = studentRepository.findById(attendance.getStudent().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+        teacherHomeroomGuard.enforceHomeroomClassNameSection(student.getClassName(), student.getSection(), requester);
 
         return attendanceRepository.save(attendance);
     }
 
     public void markAttendanceForClass(String className, String section, LocalDate date, List<Long> presentStudentIds,
                                         AttendanceStatus status, User marker) {
+        teacherHomeroomGuard.enforceHomeroomClassNameSection(className, section, marker);
         List<Student> students = studentRepository.findByClassNameAndSection(className, section);
 
         // Re-marking the same class+date used to just insert a second batch
@@ -59,9 +67,11 @@ public class AttendanceService {
         }
     }
 
-    public AttendanceDTO updateAttendance(Long id, Attendance attendanceDetails) {
+    public AttendanceDTO updateAttendance(Long id, Attendance attendanceDetails, User requester) {
         Attendance attendance = attendanceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
+        Student student = attendance.getStudent();
+        teacherHomeroomGuard.enforceHomeroomClassNameSection(student.getClassName(), student.getSection(), requester);
 
         attendance.setStatus(attendanceDetails.getStatus());
         attendance.setRemarks(attendanceDetails.getRemarks());
@@ -137,9 +147,11 @@ public class AttendanceService {
         return (double) presentDays / attendances.size() * 100;
     }
 
-    public void deleteAttendance(Long id) {
+    public void deleteAttendance(Long id, User requester) {
         Attendance attendance = attendanceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
+        Student student = attendance.getStudent();
+        teacherHomeroomGuard.enforceHomeroomClassNameSection(student.getClassName(), student.getSection(), requester);
         attendanceRepository.delete(attendance);
     }
 

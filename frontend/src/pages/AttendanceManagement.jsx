@@ -3,9 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
 import { FiCheck, FiSave, FiDownload } from 'react-icons/fi';
-import { attendanceService, schoolClassService, studentService, reportService } from '../services/dataService';
+import { attendanceService, studentService, reportService } from '../services/dataService';
 import { triggerBlobDownload } from '../lib/download';
 import { getCurrentUser } from '../services/authService';
+import { useMyHomeroomClasses } from '../hooks/useMyHomeroomClasses';
 import DatePicker from '../components/shared/DatePicker';
 import { TableRowsSkeleton } from '../components/shared/Skeleton';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
@@ -29,25 +30,28 @@ function AttendanceManagement() {
   // Mức 2.1 (v4.9): PRINCIPAL reaches this page read-only - attendance GETs
   // now allow PRINCIPAL, but POST /v1/attendance* still 403s them, so the
   // mark/save controls and the roster checkboxes are disabled.
-  const readOnly = getCurrentUser()?.role === 'PRINCIPAL';
+  const role = getCurrentUser()?.role;
+  const readOnly = role === 'PRINCIPAL';
   const [selectedKey, setSelectedKey] = useState('');
   const [date, setDate] = useState(new Date());
   const [presentIds, setPresentIds] = useState(new Set());
 
   const dateStr = format(date, ISO_DATE);
 
-  const classesQuery = useQuery({
-    queryKey: ['classes'],
-    queryFn: () => schoolClassService.getAll().then((r) => r.data),
-  });
+  // H.3.1 - a TEACHER may only take attendance for the class(es) they are
+  // GVCN (homeroom teacher) of - AttendanceService now 403s any other class
+  // server-side, so narrowing the picker avoids a guaranteed-403 pick, same
+  // reasoning as ConductManagement's own class picker.
+  const { allClasses, homeroomClasses, isSuccess: homeroomSuccess } = useMyHomeroomClasses();
+  const visibleClasses = role === 'TEACHER' ? homeroomClasses : allClasses;
 
   useEffect(() => {
-    if (!selectedKey && classesQuery.data?.length) {
-      setSelectedKey(classKey(classesQuery.data[0]));
+    if (!selectedKey && visibleClasses.length) {
+      setSelectedKey(classKey(visibleClasses[0]));
     }
-  }, [classesQuery.data, selectedKey]);
+  }, [visibleClasses, selectedKey]);
 
-  const selectedClass = classesQuery.data?.find((c) => classKey(c) === selectedKey);
+  const selectedClass = visibleClasses.find((c) => classKey(c) === selectedKey);
 
   const rosterQuery = useQuery({
     queryKey: ['attendance-roster', selectedClass?.className, selectedClass?.section],
@@ -61,7 +65,15 @@ function AttendanceManagement() {
     enabled: Boolean(selectedClass),
   });
 
-  const roster = rosterQuery.data ?? [];
+  // Memoized, not a bare `?? []` fallback: while rosterQuery has no data yet
+  // (disabled - no class picked/selectable, e.g. a TEACHER who isn't GVCN of
+  // any class - or still loading) `rosterQuery.data` is undefined on every
+  // render, so an inline `[]` fallback would be a brand-new array reference
+  // each time. The effect below depends on `roster` and unconditionally
+  // calls setState in that branch - a fresh reference every render meant a
+  // real infinite render loop, caught while testing the H.3.1 "TEACHER has
+  // no homeroom class" empty state, not something exotic.
+  const roster = useMemo(() => rosterQuery.data ?? [], [rosterQuery.data]);
   const rosterIds = useMemo(() => new Set(roster.map((s) => s.id)), [roster]);
 
   // Existing records for this exact class+date, if any (school-wide result
@@ -159,6 +171,12 @@ function AttendanceManagement() {
         </div>
       )}
 
+      {role === 'TEACHER' && homeroomSuccess && homeroomClasses.length === 0 && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
+          Bạn chưa là giáo viên chủ nhiệm của lớp nào nên không có lớp nào để điểm danh.
+        </div>
+      )}
+
       <Card>
         <CardContent className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -174,7 +192,7 @@ function AttendanceManagement() {
                 <SelectValue placeholder="Chọn lớp" />
               </SelectTrigger>
               <SelectContent>
-                {(classesQuery.data ?? []).map((c) => (
+                {visibleClasses.map((c) => (
                   <SelectItem key={classKey(c)} value={classKey(c)}>
                     {c.className} - {c.section} ({c.studentCount ?? 0} học sinh)
                   </SelectItem>

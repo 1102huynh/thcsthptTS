@@ -17,6 +17,7 @@ import com.schoolmanagement.repository.SemesterRepository;
 import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.security.StudentAccessGuard;
+import com.schoolmanagement.security.TeacherHomeroomGuard;
 import com.schoolmanagement.util.EntityResolver;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -47,6 +48,7 @@ public class ConductRecordService {
     private StaffRepository staffRepository;
     private SchoolClassRepository schoolClassRepository;
     private StudentAccessGuard studentAccessGuard;
+    private TeacherHomeroomGuard teacherHomeroomGuard;
 
     public ConductRecordDTO createConductRecord(ConductRecord request, User requester) {
         Student student = resolveStudent(request.getStudent());
@@ -172,33 +174,23 @@ public class ConductRecordService {
 
     /**
      * Only a TEACHER is restricted, and only to a class they are GVCN of;
-     * ADMIN is unrestricted. Checked via "does any of this teacher's homeroom
-     * classes match the student's className/section" (schoolClassRepository.
-     * findByClassTeacher, a List) rather than "look up the student's one
-     * class and compare its teacher" (findByClassNameAndSection, an Optional)
-     * — className/section isn't unique across academic years, so the latter
-     * can throw IncorrectResultSizeDataAccessException if the same
-     * class name/section exists in more than one year.
+     * ADMIN is unrestricted. The homeroom check itself now lives in
+     * {@link TeacherHomeroomGuard#enforceHomeroomClassNameSection} (shared
+     * with Student/Attendance/Promotion) — this method keeps only what's
+     * specific to conduct: a TEACHER may only submit evaluations under their
+     * own staff profile.
      */
     private void enforceHomeroomWriteAccess(Student student, Staff evaluatedBy, User requester) {
         if (requester == null || requester.getRole() != Role.TEACHER) {
             return;
         }
 
-        Staff teacherStaff = staffRepository.findByUserId(requester.getId())
-                .orElseThrow(() -> new AccessDeniedException("No staff profile linked to this account"));
-
         if (student.getClassName() == null || student.getSection() == null) {
             throw new ResourceNotFoundException("Student " + student.getId() + " has no class assigned");
         }
-        boolean isHomeroomOfStudentsClass = schoolClassRepository.findByClassTeacher(teacherStaff).stream()
-                .anyMatch(cls -> student.getClassName().equals(cls.getClassName())
-                        && student.getSection().equals(cls.getSection()));
-        if (!isHomeroomOfStudentsClass) {
-            throw new AccessDeniedException(
-                    "Only the class's GVCN (homeroom teacher) may record conduct for this student");
-        }
+        teacherHomeroomGuard.enforceHomeroomClassNameSection(student.getClassName(), student.getSection(), requester);
 
+        Staff teacherStaff = teacherHomeroomGuard.resolveOwnStaff(requester);
         if (evaluatedBy != null && !teacherStaff.getId().equals(evaluatedBy.getId())) {
             throw new AccessDeniedException(
                     "A TEACHER may only submit conduct evaluations under their own staff profile");

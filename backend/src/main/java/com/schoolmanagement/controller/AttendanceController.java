@@ -29,9 +29,11 @@ public class AttendanceController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
-    @Operation(summary = "Mark attendance for a student")
-    public ResponseEntity<Attendance> markAttendance(@Valid @RequestBody Attendance attendance) {
-        Attendance savedAttendance = attendanceService.markAttendance(attendance);
+    @Operation(summary = "Mark attendance for a student",
+            description = "A TEACHER may only mark attendance for a student in a class they are GVCN (homeroom teacher) of (403 otherwise).")
+    public ResponseEntity<Attendance> markAttendance(@Valid @RequestBody Attendance attendance, Authentication authentication) {
+        User requester = (User) authentication.getPrincipal();
+        Attendance savedAttendance = attendanceService.markAttendance(attendance, requester);
         return new ResponseEntity<>(savedAttendance, HttpStatus.CREATED);
     }
 
@@ -53,9 +55,11 @@ public class AttendanceController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
-    @Operation(summary = "Update attendance record")
-    public ResponseEntity<AttendanceDTO> updateAttendance(@PathVariable Long id, @Valid @RequestBody Attendance attendanceDetails) {
-        AttendanceDTO updatedAttendance = attendanceService.updateAttendance(id, attendanceDetails);
+    @Operation(summary = "Update attendance record",
+            description = "A TEACHER may only update attendance for a student in a class they are GVCN (homeroom teacher) of (403 otherwise).")
+    public ResponseEntity<AttendanceDTO> updateAttendance(@PathVariable Long id, @Valid @RequestBody Attendance attendanceDetails, Authentication authentication) {
+        User requester = (User) authentication.getPrincipal();
+        AttendanceDTO updatedAttendance = attendanceService.updateAttendance(id, attendanceDetails, requester);
         return new ResponseEntity<>(updatedAttendance, HttpStatus.OK);
     }
 
@@ -126,9 +130,11 @@ public class AttendanceController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
-    @Operation(summary = "Delete attendance record")
-    public ResponseEntity<Void> deleteAttendance(@PathVariable Long id) {
-        attendanceService.deleteAttendance(id);
+    @Operation(summary = "Delete attendance record",
+            description = "A TEACHER may only delete attendance for a student in a class they are GVCN (homeroom teacher) of (403 otherwise).")
+    public ResponseEntity<Void> deleteAttendance(@PathVariable Long id, Authentication authentication) {
+        User requester = (User) authentication.getPrincipal();
+        attendanceService.deleteAttendance(id, requester);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }

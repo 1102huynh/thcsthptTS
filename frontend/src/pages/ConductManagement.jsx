@@ -4,12 +4,11 @@ import { toast } from 'sonner';
 import { FiSave } from 'react-icons/fi';
 import {
   conductService,
-  schoolClassService,
   academicYearService,
   semesterService,
-  staffService,
 } from '../services/dataService';
 import { getCurrentUser } from '../services/authService';
+import { useMyHomeroomClasses } from '../hooks/useMyHomeroomClasses';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -35,20 +34,13 @@ function ConductManagement() {
   const [ratingInputs, setRatingInputs] = useState({});
   const [remarksInputs, setRemarksInputs] = useState({});
 
-  const staffQuery = useQuery({ queryKey: ['staff-lookup'], queryFn: () => staffService.getAll().then((r) => r.data) });
-  const myStaffId = staffQuery.data?.find((s) => s.user?.id === JSON.parse(localStorage.getItem('user') || '{}').userId)?.id;
-
-  const classesQuery = useQuery({ queryKey: ['classes'], queryFn: () => schoolClassService.getAll().then((r) => r.data) });
   // A TEACHER may only record conduct for the class(es) they are GVCN
   // (homeroom teacher) of - ConductRecordService.enforceHomeroomWriteAccess
   // 403s any other class server-side, so narrowing the picker here avoids
   // setting a teacher up for a guaranteed-403 pick, same reasoning as the
   // nav's own role-scoping comments elsewhere in this app.
-  const visibleClasses = useMemo(() => {
-    const all = classesQuery.data ?? [];
-    if (role !== 'TEACHER') return all;
-    return all.filter((c) => c.classTeacherId === myStaffId);
-  }, [classesQuery.data, role, myStaffId]);
+  const { myStaffId, allClasses, homeroomClasses, isSuccess: homeroomSuccess } = useMyHomeroomClasses();
+  const visibleClasses = role === 'TEACHER' ? homeroomClasses : allClasses;
 
   useEffect(() => {
     if (!classId && visibleClasses.length) setClassId(String(visibleClasses[0].id));
@@ -73,7 +65,14 @@ function ConductManagement() {
     queryFn: () => conductService.getClassSemesterRoster(classId, semesterId).then((r) => r.data),
     enabled: Boolean(classId) && Boolean(semesterId),
   });
-  const roster = rosterQuery.data ?? [];
+  // Memoized, not a bare `?? []` fallback: see AttendanceManagement.jsx's
+  // identical `roster` comment - while disabled/loading, an inline `[]`
+  // fallback is a new array reference every render, and the effect below
+  // (deps: [roster]) unconditionally calls setState, which is a real
+  // infinite render loop whenever this stays true (e.g. a TEACHER who isn't
+  // GVCN of any class, so classId never gets set and rosterQuery never
+  // enables).
+  const roster = useMemo(() => rosterQuery.data ?? [], [rosterQuery.data]);
 
   // Re-seed the input state whenever the roster changes - pre-fill from
   // each entry's existing rating/remarks (null for a not-yet-evaluated
@@ -146,13 +145,13 @@ function ConductManagement() {
         </div>
       )}
 
-      {role === 'TEACHER' && classesQuery.isSuccess && visibleClasses.length === 0 && (
+      {role === 'TEACHER' && homeroomSuccess && visibleClasses.length === 0 && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
           Bạn chưa là giáo viên chủ nhiệm của lớp nào nên không có lớp nào để đánh giá hạnh kiểm.
         </div>
       )}
 
-      {!myStaffId && !readOnly && staffQuery.isSuccess && (
+      {!myStaffId && !readOnly && homeroomSuccess && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
           Tài khoản của bạn chưa được liên kết với hồ sơ nhân sự nên không thể lưu đánh giá mới (vẫn xem được bảng).
         </div>

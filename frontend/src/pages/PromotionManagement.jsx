@@ -4,11 +4,10 @@ import { toast } from 'sonner';
 import { FiSave } from 'react-icons/fi';
 import {
   promotionService,
-  schoolClassService,
   academicYearService,
-  staffService,
 } from '../services/dataService';
 import { getCurrentUser } from '../services/authService';
+import { useMyHomeroomClasses } from '../hooks/useMyHomeroomClasses';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -43,15 +42,18 @@ function PromotionManagement() {
   }, [academicYearsQuery.data, academicYearId]);
   const selectedYear = academicYearsQuery.data?.find((y) => String(y.id) === academicYearId);
 
-  const classesQuery = useQuery({ queryKey: ['classes'], queryFn: () => schoolClassService.getAll().then((r) => r.data) });
   // A class's own SchoolClass.academicYear (string) must match the selected
   // AcademicYear's name - PromotionService rejects a mismatched pair
   // outright (IllegalArgumentException, since the same className/section
   // can recur across years) - filtering the picker here avoids ever
-  // sending that mismatched pair in the first place.
+  // sending that mismatched pair in the first place. On top of that, H.3.1
+  // scopes a TEACHER to only the class(es) they are GVCN (homeroom teacher)
+  // of - PromotionService now 403s any other class server-side.
+  const { myStaffId, allStaff, allClasses, homeroomClasses, isSuccess: homeroomSuccess } = useMyHomeroomClasses();
+  const classesForRole = role === 'TEACHER' ? homeroomClasses : allClasses;
   const visibleClasses = useMemo(
-    () => (classesQuery.data ?? []).filter((c) => c.academicYear === selectedYear?.name),
-    [classesQuery.data, selectedYear]
+    () => classesForRole.filter((c) => c.academicYear === selectedYear?.name),
+    [classesForRole, selectedYear]
   );
   useEffect(() => {
     if (visibleClasses.length && !visibleClasses.some((c) => String(c.id) === classId)) {
@@ -60,8 +62,6 @@ function PromotionManagement() {
   }, [visibleClasses, classId]);
   const selectedClass = visibleClasses.find((c) => String(c.id) === classId);
 
-  const staffQuery = useQuery({ queryKey: ['staff-lookup'], queryFn: () => staffService.getAll().then((r) => r.data) });
-  const myStaffId = staffQuery.data?.find((s) => s.user?.id === JSON.parse(localStorage.getItem('user') || '{}').userId)?.id;
   useEffect(() => {
     if (!decidedById && myStaffId) setDecidedById(String(myStaffId));
   }, [myStaffId, decidedById]);
@@ -178,10 +178,10 @@ function PromotionManagement() {
               <label htmlFor="promotion-decidedby-select" className="text-sm font-medium">Người quyết định</label>
               <Select value={decidedById} onValueChange={setDecidedById}>
                 <SelectTrigger id="promotion-decidedby-select">
-                  <SelectValue placeholder={staffQuery.isLoading ? 'Đang tải...' : 'Chọn người quyết định'} />
+                  <SelectValue placeholder={allStaff.length ? 'Chọn người quyết định' : 'Đang tải...'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {(staffQuery.data ?? []).map((s) => (
+                  {allStaff.map((s) => (
                     <SelectItem key={s.id} value={String(s.id)}>{s.user?.firstName} {s.user?.lastName}</SelectItem>
                   ))}
                 </SelectContent>
@@ -191,9 +191,15 @@ function PromotionManagement() {
         </CardContent>
       </Card>
 
-      {canConfirm && !decidedById && staffQuery.isSuccess && (
+      {canConfirm && !decidedById && homeroomSuccess && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
           Vui lòng chọn người quyết định trước khi xác nhận.
+        </div>
+      )}
+
+      {role === 'TEACHER' && homeroomSuccess && homeroomClasses.length === 0 && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
+          Bạn chưa là giáo viên chủ nhiệm của lớp nào nên không có lớp nào để xét lên lớp.
         </div>
       )}
 

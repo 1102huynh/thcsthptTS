@@ -1,11 +1,11 @@
 # KẾ HOẠCH PHÁT TRIỂN & NÂNG CẤP HỆ THỐNG QUẢN LÝ TRƯỜNG THCS-THPT (thcsthptTS)
 
-**Phiên bản 4.18 — ngày 05/09/2026**
-*(v4.18: **kiểm tra thủ công toàn bộ chức năng trên trình duyệt thật** (cả 7 vai trò: ADMIN/PRINCIPAL/TEACHER/STUDENT/PARENT/LIBRARIAN/ACCOUNTANT) — lần đầu tiên test bằng cách click qua app thật thay vì chỉ đọc code/test tự động. Tìm và vá **4 lỗi thật**: (1) mở dialog "Bài tin mới"/"Sự kiện mới" **crash trắng trang** (Tiptap + React StrictMode, không có Error Boundary); (2) đổi mật khẩu sai bị **đăng xuất nhầm** thay vì báo lỗi (bug promise-chaining trong `api.js`); (3) **ACCOUNTANT không thấy khoản thu nào** (0/207) do thiếu quyền đọc `/v1/academic-years` — lỗi nghiêm trọng nhất, chặn hoàn toàn nghiệp vụ chính của vai trò Kế toán; (4) thông báo đăng nhập sai vẫn tiếng Anh. `mvn test` 232/232, `npm test` 52/52. Xem "Nhật ký thay đổi" để biết chi tiết + nguyên nhân từng lỗi. v4.17: rate-limit `/v1/auth/login`. v4.16: review phát hiện B0 vẫn chặn. v4.15: D6 xong. v4.14: Spring Boot 3.5.3 + react-router-dom 7.18.3. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
+**Phiên bản 4.20 — ngày 05/09/2026**
+*(v4.20: **H.3.1 — thu hẹp quyền TEACHER theo lớp chủ nhiệm (GVCN)**, theo yêu cầu trực tiếp của người dùng: Quản lý học sinh/Điểm danh/Xét lên lớp chỉ còn phạm vi lớp mình chủ nhiệm; Thời khoá biểu chỉ xem đúng lịch dạy của chính mình (không browse theo lớp); Hạnh kiểm giữ nguyên (đã có sẵn, dùng làm mẫu). `TeacherHomeroomGuard` mới dùng chung. `mvn test` **255/255** (2 lỗi cũ không đổi); `npm test` **71/71**. v4.19: thêm React Error Boundary tổng. v4.18: kiểm tra thủ công toàn bộ chức năng trên trình duyệt thật (cả 7 vai trò), vá 4 lỗi thật. v4.17: rate-limit `/v1/auth/login`. v4.16: review phát hiện B0 vẫn chặn. v4.15: D6 xong. v4.14: Spring Boot 3.5.3 + react-router-dom 7.18.3. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
 
 > **Tài liệu này là kế hoạch nâng cấp DUY NHẤT** — thay cho `IMPLEMENTATION_PLAN.md` (v3.1) và đã gộp cả 2 file phân quyền lẻ trước đây.
 
-> **⚡ Việc gấp nhất còn lại:** Giai đoạn A + C + D + **Mức 1–2** + dọn nợ điểm + CI backend-có-DB đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2) — quyết định ngoài phạm vi code, cần người có chuyên môn giáo dục xác nhận. Đã xong: nâng Spring Boot lên 3.5.3 + `react-router-dom` lên 7.18.3 (Quyết định 7–8) + D6 (trang quản lý tài khoản) + rate-limit `/v1/auth/login` + kiểm tra UI thật cả 7 vai trò, vá 4 lỗi tìm được (v4.18). Không chặn: xoá hẳn class `Grade` cũ + `V11` (Quyết định E.1), bật branch-protection trên GitHub, Giai đoạn E (cần ngân sách/nhà cung cấp — SMS/Zalo, cổng thanh toán), Spring Boot 4.x (Quyết định 9, sáng kiến riêng), nâng `vite`/`esbuild` (CVE mức trung bình, chỉ ảnh hưởng dev server — Phần F), thêm Error Boundary tổng (đã giảm rủi ro cho ca RichTextEditor nhưng nguyên nhân gốc — 1 lỗi bất kỳ làm trắng cả app — vẫn còn, xem Quyết định 10).
+> **⚡ Việc gấp nhất còn lại:** Giai đoạn A + C + D + **Mức 1–2** + dọn nợ điểm + CI backend-có-DB đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2) — quyết định ngoài phạm vi code, cần người có chuyên môn giáo dục xác nhận. Đã xong: nâng Spring Boot lên 3.5.3 + `react-router-dom` lên 7.18.3 (Quyết định 7–8) + D6 (trang quản lý tài khoản) + rate-limit `/v1/auth/login` + kiểm tra UI thật cả 7 vai trò, vá 4 lỗi tìm được (v4.18) + Error Boundary tổng (v4.19) + **H.3.1 thu hẹp quyền TEACHER theo lớp chủ nhiệm (v4.20)**. Không chặn: xoá hẳn class `Grade` cũ + `V11` (Quyết định E.1), bật branch-protection trên GitHub, Giai đoạn E (cần ngân sách/nhà cung cấp — SMS/Zalo, cổng thanh toán), Spring Boot 4.x (Quyết định 9, sáng kiến riêng), nâng `vite`/`esbuild` (CVE mức trung bình, chỉ ảnh hưởng dev server — Phần F).
 
 *Tài liệu này được lập sau khi review lại **toàn bộ** mã nguồn hiện tại trên máy (`D:\sources\thcsthptTS` là **nguồn sự thật chính** — không dựa vào bản sao trong Claude Project). Khác với kế hoạch v3.1 (`IMPLEMENTATION_PLAN.md`) vốn là kế hoạch **xây mới từ đầu**, phiên bản 4.x xuất phát từ thực tế: **phần lớn kế hoạch v3.1 đã được hiện thực hoá ở backend**. Trọng tâm mới là (1) đưa năng lực backend đã có lên giao diện người dùng, (2) **hoàn tất phần backend còn dở** (xếp loại học lực), (3) trả nợ kỹ thuật, (4) nâng cấp lên mức vận hành thật cho một trường.*
 
@@ -313,7 +313,7 @@ Ngoài 4 lỗi trên, kiểm tra thêm: Chrome tự dịch trang (do `lang="vi"`
 
 ### H.3. MỨC 3 — NÂNG CAO (dài hạn)
 
-- **3.1. Thu hẹp quyền giáo viên theo phân công:** GVBM chỉ nhập điểm môn mình dạy (có `TeachingAssignment`), GVCN chỉ hạnh kiểm lớp mình, điểm danh chỉ lớp có tiết. Thay đổi logic ở service — làm sau khi phân công (B4) ổn định; bật dần (cảnh báo trước, chặn sau).
+- **3.1. Thu hẹp quyền giáo viên theo phân công** — ✅ **XONG một phần (v4.20)**, theo yêu cầu trực tiếp của người dùng (chặn thẳng, không "cảnh báo trước" như dự tính ban đầu): GVCN chỉ quản lý học sinh/điểm danh/xét lên lớp cho lớp mình chủ nhiệm (`TeacherHomeroomGuard` mới, dùng chung — trước đó chỉ Hạnh kiểm có logic này, nay refactor để `ConductRecordService` cũng dùng guard này); Thời khoá biểu chỉ xem đúng lịch dạy của chính mình, không browse theo lớp bất kỳ nữa. **Chưa làm:** GVBM chỉ nhập điểm môn mình dạy (có `TeachingAssignment`) — đây là mảnh còn lại của 3.1, chưa đụng tới ở lượt này.
 - **3.2. Quyết định `Permission`/`UserPermission`:** (a) **bỏ** nếu chỉ cần phân quyền theo `Role` (khuyến nghị) + sửa `hasPermission` ở FE; hoặc (b) **kích hoạt** phân quyền mịn (trả `permissions` trong `AuthResponse`, dùng `hasAuthority`).
 - **3.3. Bảo mật tài khoản nâng cao** (đồng bộ F3): account lockout, 2FA cho ADMIN/PRINCIPAL, cookie `HttpOnly`.
 
@@ -321,12 +321,12 @@ Ngoài 4 lỗi trên, kiểm tra thêm: Chrome tự dịch trang (do `lang="vi"`
 
 | Nhóm chức năng | ADMIN | PRINCIPAL | TEACHER | STUDENT | PARENT | LIBRARIAN | ACCOUNTANT |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
-| Cơ cấu (năm học/HK/môn/lớp/nhân sự/phân công/TKB) | CRUD | CRUD | đọc | – | – | – | – |
-| Học sinh — quản lý | CRUD | CRUD | đọc | *của mình* | *của con* | – | **đọc** |
+| Cơ cấu (năm học/HK/môn/lớp/nhân sự/phân công/TKB) | CRUD | CRUD | đọc *(TKB: chỉ lịch dạy của mình — v4.20)* | – | – | – | – |
+| Học sinh — quản lý | CRUD | CRUD | đọc *(chỉ lớp mình chủ nhiệm — v4.20)* | *của mình* | *của con* | – | **đọc** |
 | Điểm (TT22) — nhập / xem | ✔ / ✔ | – / **✔** | ✔ / ✔ | – / *mình* | – / *con* | – | – |
-| Điểm danh — nhập / xem | ✔ / ✔ | – / **✔** | ✔ / ✔ | – / *mình* | – / *con* | – | – |
-| Hạnh kiểm — nhập / xem | ✔ / ✔ | – / **✔** | ✔ / ✔ | – / *mình* | – / *con* | – | – |
-| Xét lên lớp (preview / confirm) | ✔ / ✔ | ✔ / ✔ | ✔ / – | *mình* | *con* | – | – |
+| Điểm danh — nhập / xem | ✔ / ✔ | – / **✔** | ✔ / ✔ *(chỉ lớp mình chủ nhiệm — v4.20)* | – / *mình* | – / *con* | – | – |
+| Hạnh kiểm — nhập / xem | ✔ / ✔ | – / **✔** | ✔ / ✔ *(chỉ lớp mình chủ nhiệm)* | – / *mình* | – / *con* | – | – |
+| Xét lên lớp (preview / confirm) | ✔ / ✔ | ✔ / ✔ | ✔ / – *(chỉ lớp mình chủ nhiệm — v4.20)* | *mình* | *con* | – | – |
 | Học phí — quản lý / xem | ✔ / ✔ | – / **✔** | – | – / *mình* | – / *con* | – | ✔ / ✔ |
 | Đóng học phí online | – | – | – | *mình* | *con* | – | ghi sổ |
 | Thư viện — quản lý / mượn-trả | ✔ / – | *xem* | – / *tự* | – / *tự* | *(tuỳ chọn xem)* | ✔ / **hộ** | – |
@@ -413,6 +413,20 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 
 ## NHẬT KÝ THAY ĐỔI
 
+- **v4.20 (05/09/2026):** **H.3.1 — thu hẹp quyền TEACHER theo lớp chủ nhiệm (GVCN)**, theo yêu cầu trực tiếp của người dùng sau khi tự tay test bằng tài khoản teacher: "chỉ quản lý học sinh/điểm danh/xét lên lớp trong lớp mình chủ nhiệm; thời khoá biểu chỉ xem, chỉ xem lịch dạy tiết mấy ở lớp nào của chính mình".
+  - **Backend:** `TeacherHomeroomGuard` mới (`security/`), trích xuất từ `ConductRecordService.enforceHomeroomWriteAccess` (nơi duy nhất đã có logic này trước đây) để dùng chung — `enforceHomeroomClassId`/`enforceHomeroomClassNameSection` (throw 403 nếu TEACHER không phải GVCN), `filterToHomeroom` (lọc danh sách học sinh), `resolveOwnStaff`. Chỉ thu hẹp TEACHER — ADMIN/PRINCIPAL không đổi hành vi.
+    - `StudentController`: `GET /v1/students` lọc theo homeroom cho TEACHER (`StudentService.getAllStudents(User)`, cả bản phân trang lẫn không); `GET .../class/{className}/section/{section}` 403 nếu không phải GVCN của đúng lớp/tổ đó; `GET .../class/{className}` lọc kết quả (có thể trải nhiều tổ).
+    - `SchoolClassController.GET /{id}/students` (roster dùng bởi `ClassManagement.jsx`) — phát hiện thêm khi rà: cũng chưa từng có homeroom scoping cho TEACHER, đã vá cùng đợt.
+    - `AttendanceController`/`AttendanceService`: `markAttendance`, `markAttendanceForClass`, `updateAttendance`, `deleteAttendance` đều enforce homeroom (2 cái sau trước đây không nhận `User requester` — đã thêm tham số).
+    - `PromotionController.previewClassPromotions` — enforce theo `classId` (so `SchoolClass.getId()` trực tiếp — mạnh hơn className/section vì không đụng trùng tên qua các năm học).
+    - `TimetableController`: `GET /class/{classId}` bỏ TEACHER khỏi `@PreAuthorize` (chỉ còn ADMIN/PRINCIPAL — thời khoá biểu do hiệu trưởng quyết định); `GET /teacher/{teacherId}` — TEACHER chỉ được truyền đúng `teacherId` của chính mình (403 nếu khác), đây là kiểm "tự mình" chứ không phải homeroom.
+    - `ConductRecordService.enforceHomeroomWriteAccess` refactor để gọi `TeacherHomeroomGuard` (xoá trùng lặp), giữ riêng phần kiểm `evaluatedBy` (đặc thù hạnh kiểm).
+  - **Frontend:** hook dùng chung mới `hooks/useMyHomeroomClasses.js` (đóng gói lại lookup "staff list → myStaffId → class list → homeroomClasses" mà `ConductManagement.jsx` đã làm inline từ trước) — `ConductManagement`/`StudentManagement`/`AttendanceManagement`/`PromotionManagement` đều dùng chung. `TimetableManagement.jsx` thêm nhánh hiển thị riêng cho TEACHER: bỏ Select chọn lớp, gọi `timetableService.getByTeacher(myStaffId, semesterId)` (đã có sẵn, trước đó không nơi nào dùng), ẩn hẳn khối "Phân công giảng dạy" (không áp dụng cho view lịch-của-tôi).
+  - **Lỗi thật tìm được khi viết test (không phải cố ý, phát hiện vì tính năng mới khiến "TEACHER chưa là GVCN lớp nào" thành trạng thái phổ biến hơn để test tới):** `AttendanceManagement.jsx` và `ConductManagement.jsx` đều có `const roster = query.data ?? [];` (không memoize) + `useEffect` phụ thuộc `roster` gọi `setState` vô điều kiện — khi query bị disable/chưa có data, `?? []` tạo mảng mới mỗi lần render, khiến effect chạy lại vô hạn (treo tab trình duyệt thật, không chỉ trong test). Vá bằng `useMemo(() => query.data ?? [], [query.data])`.
+  - Test mới: `TeacherHomeroomGuardTest` (unit), mở rộng `ConductRecordIntegrationTest`, `PromotionIntegrationTest`, `TeachingTimetableIntegrationTest`, `AttendanceIntegrationTest`, `StudentAccessSecurityTest`, `SchoolClassControllerIntegrationTest` (case GVCN/không-GVCN cho mỗi endpoint sửa); `useMyHomeroomClasses.test.jsx`, `AttendanceManagement.test.jsx`, `PromotionManagement.test.jsx`, `TimetableManagement.test.jsx`, `StudentManagement.test.jsx` (mới, mock `dataService`).
+  - `mvn test` **255/255** (baseline 232 + 23, 2 lỗi cũ không đổi); `npm test` **71/71** (baseline 55 + 16); `npm run build` sạch.
+  - **Chưa làm trong lượt này:** phần còn lại của 3.1 (GVBM chỉ nhập điểm môn mình dạy, dựa trên `TeachingAssignment`) — người dùng chỉ yêu cầu đúng 5 mục đã liệt kê, không bao gồm Điểm.
+- **v4.19 (05/09/2026):** Quyết định 10 — thêm React Error Boundary bao toàn bộ router (`ErrorBoundary.jsx` + `App.jsx`), phát hiện lúc kiểm tra UI thật ở v4.18 (không có gì chặn 1 lỗi render bất kỳ làm trắng cả app). `npm test` 55/55 (+3 ca mới).
 - **v4.18 (05/09/2026):** kiểm tra thủ công toàn bộ chức năng trên trình duyệt thật (Claude-in-Chrome), người dùng yêu cầu "kiểm tra lại hết các chức năng có trên UI, nếu cái nào lỗi thì sẽ sửa" — lần đầu test bằng cách đăng nhập + click qua từng trang ở cả 7 vai trò thay vì chỉ đọc code.
   - Khởi động lại backend (`mvn spring-boot:run`, profile `dev`) + frontend (`npm run dev`) với code mới nhất trên `main`, dùng tài khoản seed có sẵn (`admin/principal/teacher1/student1/librarian/accountant`, mật khẩu `Test@123` từ `TEST_DATA_CORRECTED.sql`).
   - Click qua toàn bộ trang của ADMIN (19 mục sidebar) rồi lần lượt đăng nhập PRINCIPAL/TEACHER/STUDENT/LIBRARIAN/ACCOUNTANT để xác nhận RBAC + trải nghiệm đúng vai trò.

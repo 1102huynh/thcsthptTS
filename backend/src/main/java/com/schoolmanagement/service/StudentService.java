@@ -4,6 +4,7 @@ import com.schoolmanagement.dto.StudentDTO;
 import com.schoolmanagement.dto.UserDTO;
 import com.schoolmanagement.entity.DocumentAttachment;
 import com.schoolmanagement.entity.DocumentOwnerType;
+import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.Student;
 import com.schoolmanagement.entity.StudentStatus;
 import com.schoolmanagement.entity.User;
@@ -12,8 +13,10 @@ import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.DocumentAttachmentRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.repository.UserRepository;
+import com.schoolmanagement.security.TeacherHomeroomGuard;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +35,7 @@ public class StudentService {
     private DocumentAttachmentRepository documentAttachmentRepository;
     private FileStorageService fileStorageService;
     private UserRepository userRepository;
+    private TeacherHomeroomGuard teacherHomeroomGuard;
 
     public StudentDTO createStudent(Student student) {
         if (studentRepository.existsByRollNumber(student.getRollNumber())) {
@@ -122,14 +126,44 @@ public class StudentService {
         return studentRepository.findAll(pageable).map(this::mapToDTO);
     }
 
-    public List<StudentDTO> getStudentsByClass(String className) {
-        return studentRepository.findByClassName(className)
-                .stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
+    /**
+     * GVCN scoping (H.3.1) — a TEACHER only ever sees students in the class(es)
+     * they are homeroom teacher of; every other role is unaffected (see
+     * TeacherHomeroomGuard's "only narrows, never grants" contract).
+     */
+    public List<StudentDTO> getAllStudents(User requester) {
+        List<Student> students = teacherHomeroomGuard.filterToHomeroom(studentRepository.findAll(), requester);
+        return students.stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
-    public List<StudentDTO> getStudentsByClassAndSection(String className, String section) {
+    /**
+     * Same GVCN scoping as {@link #getAllStudents(User)}, applied in memory
+     * because the filter isn't expressible as a repository query (Student has
+     * no FK to SchoolClass, only className/section strings — see
+     * TeacherHomeroomGuard). Fine at the scale a single TEACHER's homeroom
+     * roster or even a whole school's student list reaches; would need a
+     * proper query if this ever had to paginate across the whole DB for a
+     * non-TEACHER caller too (it doesn't - see the plain Pageable overload above).
+     */
+    public Page<StudentDTO> getAllStudents(Pageable pageable, User requester) {
+        if (requester == null || requester.getRole() != Role.TEACHER) {
+            return getAllStudents(pageable);
+        }
+        List<Student> filtered = teacherHomeroomGuard.filterToHomeroom(studentRepository.findAll(), requester);
+        int start = Math.min((int) pageable.getOffset(), filtered.size());
+        int end = Math.min(start + pageable.getPageSize(), filtered.size());
+        List<StudentDTO> content = filtered.subList(start, end).stream().map(this::mapToDTO).collect(Collectors.toList());
+        return new PageImpl<>(content, pageable, filtered.size());
+    }
+
+    public List<StudentDTO> getStudentsByClass(String className, User requester) {
+        List<Student> students = teacherHomeroomGuard.filterToHomeroom(
+                studentRepository.findByClassName(className), requester);
+        return students.stream().map(this::mapToDTO).collect(Collectors.toList());
+    }
+
+    public List<StudentDTO> getStudentsByClassAndSection(String className, String section, User requester) {
+        teacherHomeroomGuard.enforceHomeroomClassNameSection(className, section, requester);
         return studentRepository.findByClassNameAndSection(className, section)
                 .stream()
                 .map(this::mapToDTO)

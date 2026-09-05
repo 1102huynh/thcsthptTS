@@ -1,12 +1,14 @@
 package com.schoolmanagement.service;
 
 import com.schoolmanagement.dto.TimetableSlotDTO;
+import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.SchoolClass;
 import com.schoolmanagement.entity.Semester;
 import com.schoolmanagement.entity.Staff;
 import com.schoolmanagement.entity.Subject;
 import com.schoolmanagement.entity.TeachingAssignment;
 import com.schoolmanagement.entity.TimetableSlot;
+import com.schoolmanagement.entity.User;
 import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.exception.ScheduleConflictException;
 import com.schoolmanagement.repository.SchoolClassRepository;
@@ -14,7 +16,9 @@ import com.schoolmanagement.repository.SemesterRepository;
 import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.TeachingAssignmentRepository;
 import com.schoolmanagement.repository.TimetableSlotRepository;
+import com.schoolmanagement.security.TeacherHomeroomGuard;
 import lombok.AllArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +35,7 @@ public class TimetableService {
     private SchoolClassRepository schoolClassRepository;
     private StaffRepository staffRepository;
     private SemesterRepository semesterRepository;
+    private TeacherHomeroomGuard teacherHomeroomGuard;
 
     public TimetableSlotDTO createSlot(TimetableSlot request) {
         TeachingAssignment assignment = resolveTeachingAssignment(request.getTeachingAssignment());
@@ -79,7 +84,20 @@ public class TimetableService {
         return slots.stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
-    public List<TimetableSlotDTO> getTeacherTimetable(Long teacherId, Long semesterId) {
+    /**
+     * TEACHER may only view without editing, and only their own teaching
+     * schedule (H.3.1) — hiệu trưởng quyết định thời khoá biểu, not the
+     * teacher. A TEACHER passing any teacherId other than their own gets 403;
+     * ADMIN/PRINCIPAL are unrestricted.
+     */
+    public List<TimetableSlotDTO> getTeacherTimetable(Long teacherId, Long semesterId, User requester) {
+        if (requester != null && requester.getRole() == Role.TEACHER) {
+            Staff ownStaff = teacherHomeroomGuard.resolveOwnStaff(requester);
+            if (!ownStaff.getId().equals(teacherId)) {
+                throw new AccessDeniedException("A TEACHER may only view their own teaching timetable");
+            }
+        }
+
         Staff teacher = staffRepository.findById(teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Staff not found with id: " + teacherId));
 

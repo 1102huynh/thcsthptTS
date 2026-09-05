@@ -4,12 +4,14 @@ import com.schoolmanagement.entity.EmploymentStatus;
 import com.schoolmanagement.entity.ParentRelationship;
 import com.schoolmanagement.entity.ParentStudentRelation;
 import com.schoolmanagement.entity.Role;
+import com.schoolmanagement.entity.SchoolClass;
 import com.schoolmanagement.entity.Staff;
 import com.schoolmanagement.entity.StaffPosition;
 import com.schoolmanagement.entity.Student;
 import com.schoolmanagement.entity.StudentStatus;
 import com.schoolmanagement.entity.User;
 import com.schoolmanagement.repository.ParentStudentRelationRepository;
+import com.schoolmanagement.repository.SchoolClassRepository;
 import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.repository.UserRepository;
@@ -68,6 +70,8 @@ class StudentAccessSecurityTest {
     @Autowired
     private ParentStudentRelationRepository parentStudentRelationRepository;
     @Autowired
+    private SchoolClassRepository schoolClassRepository;
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private Student student;
@@ -76,6 +80,7 @@ class StudentAccessSecurityTest {
     private User parentUser;
     private User otherParentUser;
     private User teacherUser;
+    private Staff teacherStaff;
 
     @BeforeEach
     void setUp() {
@@ -112,7 +117,7 @@ class StudentAccessSecurityTest {
                 .username("itest.sas.teacher").email("itest.sas.teacher@school.com")
                 .password(passwordEncoder.encode("Str0ngPassw0rd!"))
                 .firstName("Integration").lastName("Teacher").role(Role.TEACHER).enabled(true).build());
-        staffRepository.save(Staff.builder()
+        teacherStaff = staffRepository.save(Staff.builder()
                 .employeeId("ITEST-SAS-EMP").user(teacherUser)
                 .position(StaffPosition.TEACHER).status(EmploymentStatus.ACTIVE).build());
     }
@@ -220,5 +225,47 @@ class StudentAccessSecurityTest {
     void teacher_readsStaffDirectory_stillReturns200() throws Exception {
         mockMvc.perform(get("/v1/staff").with(asUser(teacherUser, "TEACHER")))
                 .andExpect(status().isOk());
+    }
+
+    // ---- H.3.1 - a TEACHER only ever sees students in their homeroom class(es) ----
+
+    @Test
+    void teacher_getAllStudents_onlySeesHomeroomStudents() throws Exception {
+        SchoolClass homeroomClass = schoolClassRepository.save(SchoolClass.builder()
+                .className("ITEST-SAS-10").section("A").academicYear("2099-2100")
+                .classTeacher(teacherStaff).build());
+        student.setClassName(homeroomClass.getClassName());
+        student.setSection(homeroomClass.getSection());
+        studentRepository.save(student);
+        // otherStudentUser's Student row has no class set - stays excluded either way.
+
+        mockMvc.perform(get("/v1/students").with(asUser(teacherUser, "TEACHER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].rollNumber").value("ITEST-SAS-ROLL"));
+    }
+
+    @Test
+    void teacher_getStudentsByClassAndSection_asHomeroom_returns200() throws Exception {
+        SchoolClass homeroomClass = schoolClassRepository.save(SchoolClass.builder()
+                .className("ITEST-SAS-11").section("A").academicYear("2099-2100")
+                .classTeacher(teacherStaff).build());
+        student.setClassName(homeroomClass.getClassName());
+        student.setSection(homeroomClass.getSection());
+        studentRepository.save(student);
+
+        mockMvc.perform(get("/v1/students/class/{className}/section/{section}",
+                        homeroomClass.getClassName(), homeroomClass.getSection())
+                        .with(asUser(teacherUser, "TEACHER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].rollNumber").value("ITEST-SAS-ROLL"));
+    }
+
+    @Test
+    void teacher_getStudentsByClassAndSection_asNonHomeroom_returns403() throws Exception {
+        // teacherStaff is GVCN of nothing here.
+        mockMvc.perform(get("/v1/students/class/{className}/section/{section}", "ITEST-SAS-12", "A")
+                        .with(asUser(teacherUser, "TEACHER")))
+                .andExpect(status().isForbidden());
     }
 }
