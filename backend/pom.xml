@@ -61,11 +61,13 @@
         </dependency>
 
         <!-- PDF reports (bảng điểm/học bạ, biên lai học phí, 3.8). LGPL/MPL —
-             unlike iText7 (AGPL), free to use in a closed-source deployment. -->
+             unlike iText7 (AGPL), free to use in a closed-source deployment.
+             Pinned to 2.0.5: 2.1.0+ ships class files compiled for Java 21
+             (class file version 65), which this project (Java 17) can't load. -->
         <dependency>
             <groupId>com.github.librepdf</groupId>
             <artifactId>openpdf</artifactId>
-            <version>2.2.2</version>
+            <version>2.0.5</version>
         </dependency>
 
         <!-- Excel reports (điểm danh theo lớp, 3.8) -->
