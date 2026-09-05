@@ -2,8 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { FiPlus, FiEdit2, FiTrash2, FiUploadCloud, FiEye, FiEyeOff } from 'react-icons/fi';
-import { eventCmsService, mediaCmsService } from '../services/dataService';
+import { eventCmsService } from '../services/dataService';
 import { mediaUrl } from '../services/publicService';
+import { useMediaUpload } from '../hooks/useMediaUpload';
 import DataTable from '../components/shared/DataTable';
 import RichTextEditor from '../components/shared/RichTextEditor';
 import { Button } from '../components/ui/button';
@@ -58,35 +59,7 @@ function EventDialog({ open, onOpenChange, event, onSaved }) {
     onError: (e) => toast.error(e?.response?.data?.message || 'Không lưu được sự kiện'),
   });
 
-  const uploadCover = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const asset = await mediaCmsService.upload(file);
-      setForm((f) => ({ ...f, coverImageUrl: asset.url }));
-      toast.success('Đã tải ảnh bìa');
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Không tải được ảnh');
-    } finally {
-      setUploading(false);
-      e.target.value = '';
-    }
-  };
-
-  // See NewsManagement's identical helper: inline images in "description"
-  // are rendered as-is by RichHtml, so the src stashed here must already be
-  // the absolute URL (unlike coverImageUrl, which is resolved via
-  // mediaUrl() at display time instead).
-  const uploadInlineImage = async (file) => {
-    try {
-      const asset = await mediaCmsService.upload(file);
-      return mediaUrl(asset.url);
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Không tải được ảnh');
-      return null;
-    }
-  };
+  const { uploadCover, uploadInlineImage } = useMediaUpload({ setForm, setUploading });
 
   const submit = (e) => {
     e.preventDefault();
