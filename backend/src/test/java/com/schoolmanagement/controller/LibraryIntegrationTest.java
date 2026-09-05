@@ -140,10 +140,15 @@ class LibraryIntegrationTest {
                         .with(asUser(librarianUser, "LIBRARIAN")))
                 .andExpect(status().isOk());
 
-        // The borrow lands on the student's own account, visible in their history
+        // The borrow lands on the student's own account, visible in their history.
+        // (Not "$[?(@.returnDate == null)]": the DTO omits null fields from
+        // JSON entirely rather than serializing them as `null`, so a JsonPath
+        // filter comparing against == null never matches - same reasoning as
+        // the doesNotExist() check right below, for the same field.)
         mockMvc.perform(get("/v1/library/transactions/me").with(asUser(studentUser, "STUDENT")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.bookId == " + book.getId() + " && @.returnDate == null)]").exists());
+                .andExpect(jsonPath("$[0].bookId").value(book.getId()))
+                .andExpect(jsonPath("$[0].returnDate").doesNotExist());
 
         mockMvc.perform(post("/v1/library/books/{id}/return-for", book.getId())
                         .param("studentId", String.valueOf(student.getId()))
