@@ -138,6 +138,28 @@ class AcademicStructureIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = "ACCOUNTANT")
+    void getAcademicYears_asAccountant_returns200() throws Exception {
+        // Regression test: FeeManagement.jsx's fee list is gated on this call
+        // succeeding (`enabled: Boolean(academicYear)`, derived from GET
+        // /v1/academic-years) - found live that it 403'd for ACCOUNTANT,
+        // silently zeroing out the entire fee list with no error shown, even
+        // though ACCOUNTANT could already read GET /v1/fees/year/{year} fine.
+        mockMvc.perform(get("/v1/academic-years"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "ACCOUNTANT")
+    void createAcademicYear_asAccountant_returns403() throws Exception {
+        // Read-only for ACCOUNTANT - the write endpoints stay ADMIN/PRINCIPAL.
+        mockMvc.perform(post("/v1/academic-years")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newYear("ITEST-ACCOUNTANT-DENIED"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @WithMockUser(roles = "ADMIN")
     void createSemester_forExistingAcademicYear_persists() throws Exception {
         AcademicYear saved = academicYearRepository.save(newYear("ITEST-SEM"));

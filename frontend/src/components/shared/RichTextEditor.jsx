@@ -57,8 +57,17 @@ export default function RichTextEditor({ value, onChange, onUploadImage, placeho
   // Re-sync when the caller swaps to a different record (dialog reopened
   // with another article/event) - never while the user is actively typing,
   // or every keystroke's onUpdate -> value prop echo would fight the cursor.
+  //
+  // `editor.isDestroyed` guard is required, not defensive fluff: React 18
+  // StrictMode double-invokes effects in dev (mount -> cleanup -> mount),
+  // and useEditor()'s cleanup calls editor.destroy() - a destroyed editor's
+  // schema is null, so a stale closure calling editor.getHTML() here throws
+  // "Cannot read properties of null (reading 'cached')" from ProseMirror's
+  // DOMSerializer, uncaught (no error boundary in the tree - App.jsx),
+  // blanking the whole app every time NewsManagement/EventManagement's
+  // "new article/event" dialog opened. Reproduced live, not theoretical.
   useEffect(() => {
-    if (!editor || editor.isFocused) return;
+    if (!editor || editor.isDestroyed || editor.isFocused) return;
     if ((value || '') !== editor.getHTML()) {
       editor.commands.setContent(value || '', { emitUpdate: false });
     }

@@ -39,16 +39,22 @@ public class AcademicYearController {
     // STUDENT/PARENT read-only: the self-service portal (C3) needs the year
     // list to drive its "học kỳ / năm học" picker for grades. This is
     // low-sensitivity reference data (year name + date range + ACTIVE flag),
-    // no write access.
+    // no write access. ACCOUNTANT added after finding live that
+    // FeeManagement.jsx's "which year is active" lookup 403'd for this role -
+    // its fee list query is gated on that answer (`enabled: Boolean(academicYear)`),
+    // so the 403 silently zeroed out every fee row for ACCOUNTANT (no error
+    // shown - the "no active year" banner is itself gated on the call having
+    // *succeeded*), even though GET /v1/fees/year/{year} has allowed
+    // ACCOUNTANT all along. Same category of gap as Mức 2.2 (v4.10, students).
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT')")
     @Operation(summary = "Get academic year by ID")
     public ResponseEntity<AcademicYearDTO> getAcademicYearById(@PathVariable Long id) {
         return new ResponseEntity<>(academicYearService.getAcademicYearById(id), HttpStatus.OK);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT')")
     @Operation(summary = "Get all academic years")
     public ResponseEntity<List<AcademicYearDTO>> getAllAcademicYears() {
         return new ResponseEntity<>(academicYearService.getAllAcademicYears(), HttpStatus.OK);

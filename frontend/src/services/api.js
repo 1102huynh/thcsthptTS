@@ -117,20 +117,33 @@ api.interceptors.response.use(
 
     isRefreshing = true;
 
-    return requestNewToken()
-      .then((newAccessToken) => {
+    // Two-argument .then(onFulfilled, onRejected) on purpose - NOT
+    // .then(onFulfilled).catch(onRejected). The latter also catches a
+    // rejection thrown *inside* onFulfilled, and onFulfilled's own
+    // api(originalRequest) retry can legitimately reject on its own terms
+    // (e.g. POST /v1/users/me/change-password retried with a fresh token
+    // still 401s because the current-password the user typed is simply
+    // wrong - nothing to do with the token). With .catch(), that retry
+    // failure was being treated as "refresh failed" and logged the user
+    // out to /login instead of letting the caller's own error handling
+    // (a toast) show it - reproduced live on the Profile page. The
+    // two-argument form's second callback only fires for a genuine
+    // requestNewToken() rejection; a rejection from the onFulfilled
+    // callback's own body propagates to the original caller untouched.
+    return requestNewToken().then(
+      (newAccessToken) => {
         onRefreshed(newAccessToken);
+        isRefreshing = false;
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
-      })
-      .catch((refreshError) => {
+      },
+      (refreshError) => {
         onRefreshFailed(refreshError);
+        isRefreshing = false;
         clearSessionAndRedirect();
         return Promise.reject(refreshError);
-      })
-      .finally(() => {
-        isRefreshing = false;
-      });
+      }
+    );
   }
 );
 

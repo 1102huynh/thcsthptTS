@@ -93,9 +93,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleBadCredentialsException(
             BadCredentialsException ex,
             HttpServletRequest request) {
+        // Hard-coded, not ex.getMessage(): this handler is deliberately generic
+        // (never confirms whether the username or the password was wrong, so a
+        // caller can't enumerate valid usernames) - found live while clicking
+        // through the app that this was still in English while every other
+        // user-facing message in the system is Vietnamese (A6).
         ApiError error = ApiError.builder()
                 .status("UNAUTHORIZED")
-                .message("Invalid username or password")
+                .message("Sai tên đăng nhập hoặc mật khẩu")
                 .code(401)
                 .path(request.getRequestURI())
                 .timestamp(LocalDateTime.now())
