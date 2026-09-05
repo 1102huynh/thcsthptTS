@@ -25,6 +25,11 @@ export const userService = {
   getMe: () => api.get('/v1/users/me'),
   updateMe: (data) => api.put('/v1/users/me', data),
   changePassword: (data) => api.post('/v1/users/me/change-password', data),
+  // ADMIN account management page (D6, UserAccountManagement.jsx) - a
+  // separate paginated endpoint from getByRole above, which
+  // ParentManagement.jsx already relies on returning a flat array.
+  search: ({ role, q, page, size }) => api.get('/v1/users/search', { params: { role, q, page, size } }),
+  setEnabled: (id, enabled) => api.put(`/v1/users/${id}/enabled`, { enabled }),
 };
 
 // Staff Service

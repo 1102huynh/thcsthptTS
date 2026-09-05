@@ -4,12 +4,14 @@ import com.schoolmanagement.dto.AuthResponse;
 import com.schoolmanagement.dto.ChangePasswordRequest;
 import com.schoolmanagement.dto.CreateUserRequest;
 import com.schoolmanagement.dto.RegisterRequest;
+import com.schoolmanagement.dto.SetUserEnabledRequest;
 import com.schoolmanagement.dto.UpdateProfileRequest;
 import com.schoolmanagement.dto.UserDTO;
 import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.User;
 import com.schoolmanagement.exception.DuplicateResourceException;
 import com.schoolmanagement.exception.InvalidCurrentPasswordException;
+import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.UserRepository;
 import com.schoolmanagement.security.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -311,6 +314,42 @@ class AuthenticationServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(BadCredentialsException.class, () -> authenticationService.changePassword(principal, request));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void setUserEnabled_disablesTheTargetAccountAndLogsIt() {
+        User admin = User.builder().id(1L).username("admin").role(Role.ADMIN).build();
+        User target = User.builder().id(2L).username("teacher1").role(Role.TEACHER).enabled(true).build();
+        SetUserEnabledRequest request = SetUserEnabledRequest.builder().enabled(false).build();
+
+        when(userRepository.findById(2L)).thenReturn(Optional.of(target));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserDTO result = authenticationService.setUserEnabled(2L, request, admin);
+
+        assertThat(result.getEnabled()).isFalse();
+        verify(auditLogService).log(eq(admin), eq("DISABLE"), eq("User"), eq(2L), any());
+    }
+
+    @Test
+    void setUserEnabled_throwsWhenAdminTriesToLockTheirOwnAccount() {
+        User admin = User.builder().id(1L).username("admin").role(Role.ADMIN).build();
+        SetUserEnabledRequest request = SetUserEnabledRequest.builder().enabled(false).build();
+
+        assertThrows(IllegalArgumentException.class, () -> authenticationService.setUserEnabled(1L, request, admin));
+        verify(userRepository, never()).findById(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void setUserEnabled_throwsWhenTargetDoesNotExist() {
+        User admin = User.builder().id(1L).username("admin").role(Role.ADMIN).build();
+        SetUserEnabledRequest request = SetUserEnabledRequest.builder().enabled(false).build();
+
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> authenticationService.setUserEnabled(99L, request, admin));
         verify(userRepository, never()).save(any());
     }
 }

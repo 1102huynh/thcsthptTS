@@ -32,6 +32,7 @@ const SelfServicePortal = lazy(() => import('./pages/SelfServicePortal'));
 const NewsManagement = lazy(() => import('./pages/NewsManagement'));
 const EventManagement = lazy(() => import('./pages/EventManagement'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const UserAccountManagement = lazy(() => import('./pages/UserAccountManagement'));
 
 // Public portal (KE_HOACH_TRANG_TIN_TUC_CONG_KHAI.md). Eager-imported, NOT
 // lazy: a visitor browses these back-to-back, and each is small - lazy just
@@ -150,6 +151,7 @@ function App() {
                       <Route path="/news" element={guarded('/news', <NewsManagement />)} />
                       <Route path="/events" element={guarded('/events', <EventManagement />)} />
                       <Route path="/audit-log" element={guarded('/audit-log', <AuditLogManagement />)} />
+                      <Route path="/accounts" element={guarded('/accounts', <UserAccountManagement />)} />
                       <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
                   </Suspense>

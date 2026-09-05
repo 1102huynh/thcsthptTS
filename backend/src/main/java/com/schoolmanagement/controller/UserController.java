@@ -3,6 +3,7 @@ package com.schoolmanagement.controller;
 import com.schoolmanagement.dto.AuthResponse;
 import com.schoolmanagement.dto.ChangePasswordRequest;
 import com.schoolmanagement.dto.CreateUserRequest;
+import com.schoolmanagement.dto.SetUserEnabledRequest;
 import com.schoolmanagement.dto.UpdateProfileRequest;
 import com.schoolmanagement.dto.UserDTO;
 import com.schoolmanagement.entity.Role;
@@ -12,6 +13,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -44,6 +49,39 @@ public class UserController {
             description = "ADMIN only - added for ParentManagement.jsx to list existing PARENT accounts when linking a child, without needing to create a brand-new parent account per link.")
     public ResponseEntity<List<UserDTO>> getUsersByRole(@RequestParam Role role) {
         return new ResponseEntity<>(authenticationService.getUsersByRole(role), HttpStatus.OK);
+    }
+
+    // ---- Account management (D6) — ADMIN browsing/locking ANY account,
+    // regardless of role. Deliberately separate endpoints from GET /v1/users
+    // above (kept as-is for ParentManagement.jsx's flat-list expectation).
+
+    @GetMapping("/search")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Search/browse all user accounts, paginated",
+            description = "Optional ?role= and ?q= (matches username/email/first/last name). page/size default to 0/20 - trang quản trị tài khoản (D6).")
+    public ResponseEntity<Page<UserDTO>> searchUsers(
+            @RequestParam(required = false) Role role,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        if (page < 0) {
+            throw new IllegalArgumentException("page must not be negative");
+        }
+        if (size <= 0 || size > 200) {
+            throw new IllegalArgumentException("size must be between 1 and 200");
+        }
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "username"));
+        return new ResponseEntity<>(authenticationService.searchUsers(role, q, pageable), HttpStatus.OK);
+    }
+
+    @PutMapping("/{id}/enabled")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Lock or unlock a user account (any role)",
+            description = "enabled=false blocks that account's next login attempt (existing sessions/tokens are not revoked — see roadmap F3). An ADMIN cannot lock their own account this way (D6).")
+    public ResponseEntity<UserDTO> setUserEnabled(
+            @PathVariable Long id, @Valid @RequestBody SetUserEnabledRequest request, Authentication authentication) {
+        User actor = (User) authentication.getPrincipal();
+        return new ResponseEntity<>(authenticationService.setUserEnabled(id, request, actor), HttpStatus.OK);
     }
 
     // ---- Self-service ("my profile" / "account settings") — any authenticated

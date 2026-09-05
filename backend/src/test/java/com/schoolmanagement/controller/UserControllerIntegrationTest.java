@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -65,6 +66,11 @@ class UserControllerIntegrationTest {
     private RequestPostProcessor asSelf() {
         return authentication(new UsernamePasswordAuthenticationToken(
                 self, null, List.of(new SimpleGrantedAuthority("ROLE_" + self.getRole().name()))));
+    }
+
+    private RequestPostProcessor asUser(User user) {
+        return authentication(new UsernamePasswordAuthenticationToken(
+                user, null, List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))));
     }
 
     @Test
@@ -120,5 +126,61 @@ class UserControllerIntegrationTest {
                         .with(asSelf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Mật khẩu mới phải khác mật khẩu hiện tại"));
+    }
+
+    // ---- D6: GET /v1/users/search + PUT /v1/users/{id}/enabled (trang quản trị tài khoản)
+
+    @Test
+    void searchUsers_asNonAdmin_returns403() throws Exception {
+        mockMvc.perform(get("/v1/users/search").with(asSelf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void searchUsers_asAdmin_findsByRoleAndKeyword() throws Exception {
+        User admin = userRepository.save(User.builder()
+                .username("itest.accounts.admin").email("itest.accounts.admin@school.com")
+                .password(passwordEncoder.encode("Str0ngPassw0rd!"))
+                .firstName("Admin").lastName("Root").role(Role.ADMIN).enabled(true).build());
+
+        mockMvc.perform(get("/v1/users/search").param("role", "STUDENT").param("q", "itest.profile.self").with(asUser(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.username == 'itest.profile.self')]").exists());
+    }
+
+    @Test
+    void setEnabled_disablingAnAccount_blocksItsNextLogin() throws Exception {
+        User admin = userRepository.save(User.builder()
+                .username("itest.accounts.admin2").email("itest.accounts.admin2@school.com")
+                .password(passwordEncoder.encode("Str0ngPassw0rd!"))
+                .firstName("Admin").lastName("Root").role(Role.ADMIN).enabled(true).build());
+
+        mockMvc.perform(put("/v1/users/{id}/enabled", self.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("enabled", false)))
+                        .with(asUser(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.enabled").value(false));
+
+        mockMvc.perform(post("/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("username", self.getUsername(), "password", "Str0ngPassw0rd!"))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void setEnabled_adminCannotLockTheirOwnAccount() throws Exception {
+        User admin = userRepository.save(User.builder()
+                .username("itest.accounts.admin3").email("itest.accounts.admin3@school.com")
+                .password(passwordEncoder.encode("Str0ngPassw0rd!"))
+                .firstName("Admin").lastName("Root").role(Role.ADMIN).enabled(true).build());
+
+        mockMvc.perform(put("/v1/users/{id}/enabled", admin.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("enabled", false)))
+                        .with(asUser(admin)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Không thể tự khoá tài khoản của chính mình"));
     }
 }
