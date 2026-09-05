@@ -13,6 +13,8 @@ import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.NewsArticleRepository;
 import com.schoolmanagement.repository.NewsCategoryRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,15 +33,18 @@ public class NewsService {
     private NewsCategoryRepository categoryRepository;
     private SlugService slugService;
     private HtmlSanitizerService htmlSanitizer;
+    private NewsViewCountAggregator viewCountAggregator;
 
     // ================= categories =================
 
     @Transactional(readOnly = true)
+    @Cacheable("newsCategories")
     public List<NewsCategoryDTO> listCategories() {
         return categoryRepository.findAllByOrderByDisplayOrderAscNameAsc()
                 .stream().map(this::toCategoryDTO).toList();
     }
 
+    @CacheEvict(cacheNames = {"newsCategories", "publicNewsList", "publicHome", "publicSitemap"}, allEntries = true)
     public NewsCategoryDTO createCategory(NewsCategoryRequest request) {
         NewsCategory category = NewsCategory.builder()
                 .name(request.getName().trim())
@@ -49,6 +54,7 @@ public class NewsService {
         return toCategoryDTO(categoryRepository.save(category));
     }
 
+    @CacheEvict(cacheNames = {"newsCategories", "publicNewsList", "publicHome", "publicSitemap"}, allEntries = true)
     public NewsCategoryDTO updateCategory(Long id, NewsCategoryRequest request) {
         NewsCategory category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("News category not found with id: " + id));
@@ -59,6 +65,7 @@ public class NewsService {
         return toCategoryDTO(categoryRepository.save(category));
     }
 
+    @CacheEvict(cacheNames = {"newsCategories", "publicNewsList", "publicHome", "publicSitemap"}, allEntries = true)
     public void deleteCategory(Long id) {
         NewsCategory category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("News category not found with id: " + id));
@@ -79,6 +86,7 @@ public class NewsService {
         return toArticleDTO(loadArticle(id));
     }
 
+    @CacheEvict(cacheNames = {"publicNewsList", "featuredNews", "latestNews", "publicHome", "publicSitemap"}, allEntries = true)
     public NewsArticleDTO create(NewsArticleRequest request, User author) {
         NewsArticle article = NewsArticle.builder()
                 .title(request.getTitle().trim())
@@ -94,6 +102,7 @@ public class NewsService {
         return toArticleDTO(articleRepository.save(article));
     }
 
+    @CacheEvict(cacheNames = {"publicNewsList", "featuredNews", "latestNews", "publicHome", "publicSitemap"}, allEntries = true)
     public NewsArticleDTO update(Long id, NewsArticleRequest request) {
         NewsArticle article = loadArticle(id);
         // slug is intentionally NOT regenerated on title change - stable URLs.
@@ -108,6 +117,7 @@ public class NewsService {
         return toArticleDTO(articleRepository.save(article));
     }
 
+    @CacheEvict(cacheNames = {"publicNewsList", "featuredNews", "latestNews", "publicHome", "publicSitemap"}, allEntries = true)
     public NewsArticleDTO publish(Long id) {
         NewsArticle article = loadArticle(id);
         article.setStatus(ContentStatus.PUBLISHED);
@@ -117,12 +127,14 @@ public class NewsService {
         return toArticleDTO(articleRepository.save(article));
     }
 
+    @CacheEvict(cacheNames = {"publicNewsList", "featuredNews", "latestNews", "publicHome", "publicSitemap"}, allEntries = true)
     public NewsArticleDTO unpublish(Long id) {
         NewsArticle article = loadArticle(id);
         article.setStatus(ContentStatus.ARCHIVED);
         return toArticleDTO(articleRepository.save(article));
     }
 
+    @CacheEvict(cacheNames = {"publicNewsList", "featuredNews", "latestNews", "publicHome", "publicSitemap"}, allEntries = true)
     public void delete(Long id) {
         articleRepository.delete(loadArticle(id));
     }
@@ -130,6 +142,7 @@ public class NewsService {
     // ================= public =================
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "publicNewsList", key = "#categorySlug + ':' + #pageable")
     public Page<PublicNewsDTO> listPublished(String categorySlug, Pageable pageable) {
         return articleRepository.findPublished(LocalDateTime.now(), trimToNull(categorySlug), pageable)
                 .map(a -> toPublicDTO(a, false));
@@ -138,17 +151,20 @@ public class NewsService {
     public PublicNewsDTO getPublishedBySlug(String slug) {
         NewsArticle article = articleRepository.findPublishedBySlug(slug, LocalDateTime.now())
                 .orElseThrow(() -> new ResourceNotFoundException("Bài viết không tồn tại hoặc chưa được đăng"));
-        articleRepository.incrementViewCount(article.getId());
+        // In-memory batched, not written here - see NewsViewCountAggregator.
+        viewCountAggregator.recordView(article.getId());
         return toPublicDTO(article, true);
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "featuredNews", key = "#limit")
     public List<PublicNewsDTO> featured(int limit) {
         return articleRepository.findFeatured(LocalDateTime.now(), PageRequest.of(0, limit))
                 .stream().map(a -> toPublicDTO(a, false)).toList();
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "latestNews", key = "#limit")
     public List<PublicNewsDTO> latest(int limit) {
         return articleRepository.findPublished(LocalDateTime.now(), null, PageRequest.of(0, limit))
                 .stream().map(a -> toPublicDTO(a, false)).toList();

@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -100,5 +101,13 @@ public class PublicPortalController {
     @Operation(summary = "Chi tiết sự kiện theo slug")
     public ResponseEntity<SchoolEventDTO> eventDetail(@PathVariable String slug) {
         return new ResponseEntity<>(eventService.getPublishedBySlug(slug), HttpStatus.OK);
+    }
+
+    @GetMapping(value = "/sitemap.xml", produces = MediaType.APPLICATION_XML_VALUE)
+    @Operation(summary = "Sitemap động: route tĩnh + mỗi tin/sự kiện đã đăng một URL (P4)")
+    public ResponseEntity<String> sitemap() {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(Duration.ofHours(1)).cachePublic())
+                .body(publicPortalService.sitemapXml());
     }
 }

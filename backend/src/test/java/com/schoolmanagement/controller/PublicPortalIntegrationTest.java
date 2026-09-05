@@ -11,6 +11,7 @@ import com.schoolmanagement.repository.NewsArticleRepository;
 import com.schoolmanagement.repository.NewsCategoryRepository;
 import com.schoolmanagement.repository.SchoolEventRepository;
 import com.schoolmanagement.repository.UserRepository;
+import com.schoolmanagement.service.NewsViewCountAggregator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +62,8 @@ class PublicPortalIntegrationTest {
     private UserRepository userRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
+    @Autowired
+    private NewsViewCountAggregator viewCountAggregator;
 
     private User admin;
     private User teacher;
@@ -119,12 +122,16 @@ class PublicPortalIntegrationTest {
 
     @Test
     void publicNewsDetail_incrementsViewCount() throws Exception {
+        // View counts are batched in memory (NewsViewCountAggregator, P4) and
+        // only reach the database on flush - normally on a schedule, called
+        // directly here (same thread/transaction) to observe it immediately.
         savePublished("Chi tiết", "itest-chi-tiet");
 
         mockMvc.perform(get("/v1/public/news/{slug}", "itest-chi-tiet"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").value("<p>nội dung</p>"));
         mockMvc.perform(get("/v1/public/news/{slug}", "itest-chi-tiet")).andExpect(status().isOk());
+        viewCountAggregator.flushToDatabase();
 
         org.junit.jupiter.api.Assertions.assertTrue(
                 articleRepository.findBySlug("itest-chi-tiet").orElseThrow().getViewCount() >= 2);
@@ -211,6 +218,21 @@ class PublicPortalIntegrationTest {
         mockMvc.perform(get("/v1/contact-messages").with(asUser(admin, "ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.fullName == 'Phụ Huynh A')]").exists());
+    }
+
+    @Test
+    void sitemap_listsStaticRoutesAndPublishedSlugs() throws Exception {
+        savePublished("Tin cho sitemap", "itest-sitemap-tin");
+        eventRepository.save(SchoolEvent.builder()
+                .title("Sự kiện cho sitemap").slug("itest-sitemap-sk").status(ContentStatus.PUBLISHED)
+                .publishedAt(LocalDateTime.now().minusHours(1)).startAt(LocalDateTime.now().plusDays(3)).build());
+
+        mockMvc.perform(get("/v1/public/sitemap.xml"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_XML))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<loc>http://localhost:3000/</loc>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/tin-tuc/itest-sitemap-tin</loc>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/su-kien/itest-sitemap-sk</loc>")));
     }
 
     @Test

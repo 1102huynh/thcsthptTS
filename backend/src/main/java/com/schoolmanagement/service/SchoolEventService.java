@@ -7,6 +7,8 @@ import com.schoolmanagement.entity.SchoolEvent;
 import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.SchoolEventRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -37,6 +39,7 @@ public class SchoolEventService {
         return toDTO(load(id));
     }
 
+    @CacheEvict(cacheNames = {"publicEventsList", "upcomingEvents", "publicHome", "publicSitemap"}, allEntries = true)
     public SchoolEventDTO create(SchoolEventRequest request) {
         SchoolEvent event = SchoolEvent.builder()
                 .title(request.getTitle().trim())
@@ -52,6 +55,7 @@ public class SchoolEventService {
         return toDTO(eventRepository.save(event));
     }
 
+    @CacheEvict(cacheNames = {"publicEventsList", "upcomingEvents", "publicHome", "publicSitemap"}, allEntries = true)
     public SchoolEventDTO update(Long id, SchoolEventRequest request) {
         SchoolEvent event = load(id);
         event.setTitle(request.getTitle().trim());
@@ -66,6 +70,7 @@ public class SchoolEventService {
         return toDTO(eventRepository.save(event));
     }
 
+    @CacheEvict(cacheNames = {"publicEventsList", "upcomingEvents", "publicHome", "publicSitemap"}, allEntries = true)
     public SchoolEventDTO publish(Long id) {
         SchoolEvent event = load(id);
         event.setStatus(ContentStatus.PUBLISHED);
@@ -75,12 +80,14 @@ public class SchoolEventService {
         return toDTO(eventRepository.save(event));
     }
 
+    @CacheEvict(cacheNames = {"publicEventsList", "upcomingEvents", "publicHome", "publicSitemap"}, allEntries = true)
     public SchoolEventDTO unpublish(Long id) {
         SchoolEvent event = load(id);
         event.setStatus(ContentStatus.ARCHIVED);
         return toDTO(eventRepository.save(event));
     }
 
+    @CacheEvict(cacheNames = {"publicEventsList", "upcomingEvents", "publicHome", "publicSitemap"}, allEntries = true)
     public void delete(Long id) {
         eventRepository.delete(load(id));
     }
@@ -88,6 +95,7 @@ public class SchoolEventService {
     // ---- public ----
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "publicEventsList", key = "#when + ':' + #pageable")
     public Page<SchoolEventDTO> listPublished(String when, Pageable pageable) {
         boolean upcoming = "upcoming".equalsIgnoreCase(when);
         boolean past = "past".equalsIgnoreCase(when);
@@ -101,6 +109,7 @@ public class SchoolEventService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "upcomingEvents", key = "#limit")
     public List<SchoolEventDTO> upcoming(int limit) {
         return eventRepository.findUpcoming(LocalDateTime.now(), PageRequest.of(0, limit))
                 .stream().map(this::toDTO).toList();
