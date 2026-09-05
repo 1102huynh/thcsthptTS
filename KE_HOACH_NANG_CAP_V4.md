@@ -1,11 +1,11 @@
 # KẾ HOẠCH PHÁT TRIỂN & NÂNG CẤP HỆ THỐNG QUẢN LÝ TRƯỜNG THCS-THPT (thcsthptTS)
 
-**Phiên bản 4.12 — ngày 05/09/2026**
-*(v4.12: **review toàn bộ hệ thống + PR #17** — sáp nhập tính năng Hồ sơ & đổi mật khẩu (`/v1/users/me*`); vá bug thông báo sai ngữ cảnh khi đổi mật khẩu sai + thêm rate-limit chống brute-force + chặn newPassword = mật khẩu cũ (kèm test); ghi nhận 2 phát hiện mới chưa từng có trong tài liệu — Spring Boot 3.1.5 đã hết hỗ trợ OSS (nâng cấp cần nhánh riêng) và `react-router-dom` có CVE mức trung bình (rủi ro thực tế thấp ở app này, vá cần nâng major v6→v7); đóng nghi vấn version `lucide-react`. v4.11: nợ kỹ thuật + CI/CD. v4.10: Mức 2.2/2.3. v4.9: Mức 2.1. v4.8: D2. v4.7: C3. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
+**Phiên bản 4.13 — ngày 05/09/2026**
+*(v4.13 (nhánh `chore/upgrade-react-router-v7`): **nâng `react-router-dom` 6.14 → 7.18.3** — vá dứt điểm 2 CVE mức trung bình (`npm audit --omit=dev` nay sạch). App chỉ dùng Declarative Mode (không data router/loader/action) nên không cần sửa 1 dòng code nào; `npm run build` + `npm test` (45/45) xanh nguyên. *Lưu ý: PR #19 (nâng Spring Boot lên 3.5.3) làm song song, cũng tự đánh số "v4.13" trên nhánh riêng — 2 PR sẽ đụng conflict nhỏ ở phần tiêu đề/nhật ký tài liệu này khi merge, xử lý thủ công lúc merge (không phải conflict code).* v4.12: review toàn bộ hệ thống + PR #17 (Hồ sơ & đổi mật khẩu). v4.11: nợ kỹ thuật + CI/CD. v4.10: Mức 2.2/2.3. v4.9: Mức 2.1. v4.8: D2. v4.7: C3. Còn chặn duy nhất: B0. Xem "Nhật ký thay đổi".)*
 
 > **Tài liệu này là kế hoạch nâng cấp DUY NHẤT** — thay cho `IMPLEMENTATION_PLAN.md` (v3.1) và đã gộp cả 2 file phân quyền lẻ trước đây.
 
-> **⚡ Việc gấp nhất còn lại (chốt v4.12):** Giai đoạn A + C + D2 + **Mức 1–2** + dọn nợ điểm + CI backend-có-DB đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Không chặn nhưng nên làm sớm: nâng **Spring Boot 3.1.5** (hết hỗ trợ OSS) lên bản LTS mới hơn + vá `react-router-dom` (CVE mức trung bình) — cả hai cần nhánh riêng + hồi quy đầy đủ, xem Quyết định 7–8. Không chặn: xoá hẳn class `Grade` cũ + `V11` (Quyết định E.1), D6, bật branch-protection trên GitHub, Giai đoạn E (cần ngân sách/nhà cung cấp).
+> **⚡ Việc gấp nhất còn lại:** Giai đoạn A + C + D2 + **Mức 1–2** + dọn nợ điểm + CI backend-có-DB đã xong. Việc *chặn* duy nhất còn lại là **B0 — xếp loại học lực TT22/58** (`classification = null`), cần **bảng ngưỡng chuyên môn** (Quyết định E.2). Đã xong: nâng Spring Boot (chờ merge PR #19) + `react-router-dom` (Quyết định 7–8). Không chặn: xoá hẳn class `Grade` cũ + `V11` (Quyết định E.1), D6, bật branch-protection trên GitHub, Giai đoạn E (cần ngân sách/nhà cung cấp), Spring Boot 4.x (Quyết định 9, sáng kiến riêng).
 
 *Tài liệu này được lập sau khi review lại **toàn bộ** mã nguồn hiện tại trên máy (`D:\sources\thcsthptTS` là **nguồn sự thật chính** — không dựa vào bản sao trong Claude Project). Khác với kế hoạch v3.1 (`IMPLEMENTATION_PLAN.md`) vốn là kế hoạch **xây mới từ đầu**, phiên bản 4.x xuất phát từ thực tế: **phần lớn kế hoạch v3.1 đã được hiện thực hoá ở backend**. Trọng tâm mới là (1) đưa năng lực backend đã có lên giao diện người dùng, (2) **hoàn tất phần backend còn dở** (xếp loại học lực), (3) trả nợ kỹ thuật, (4) nâng cấp lên mức vận hành thật cho một trường.*
 
@@ -86,7 +86,7 @@ Vite + Tailwind + shadcn/ui (bỏ CRA), dark mode, React Query, sonner, bộ com
 4. ~~`lucide-react ^1.37.0` version lạ~~ ✅ **[v4.12] Đã xác minh hợp lệ** — không phải gói giả mạo, thư viện đã đổi sang versioning 1.x (bản mới nhất 1.41.0, khớp lockfile). Đóng nghi vấn.
 5. **SMS/Zalo vẫn stub** (E1).
 6. **[MỚI — v4.12] `spring-boot-starter-parent` 3.1.5 đã hết vòng hỗ trợ OSS miễn phí** (phát hành 10/2023) — không còn nhận bản vá bảo mật miễn phí. Cần nâng lên bản LTS mới hơn (3.3.x/3.4.x), kèm rà breaking-change Spring Security 6.x/Hibernate. Việc lớn, cần nhánh riêng + chạy lại toàn bộ ~20 lớp integration test trên MySQL thật trước khi merge — xem Quyết định 7.
-7. **[MỚI — v4.12] `react-router-dom ^6.14.0` có 2 CVE mức trung bình** (`npm audit`: open-redirect qua backslash trong `<Link>`/`useNavigate`; arbitrary constructor injection qua `deserializeErrors()` khi SSR hydrate). Đã xác minh rủi ro thực tế **thấp** ở app này: dùng `BrowserRouter` khai báo tĩnh (không `createBrowserRouter`/`RouterProvider`/SSR) nên CVE #2 không áp dụng; mọi `navigate()` (LoginPage/Navbar/ResetPasswordPage) đều tới path cố định (`defaultPathForRole`), không lấy từ query/param người dùng. Bản vá chính thức là nâng **major v6 → v7** (`npm audit fix --force` → `react-router-dom@7.18.3`) — cần test lại toàn bộ điều hướng + `ProtectedRoute`/`guarded()`, không vá mù quáng. Xem Quyết định 8.
+7. ~~`react-router-dom ^6.14.0` có 2 CVE mức trung bình~~ ✅ **[v4.13] Đã lên 7.18.3** — `npm audit --omit=dev` nay sạch (0 vulnerabilities). App chỉ dùng Declarative Mode (`BrowserRouter`/`Routes`/`Route`/`Navigate`/`Link`/`useNavigate`/`useParams`/`useSearchParams`, mọi path đều absolute, không data router/loader/action/`useBlocker`) — API không đổi giữa v6/v7 cho kiểu dùng này nên **không cần sửa 1 dòng code**; `npm run build` + `npm test` (45/45) xanh nguyên.
 
 ---
 
@@ -213,7 +213,7 @@ Làm trước tất cả vì mọi trang mới đều dựa trên nền này.
 5. **Bảo mật token:** giữ `localStorage` hay chuyển cookie `HttpOnly` (F3, nên chốt sớm vì ảnh hưởng toàn bộ tầng auth frontend).
 6. **`AuthResponse.permissions`:** bổ sung field permissions hay bỏ hẳn `hasPermission` và phân quyền UI theo `role` (A8).
 7. **[MỚI — v4.12] Nâng Spring Boot 3.1.5 lên bản LTS mới hơn** — khi nào làm (đã hết hỗ trợ OSS, không chặn chức năng nhưng là nợ bảo mật thực sự); cần thống nhất khung thời gian cho 1 nhánh nâng cấp riêng + hồi quy đầy đủ.
-8. **[MỚI — v4.12] Nâng `react-router-dom` v6 → v7** — cùng nhóm với quyết định 7 (đổi lớn, cần test lại toàn bộ điều hướng), hay giữ nguyên v6 vì rủi ro CVE thực tế thấp ở app này (xem A.3 mục 7)?
+8. ~~Nâng `react-router-dom` v6 → v7~~ ✅ **[v4.13] Đã chốt và làm: lên 7.18.3.**
 
 ---
 
@@ -396,6 +396,10 @@ Ký hiệu: **✅** được phép · **🌐** công khai (không cần đăng n
 
 ## NHẬT KÝ THAY ĐỔI
 
+- **v4.13 (05/09/2026, nhánh `chore/upgrade-react-router-v7`):** nâng `react-router-dom` 6.14.0 → **7.18.3** (Quyết định 8) — vá dứt điểm 2 CVE mức trung bình đã ghi ở v4.12.
+  - Rà trước: app chỉ dùng Declarative Mode (`BrowserRouter`/`Routes`/`Route`/`Navigate`/`Link`/`useNavigate`/`useParams`/`useSearchParams`/`MemoryRouter` trong test) — không `createBrowserRouter`/`RouterProvider`/data mode, không `loader`/`action`/`redirect()`/`useBlocker`/`Prompt` (grep 0 kết quả). Mọi route absolute path (kể cả 2 route bắt-tất-cả `path="*"` và route lồng `path="/*"` của AppShell) nên không bị ảnh hưởng bởi thay đổi `v7_relativeSplatPath`. Peer dep `react`/`react-dom >=18` (đang 18.2.0) và `engines.node >=20` (local + CI đều Node 24) đều thoả.
+  - Kết quả: **không sửa 1 dòng code nào** — chỉ bump version trong `package.json` + `npm install`. `npm run build` sạch, `npm test` **45/45** giữ nguyên baseline, `npm audit --omit=dev` **0 vulnerabilities** (trước đó 2 moderate).
+  - *Lưu ý merge:* làm song song với PR #19 (nâng Spring Boot lên 3.5.3, cũng tự đánh số "v4.13" trên nhánh riêng) — 2 PR sẽ đụng conflict nhỏ ở phần tiêu đề/nhật ký của chính tài liệu này khi merge (không phải conflict code), xử lý thủ công.
 - **v4.12 (05/09/2026):** review lại toàn bộ hệ thống (backend + frontend) sau khi merge PR #17 (tính năng Hồ sơ & cài đặt tài khoản) — xác minh lại các claim "đã xong" bằng cách chạy thật (`mvn test`, `npm test`, `npm audit`), không chỉ đọc code.
   - **Vá 3 việc nhỏ phát hiện khi review tính năng đổi mật khẩu** (`/v1/users/me/change-password`): (1) `GlobalExceptionHandler` trước đây hard-code message "Invalid username or password" cho mọi `BadCredentialsException`, khiến người dùng đổi sai mật khẩu hiện tại thấy thông báo kiểu lỗi đăng nhập — tách riêng `InvalidCurrentPasswordException` + handler trả đúng "Mật khẩu hiện tại không đúng"; (2) thêm `ChangePasswordRateLimitFilter` (theo pattern `ForgotPasswordRateLimitFilter`, khoá theo `userId` thay vì IP vì endpoint đã authenticated) chống brute-force `currentPassword` bằng JWT rò rỉ — trước đó không giới hạn số lần thử; (3) chặn `newPassword == currentPassword`. Kèm test: `AuthenticationServiceTest` (+4 ca), `UserControllerIntegrationTest` (mới, 4 ca — xác nhận `@Valid` → 400 và message đúng ngữ cảnh), `ChangePasswordRateLimitIntegrationTest` (mới, xác nhận 429), `ProfilePage.test.jsx` (+2 ca lỗi `onError`).
   - **Đóng nghi vấn `lucide-react ^1.37.0`** — xác minh qua npm registry: hợp lệ, không phải gói giả mạo (thư viện đã đổi versioning sang 1.x, mới nhất 1.41.0).
