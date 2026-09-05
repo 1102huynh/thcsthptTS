@@ -2,8 +2,10 @@ package com.schoolmanagement.service;
 
 import com.schoolmanagement.dto.AuthRequest;
 import com.schoolmanagement.dto.AuthResponse;
+import com.schoolmanagement.dto.ChangePasswordRequest;
 import com.schoolmanagement.dto.CreateUserRequest;
 import com.schoolmanagement.dto.RegisterRequest;
+import com.schoolmanagement.dto.UpdateProfileRequest;
 import com.schoolmanagement.dto.UserDTO;
 import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.User;
@@ -115,6 +117,61 @@ public class AuthenticationService {
      */
     public List<UserDTO> getUsersByRole(Role role) {
         return userRepository.findByRole(role).stream().map(this::mapToUserDTO).collect(Collectors.toList());
+    }
+
+    /**
+     * Self-service "my profile" lookup — GET /v1/users/me. `principal` is
+     * whichever User the JWT resolved to (see UserController), so this can
+     * never be used to read anyone else's profile.
+     */
+    public UserDTO getCurrentUserProfile(User principal) {
+        return mapToUserDTO(principal);
+    }
+
+    /**
+     * Self-service profile edit — PUT /v1/users/me. Only firstName/lastName/
+     * email/phoneNumber are settable (see UpdateProfileRequest); username and
+     * role stay immutable through this endpoint — an ADMIN wanting to change
+     * either still goes through POST /v1/users-style tooling, not this one.
+     */
+    public UserDTO updateProfile(User principal, UpdateProfileRequest request) {
+        User user = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new BadCredentialsException("User not found"));
+
+        if (!user.getEmail().equalsIgnoreCase(request.getEmail())
+                && userRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateResourceException("Email already exists");
+        }
+
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        user.setEmail(request.getEmail());
+        user.setPhoneNumber(request.getPhoneNumber());
+
+        User saved = userRepository.save(user);
+        auditLogService.log(saved, "UPDATE", "User", saved.getId(),
+                java.util.Map.of("action", "self_profile_update"));
+        return mapToUserDTO(saved);
+    }
+
+    /**
+     * Self-service password change for a still-logged-in user (POST
+     * /v1/users/me/change-password) — distinct from PasswordResetService's
+     * forgot/reset flow, which is for someone who can't log in at all. This
+     * one requires proving the current password rather than an emailed
+     * token.
+     */
+    public void changePassword(User principal, ChangePasswordRequest request) {
+        User user = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new BadCredentialsException("User not found"));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Current password is incorrect");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        auditLogService.log(user, "PASSWORD_CHANGE", "User", user.getId(), null);
     }
 
     private UserDTO mapToUserDTO(User user) {

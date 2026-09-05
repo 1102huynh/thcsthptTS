@@ -20,6 +20,11 @@ export const userService = {
   // accounts when linking a child (UserRepository.findByRole existed
   // server-side already but was never exposed over HTTP before this).
   getByRole: (role) => api.get('/v1/users', { params: { role } }),
+  // Self-service "my profile" / "account settings" (Navbar's user dropdown) -
+  // always the caller's own account, no id in the URL. See UserController.
+  getMe: () => api.get('/v1/users/me'),
+  updateMe: (data) => api.put('/v1/users/me', data),
+  changePassword: (data) => api.post('/v1/users/me/change-password', data),
 };
 
 // Staff Service
