@@ -4,6 +4,7 @@ import com.schoolmanagement.security.AdmissionRateLimitFilter;
 import com.schoolmanagement.security.ChangePasswordRateLimitFilter;
 import com.schoolmanagement.security.ContactRateLimitFilter;
 import com.schoolmanagement.security.ForgotPasswordRateLimitFilter;
+import com.schoolmanagement.security.LoginRateLimitFilter;
 import com.schoolmanagement.security.JwtAuthenticationFilter;
 import com.schoolmanagement.security.JwtTokenProvider;
 import lombok.AllArgsConstructor;
@@ -42,6 +43,7 @@ public class SecurityConfig {
     private ForgotPasswordRateLimitFilter forgotPasswordRateLimitFilter;
     private ContactRateLimitFilter contactRateLimitFilter;
     private ChangePasswordRateLimitFilter changePasswordRateLimitFilter;
+    private LoginRateLimitFilter loginRateLimitFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -127,6 +129,7 @@ public class SecurityConfig {
             .addFilterBefore(admissionRateLimitFilter, JwtAuthenticationFilter.class)
             .addFilterBefore(forgotPasswordRateLimitFilter, JwtAuthenticationFilter.class)
             .addFilterBefore(contactRateLimitFilter, JwtAuthenticationFilter.class)
+            .addFilterBefore(loginRateLimitFilter, JwtAuthenticationFilter.class)
             // Runs AFTER JwtAuthenticationFilter (not before, like the others above) —
             // it needs the authenticated principal already in the SecurityContext to key
             // the limit by user id. See ChangePasswordRateLimitFilter's Javadoc.
