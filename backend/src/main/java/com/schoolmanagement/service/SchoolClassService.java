@@ -94,7 +94,7 @@ public class SchoolClassService {
         SchoolClass schoolClass = schoolClassRepository.findById(classId)
                 .orElseThrow(() -> new ResourceNotFoundException("Class not found with id: " + classId));
         teacherHomeroomGuard.enforceHomeroomClassId(classId, requester);
-        return studentService.getStudentsByClassAndSection(schoolClass.getClassName(), schoolClass.getSection(), requester);
+        return studentService.getStudentsByClassAndSection(schoolClass.getClassName(), schoolClass.getSection());
     }
 
     public void deleteClass(Long id) {
