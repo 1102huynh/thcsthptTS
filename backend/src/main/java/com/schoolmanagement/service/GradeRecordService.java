@@ -22,6 +22,7 @@ import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.repository.SubjectRepository;
 import com.schoolmanagement.security.StudentAccessGuard;
+import com.schoolmanagement.security.TeacherAssignmentGuard;
 import com.schoolmanagement.util.AcademicYearMatcher;
 import com.schoolmanagement.util.EntityResolver;
 import lombok.AllArgsConstructor;
@@ -56,13 +57,25 @@ public class GradeRecordService {
     private AcademicYearRepository academicYearRepository;
     private StaffRepository staffRepository;
     private StudentAccessGuard studentAccessGuard;
+    private TeacherAssignmentGuard teacherAssignmentGuard;
     private AuditLogService auditLogService;
 
-    public GradeRecordDTO createGradeRecord(GradeRecord request) {
+    /**
+     * GVBM scoping (H.3.1) — a TEACHER may only record a grade for a
+     * (class, subject, semester) they hold a TeachingAssignment for; every
+     * other role is unaffected (see TeacherAssignmentGuard's "only narrows,
+     * never grants" contract).
+     */
+    public GradeRecordDTO createGradeRecord(GradeRecord request, User requester) {
+        Student student = resolveStudent(request.getStudent());
+        Subject subject = resolveSubject(request.getSubject());
+        Semester semester = resolveSemester(request.getSemester());
+        teacherAssignmentGuard.enforceHasAssignment(student, subject, semester, requester);
+
         GradeRecord record = GradeRecord.builder()
-                .student(resolveStudent(request.getStudent()))
-                .subject(resolveSubject(request.getSubject()))
-                .semester(resolveSemester(request.getSemester()))
+                .student(student)
+                .subject(subject)
+                .semester(semester)
                 .componentType(request.getComponentType())
                 .score(request.getScore())
                 .teacher(resolveTeacher(request.getTeacher()))
@@ -76,11 +89,22 @@ public class GradeRecordService {
         GradeRecord record = gradeRecordRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Grade record not found with id: " + id));
 
+        // Checked against both the record's *current* (student, subject,
+        // semester) and the *target* one the request wants to move it to -
+        // same "hijack" protection as ConductRecordService.updateConductRecord,
+        // so a TEACHER can't reassign a record into an assignment they don't hold.
+        teacherAssignmentGuard.enforceHasAssignment(record.getStudent(), record.getSubject(), record.getSemester(), actor);
+
         Double previousScore = record.getScore();
 
-        record.setStudent(resolveStudent(request.getStudent()));
-        record.setSubject(resolveSubject(request.getSubject()));
-        record.setSemester(resolveSemester(request.getSemester()));
+        Student newStudent = resolveStudent(request.getStudent());
+        Subject newSubject = resolveSubject(request.getSubject());
+        Semester newSemester = resolveSemester(request.getSemester());
+        teacherAssignmentGuard.enforceHasAssignment(newStudent, newSubject, newSemester, actor);
+
+        record.setStudent(newStudent);
+        record.setSubject(newSubject);
+        record.setSemester(newSemester);
         record.setComponentType(request.getComponentType());
         record.setScore(request.getScore());
         record.setTeacher(resolveTeacher(request.getTeacher()));
@@ -104,6 +128,7 @@ public class GradeRecordService {
     public void deleteGradeRecord(Long id, User actor) {
         GradeRecord record = gradeRecordRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Grade record not found with id: " + id));
+        teacherAssignmentGuard.enforceHasAssignment(record.getStudent(), record.getSubject(), record.getSemester(), actor);
         Long studentId = record.getStudent().getId();
         Double score = record.getScore();
 
