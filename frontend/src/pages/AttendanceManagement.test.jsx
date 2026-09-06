@@ -16,6 +16,7 @@ vi.mock('../services/authService', () => ({
 const svc = {
   classesGetAll: vi.fn(),
   staffGetAll: vi.fn(),
+  assignmentsGetAll: vi.fn(),
   getByClass: vi.fn(),
   getByDate: vi.fn(),
   getBetweenDates: vi.fn(),
@@ -24,6 +25,7 @@ const svc = {
 vi.mock('../services/dataService', () => ({
   schoolClassService: { getAll: (...a) => svc.classesGetAll(...a) },
   staffService: { getAll: (...a) => svc.staffGetAll(...a) },
+  teachingAssignmentService: { getAll: (...a) => svc.assignmentsGetAll(...a) },
   studentService: { getByClass: (...a) => svc.getByClass(...a) },
   attendanceService: {
     getByDate: (...a) => svc.getByDate(...a),
@@ -53,6 +55,7 @@ beforeEach(() => {
       { id: 11, className: '10', section: 'A2', classTeacherId: 99, studentCount: 3 },
     ],
   });
+  svc.assignmentsGetAll.mockResolvedValue({ data: [] });
   svc.getByClass.mockResolvedValue({ data: [] });
   svc.getByDate.mockResolvedValue({ data: [] });
   svc.getBetweenDates.mockResolvedValue({ data: [] });
@@ -67,6 +70,25 @@ describe('AttendanceManagement - TEACHER homeroom scoping (H.3.1)', () => {
 
   it('fetches the roster for the auto-selected homeroom class', async () => {
     renderPage();
+    await waitFor(() => expect(svc.getByClass).toHaveBeenCalledWith('10', 'A1'));
+  });
+});
+
+describe('AttendanceManagement - GVBM (TeachingAssignment) scoping', () => {
+  // Sổ đầu bài is recorded per period by whichever teacher is teaching, not
+  // only GVCN - a TEACHER with a TeachingAssignment for a class (but not its
+  // homeroom teacher) must still see it in the picker.
+  it('also offers a class the TEACHER has a TeachingAssignment for, even though they are not its GVCN', async () => {
+    svc.classesGetAll.mockResolvedValue({
+      data: [
+        { id: 10, className: '10', section: 'A1', classTeacherId: 99, studentCount: 2 },
+        { id: 11, className: '10', section: 'A2', classTeacherId: 100, studentCount: 3 },
+      ],
+    });
+    svc.assignmentsGetAll.mockResolvedValue({ data: [{ id: 1, teacherId: 1, schoolClassId: 10, semesterId: 50 }] });
+
+    renderPage();
+
     await waitFor(() => expect(svc.getByClass).toHaveBeenCalledWith('10', 'A1'));
   });
 });

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
 import { FiCheck, FiSave, FiDownload } from 'react-icons/fi';
-import { attendanceService, studentService, reportService } from '../services/dataService';
+import { attendanceService, studentService, teachingAssignmentService, reportService } from '../services/dataService';
 import { triggerBlobDownload } from '../lib/download';
 import { getCurrentUser } from '../services/authService';
 import { useMyHomeroomClasses } from '../hooks/useMyHomeroomClasses';
@@ -38,12 +38,24 @@ function AttendanceManagement() {
 
   const dateStr = format(date, ISO_DATE);
 
-  // H.3.1 - a TEACHER may only take attendance for the class(es) they are
-  // GVCN (homeroom teacher) of - AttendanceService now 403s any other class
-  // server-side, so narrowing the picker avoids a guaranteed-403 pick, same
-  // reasoning as ConductManagement's own class picker.
-  const { allClasses, homeroomClasses, isSuccess: homeroomSuccess } = useMyHomeroomClasses();
-  const visibleClasses = role === 'TEACHER' ? homeroomClasses : allClasses;
+  // H.3.1, mở rộng theo cách ghi "sổ đầu bài" thực tế - a TEACHER may take
+  // attendance for a class they are GVCN (homeroom teacher) of OR hold a
+  // TeachingAssignment for (GVBM) - AttendanceService enforces exactly this
+  // (homeroom OR assignment-for-the-attendance-date's-semester) server-side,
+  // so narrowing the picker to their union avoids a guaranteed-403 pick.
+  const { allClasses, homeroomClasses, myStaffId, isSuccess: homeroomSuccess } = useMyHomeroomClasses();
+  const assignmentsQuery = useQuery({
+    queryKey: ['teaching-assignments'],
+    queryFn: () => teachingAssignmentService.getAll().then((r) => r.data),
+    enabled: role === 'TEACHER',
+  });
+  const visibleClasses = useMemo(() => {
+    if (role !== 'TEACHER') return allClasses;
+    const myAssignedClassIds = new Set(
+      (assignmentsQuery.data ?? []).filter((a) => a.teacherId === myStaffId).map((a) => a.schoolClassId)
+    );
+    return allClasses.filter((c) => homeroomClasses.some((h) => h.id === c.id) || myAssignedClassIds.has(c.id));
+  }, [allClasses, homeroomClasses, assignmentsQuery.data, myStaffId, role]);
 
   useEffect(() => {
     if (!selectedKey && visibleClasses.length) {
@@ -171,9 +183,9 @@ function AttendanceManagement() {
         </div>
       )}
 
-      {role === 'TEACHER' && homeroomSuccess && homeroomClasses.length === 0 && (
+      {role === 'TEACHER' && homeroomSuccess && assignmentsQuery.isSuccess && visibleClasses.length === 0 && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
-          Bạn chưa là giáo viên chủ nhiệm của lớp nào nên không có lớp nào để điểm danh.
+          Bạn chưa là giáo viên chủ nhiệm hoặc chưa được phân công giảng dạy lớp nào nên không có lớp nào để điểm danh.
         </div>
       )}
 

@@ -91,6 +91,23 @@ public class TeacherHomeroomGuard {
     }
 
     /**
+     * Non-throwing variant of {@link #enforceHomeroomClassNameSection} —
+     * {@code false} for {@code null}/non-TEACHER too, rather than "no-op".
+     * Used by callers (e.g. {@code AttendanceService}) that want to try a
+     * broader fallback check (see {@code TeacherAssignmentGuard}) before
+     * deciding to deny, instead of failing outright on the first check.
+     */
+    public boolean isHomeroomClassNameSection(String className, String section, User requester) {
+        if (requester == null || requester.getRole() != Role.TEACHER) {
+            return false;
+        }
+        return staffRepository.findByUserId(requester.getId())
+                .map(staff -> schoolClassRepository.findByClassTeacher(staff).stream()
+                        .anyMatch(cls -> cls.getClassName().equals(className) && cls.getSection().equals(section)))
+                .orElse(false);
+    }
+
+    /**
      * Returns {@code students} unchanged for {@code null}/non-TEACHER;
      * otherwise keeps only the ones in one of this TEACHER's homeroom
      * classes (matched by className/section, same caveat as above).
