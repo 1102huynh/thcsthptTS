@@ -18,4 +18,6 @@ public interface TeachingAssignmentRepository extends JpaRepository<TeachingAssi
     List<TeachingAssignment> findBySemester(Semester semester);
     Optional<TeachingAssignment> findBySchoolClassAndSubjectAndSemester(
             SchoolClass schoolClass, Subject subject, Semester semester);
+    boolean existsByTeacherAndSchoolClassAndSubjectAndSemester(
+            Staff teacher, SchoolClass schoolClass, Subject subject, Semester semester);
 }

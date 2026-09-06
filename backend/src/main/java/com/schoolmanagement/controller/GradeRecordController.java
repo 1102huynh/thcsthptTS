@@ -28,14 +28,17 @@ public class GradeRecordController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
-    @Operation(summary = "Create a grade record")
-    public ResponseEntity<GradeRecordDTO> createGradeRecord(@Valid @RequestBody GradeRecord request) {
-        return new ResponseEntity<>(gradeRecordService.createGradeRecord(request), HttpStatus.CREATED);
+    @Operation(summary = "Create a grade record",
+            description = "A TEACHER may only record a grade for a class/subject/semester they hold a TeachingAssignment for (403 otherwise).")
+    public ResponseEntity<GradeRecordDTO> createGradeRecord(@Valid @RequestBody GradeRecord request, Authentication authentication) {
+        User requester = (User) authentication.getPrincipal();
+        return new ResponseEntity<>(gradeRecordService.createGradeRecord(request, requester), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
-    @Operation(summary = "Update a grade record")
+    @Operation(summary = "Update a grade record",
+            description = "A TEACHER may only update a grade within a class/subject/semester they hold a TeachingAssignment for - both the record's current and requested target combination are checked (403 otherwise).")
     public ResponseEntity<GradeRecordDTO> updateGradeRecord(
             @PathVariable Long id, @Valid @RequestBody GradeRecord request, Authentication authentication) {
         User actor = (User) authentication.getPrincipal();
@@ -53,7 +56,8 @@ public class GradeRecordController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
-    @Operation(summary = "Delete a grade record")
+    @Operation(summary = "Delete a grade record",
+            description = "A TEACHER may only delete a grade within a class/subject/semester they hold a TeachingAssignment for (403 otherwise).")
     public ResponseEntity<Void> deleteGradeRecord(@PathVariable Long id, Authentication authentication) {
         User actor = (User) authentication.getPrincipal();
         gradeRecordService.deleteGradeRecord(id, actor);

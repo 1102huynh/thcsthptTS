@@ -11,6 +11,7 @@ import {
   semesterService,
   subjectService,
   staffService,
+  teachingAssignmentService,
   reportService,
 } from '../services/dataService';
 import { triggerBlobDownload } from '../lib/download';
@@ -69,21 +70,47 @@ function semesterLabel(s) {
 
 function GradeManagement() {
   const queryClient = useQueryClient();
+  const role = getCurrentUser()?.role;
   // Mức 2.1 (v4.9): PRINCIPAL reaches this page read-only - grade-record
   // GETs now allow PRINCIPAL, but every write 403s, so the save control is
   // hidden and the score inputs are locked.
-  const readOnly = getCurrentUser()?.role === 'PRINCIPAL';
+  const readOnly = role === 'PRINCIPAL';
   const [selectedKey, setSelectedKey] = useState('');
   const [semesterId, setSemesterId] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [componentType, setComponentType] = useState(DEFAULT_COMPONENT_TYPE);
   const [scoreInput, setScoreInput] = useState({});
 
+  const staffQuery = useQuery({ queryKey: ['staff-lookup'], queryFn: () => staffService.getAll().then((r) => r.data) });
+  const myStaffId = staffQuery.data?.find((s) => s.user?.id === getCurrentUser()?.userId)?.id;
+
+  // H.3.1 (GVBM) - a TEACHER may only record grades for a class/subject/
+  // semester they hold a TeachingAssignment for - GradeRecordService 403s
+  // any other combination server-side, so narrowing the Lớp/Môn học pickers
+  // avoids setting a teacher up for a guaranteed-403 pick, same reasoning as
+  // ConductManagement/AttendanceManagement's own homeroom-scoping.
+  const assignmentsQuery = useQuery({
+    queryKey: ['teaching-assignments'],
+    queryFn: () => teachingAssignmentService.getAll().then((r) => r.data),
+    enabled: role === 'TEACHER',
+  });
+  const myAssignments = useMemo(
+    () => (role === 'TEACHER' ? (assignmentsQuery.data ?? []).filter((a) => a.teacherId === myStaffId) : []),
+    [assignmentsQuery.data, role, myStaffId]
+  );
+
   const classesQuery = useQuery({ queryKey: ['classes'], queryFn: () => schoolClassService.getAll().then((r) => r.data) });
+  const visibleClasses = useMemo(() => {
+    const all = classesQuery.data ?? [];
+    if (role !== 'TEACHER') return all;
+    return all.filter((c) => myAssignments.some((a) => a.schoolClassId === c.id));
+  }, [classesQuery.data, role, myAssignments]);
   useEffect(() => {
-    if (!selectedKey && classesQuery.data?.length) setSelectedKey(classKey(classesQuery.data[0]));
-  }, [classesQuery.data, selectedKey]);
-  const selectedClass = classesQuery.data?.find((c) => classKey(c) === selectedKey);
+    if (visibleClasses.length && !visibleClasses.some((c) => classKey(c) === selectedKey)) {
+      setSelectedKey(classKey(visibleClasses[0]));
+    }
+  }, [visibleClasses, selectedKey]);
+  const selectedClass = visibleClasses.find((c) => classKey(c) === selectedKey);
 
   const academicYearsQuery = useQuery({ queryKey: ['academic-years'], queryFn: () => academicYearService.getAll().then((r) => r.data) });
   const activeYear = academicYearsQuery.data?.find((y) => y.status === 'ACTIVE');
@@ -99,21 +126,42 @@ function GradeManagement() {
   const selectedSemester = semestersQuery.data?.find((s) => String(s.id) === semesterId);
 
   const subjectsQuery = useQuery({ queryKey: ['subjects'], queryFn: () => subjectService.getAll().then((r) => r.data) });
+  // For TEACHER, narrower than visibleClasses: must match the exact
+  // (class, semester) combo currently selected, since that's what the
+  // backend guard actually checks.
+  const visibleSubjects = useMemo(() => {
+    const all = subjectsQuery.data ?? [];
+    if (role !== 'TEACHER') return all;
+    return all.filter((s) =>
+      myAssignments.some(
+        (a) => a.subjectId === s.id && a.schoolClassId === selectedClass?.id && String(a.semesterId) === semesterId
+      )
+    );
+  }, [subjectsQuery.data, role, myAssignments, selectedClass, semesterId]);
   useEffect(() => {
-    if (!subjectId && subjectsQuery.data?.length) setSubjectId(String(subjectsQuery.data[0].id));
-  }, [subjectsQuery.data, subjectId]);
+    if (role === 'TEACHER' && visibleSubjects.length === 0) {
+      if (subjectId !== '') setSubjectId('');
+      return;
+    }
+    if (visibleSubjects.length && !visibleSubjects.some((s) => String(s.id) === subjectId)) {
+      setSubjectId(String(visibleSubjects[0].id));
+    }
+  }, [visibleSubjects, subjectId, role]);
 
   const gradeConfigsQuery = useQuery({ queryKey: ['grade-configs'], queryFn: () => gradeConfigService.getAll().then((r) => r.data) });
-
-  const staffQuery = useQuery({ queryKey: ['staff-lookup'], queryFn: () => staffService.getAll().then((r) => r.data) });
-  const myStaffId = staffQuery.data?.find((s) => s.user?.id === JSON.parse(localStorage.getItem('user') || '{}').userId)?.id;
 
   const rosterQuery = useQuery({
     queryKey: ['grade-roster', selectedClass?.className, selectedClass?.section],
     queryFn: () => studentService.getByClass(selectedClass.className, selectedClass.section).then((r) => r.data),
     enabled: Boolean(selectedClass),
   });
-  const roster = rosterQuery.data ?? [];
+  // Memoized, not a bare `?? []` fallback: see AttendanceManagement.jsx's
+  // identical `roster` comment - while rosterQuery is disabled/loading (no
+  // selectable class, e.g. a TEACHER with no TeachingAssignment) an inline
+  // `[]` fallback is a new array reference every render, and the effect
+  // below (deps: [roster]) unconditionally calls setState - a real infinite
+  // render loop in that state, not just in test.
+  const roster = useMemo(() => rosterQuery.data ?? [], [rosterQuery.data]);
 
   // Per-student grade records for the selected semester (every subject,
   // every component type) - no by-class bulk endpoint exists
@@ -137,7 +185,11 @@ function GradeManagement() {
     },
     enabled: Boolean(semesterId) && roster.length > 0,
   });
-  const gradesByStudent = rosterGradesQuery.data ?? new Map();
+  // Memoized for the same reason as `roster` above - `?? new Map()` would be
+  // a fresh Map reference every render while disabled/loading, and
+  // `existingByStudentId` (and the setScoreInput effect that depends on it)
+  // would then recompute/re-fire every render too.
+  const gradesByStudent = useMemo(() => rosterGradesQuery.data ?? new Map(), [rosterGradesQuery.data]);
 
   const existingByStudentId = useMemo(() => {
     const map = new Map();
@@ -207,7 +259,7 @@ function GradeManagement() {
       COMPONENT_TYPES.some((t) => resolveWeight(t, selectedSemester.academicYearName, gradeConfigsQuery.data ?? []) == null)
   );
   const loading = rosterQuery.isLoading || rosterGradesQuery.isLoading;
-  const selectedSubjectName = subjectsQuery.data?.find((s) => String(s.id) === subjectId)?.name;
+  const selectedSubjectName = visibleSubjects.find((s) => String(s.id) === subjectId)?.name;
 
   return (
     <div className="space-y-4">
@@ -236,6 +288,18 @@ function GradeManagement() {
         </div>
       )}
 
+      {role === 'TEACHER' && classesQuery.isSuccess && assignmentsQuery.isSuccess && visibleClasses.length === 0 && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
+          Bạn chưa được phân công giảng dạy lớp nào.
+        </div>
+      )}
+
+      {role === 'TEACHER' && selectedClass && semesterId && subjectsQuery.isSuccess && assignmentsQuery.isSuccess && visibleSubjects.length === 0 && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:text-red-400">
+          Bạn chưa được phân công dạy môn nào ở lớp này trong học kỳ đã chọn.
+        </div>
+      )}
+
       <Card>
         <CardContent className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1.5">
@@ -245,7 +309,7 @@ function GradeManagement() {
                 <SelectValue placeholder="Chọn lớp" />
               </SelectTrigger>
               <SelectContent>
-                {(classesQuery.data ?? []).map((c) => (
+                {visibleClasses.map((c) => (
                   <SelectItem key={classKey(c)} value={classKey(c)}>
                     {c.className} - {c.section}
                   </SelectItem>
@@ -273,7 +337,7 @@ function GradeManagement() {
                 <SelectValue placeholder={subjectsQuery.isLoading ? 'Đang tải...' : 'Chọn môn học'} />
               </SelectTrigger>
               <SelectContent>
-                {(subjectsQuery.data ?? []).map((s) => (
+                {visibleSubjects.map((s) => (
                   <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -302,7 +366,7 @@ function GradeManagement() {
         </div>
       )}
 
-      {selectedClass && selectedSemester && (
+      {selectedClass && selectedSemester && subjectId && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>

@@ -8,6 +8,7 @@ import com.schoolmanagement.entity.GradeComponentConfig;
 import com.schoolmanagement.entity.GradeComponentType;
 import com.schoolmanagement.entity.GradeRecord;
 import com.schoolmanagement.entity.Role;
+import com.schoolmanagement.entity.SchoolClass;
 import com.schoolmanagement.entity.Semester;
 import com.schoolmanagement.entity.SemesterName;
 import com.schoolmanagement.entity.Staff;
@@ -16,14 +17,17 @@ import com.schoolmanagement.entity.Student;
 import com.schoolmanagement.entity.StudentStatus;
 import com.schoolmanagement.entity.Subject;
 import com.schoolmanagement.entity.SubjectCategory;
+import com.schoolmanagement.entity.TeachingAssignment;
 import com.schoolmanagement.entity.User;
 import com.schoolmanagement.repository.AcademicYearRepository;
 import com.schoolmanagement.repository.GradeComponentConfigRepository;
 import com.schoolmanagement.repository.GradeRecordRepository;
+import com.schoolmanagement.repository.SchoolClassRepository;
 import com.schoolmanagement.repository.SemesterRepository;
 import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.repository.SubjectRepository;
+import com.schoolmanagement.repository.TeachingAssignmentRepository;
 import com.schoolmanagement.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -80,16 +84,24 @@ class GradeRecordIntegrationTest {
     @Autowired
     private GradeComponentConfigRepository gradeComponentConfigRepository;
     @Autowired
+    private SchoolClassRepository schoolClassRepository;
+    @Autowired
+    private TeachingAssignmentRepository teachingAssignmentRepository;
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private AcademicYear academicYear;
     private Semester hk1;
     private Semester hk2;
     private Subject subject;
+    private Subject otherSubject;
+    private SchoolClass schoolClass;
     private Student student;
     private Staff teacher;
+    private Staff otherTeacher;
     private User studentUser;
     private User teacherUser;
+    private User otherTeacherUser;
     private Student otherStudent;
 
     @BeforeEach
@@ -115,6 +127,11 @@ class GradeRecordIntegrationTest {
 
         subject = subjectRepository.save(Subject.builder()
                 .code("ITEST-GR-SUBJ").name("ITEST Subject").category(SubjectCategory.BAT_BUOC).build());
+        otherSubject = subjectRepository.save(Subject.builder()
+                .code("ITEST-GR-SUBJ-2").name("ITEST Subject Two").category(SubjectCategory.BAT_BUOC).build());
+
+        schoolClass = schoolClassRepository.save(SchoolClass.builder()
+                .className("ITEST-GR-10").section("A").academicYear("2099-2100").build());
 
         studentUser = userRepository.save(User.builder()
                 .username("itest.gr.student").email("itest.gr.student@school.com")
@@ -122,7 +139,9 @@ class GradeRecordIntegrationTest {
                 .firstName("Integration").lastName("Student").role(Role.STUDENT).enabled(true).build());
         student = studentRepository.save(Student.builder()
                 .rollNumber("ITEST-GR-ROLL").admissionNumber("ITEST-GR-ADM")
-                .user(studentUser).status(StudentStatus.ACTIVE).build());
+                .user(studentUser).status(StudentStatus.ACTIVE)
+                .className(schoolClass.getClassName()).section(schoolClass.getSection())
+                .build());
 
         User otherStudentUser = userRepository.save(User.builder()
                 .username("itest.gr.student2").email("itest.gr.student2@school.com")
@@ -132,6 +151,9 @@ class GradeRecordIntegrationTest {
                 .rollNumber("ITEST-GR-ROLL-2").admissionNumber("ITEST-GR-ADM-2")
                 .user(otherStudentUser).status(StudentStatus.ACTIVE).build());
 
+        // teacher is given a TeachingAssignment for (schoolClass, subject, hk1)
+        // below - H.3.1 (GVBM) tests exercise both the happy path (this
+        // assignment) and the denied path (otherTeacher, who has none).
         teacherUser = userRepository.save(User.builder()
                 .username("itest.gr.teacher").email("itest.gr.teacher@school.com")
                 .password(passwordEncoder.encode("Str0ngPassw0rd!"))
@@ -139,6 +161,17 @@ class GradeRecordIntegrationTest {
         teacher = staffRepository.save(Staff.builder()
                 .employeeId("ITEST-GR-EMP").user(teacherUser)
                 .position(StaffPosition.TEACHER).status(EmploymentStatus.ACTIVE).build());
+        teachingAssignmentRepository.save(TeachingAssignment.builder()
+                .schoolClass(schoolClass).subject(subject).teacher(teacher).semester(hk1).build());
+
+        otherTeacherUser = userRepository.save(User.builder()
+                .username("itest.gr.other-teacher").email("itest.gr.other-teacher@school.com")
+                .password(passwordEncoder.encode("Str0ngPassw0rd!"))
+                .firstName("Integration").lastName("OtherTeacher").role(Role.TEACHER).enabled(true).build());
+        otherTeacher = staffRepository.save(Staff.builder()
+                .employeeId("ITEST-GR-OTHER-EMP").user(otherTeacherUser)
+                .position(StaffPosition.TEACHER).status(EmploymentStatus.ACTIVE).build());
+        // otherTeacher deliberately has no TeachingAssignment at all.
 
         gradeComponentConfigRepository.save(GradeComponentConfig.builder()
                 .componentType(GradeComponentType.MIENG).weight(1).appliesFrom("2099-2100").build());
@@ -165,60 +198,113 @@ class GradeRecordIntegrationTest {
                 .componentType(type).score(score).teacher(teacher).build());
     }
 
-    @Test
-    @WithMockUser(roles = "TEACHER")
-    void createGradeRecord_persistsAndReturnsIt() throws Exception {
-        GradeRecord request = GradeRecord.builder()
-                .student(Student.builder().id(student.getId()).build())
-                .subject(Subject.builder().id(subject.getId()).build())
-                .semester(Semester.builder().id(hk1.getId()).build())
+    private GradeRecord gradePayload(Student forStudent, Subject forSubject, Semester forSemester, Staff forTeacher, double score) {
+        return GradeRecord.builder()
+                .student(Student.builder().id(forStudent.getId()).build())
+                .subject(Subject.builder().id(forSubject.getId()).build())
+                .semester(Semester.builder().id(forSemester.getId()).build())
                 .componentType(GradeComponentType.MIENG)
-                .score(8.5)
-                .teacher(Staff.builder().id(teacher.getId()).build())
+                .score(score)
+                .teacher(Staff.builder().id(forTeacher.getId()).build())
                 .build();
+    }
 
+    @Test
+    void createGradeRecord_asAssignedTeacher_persistsAndReturnsIt() throws Exception {
         mockMvc.perform(post("/v1/grade-records")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(gradePayload(student, subject, hk1, teacher, 8.5)))
+                        .with(asUser(teacherUser, "TEACHER")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.score").value(8.5))
                 .andExpect(jsonPath("$.studentName").value("Integration Student"));
     }
 
     @Test
-    @WithMockUser(roles = "TEACHER")
     void createGradeRecord_scoreAboveTen_returns400() throws Exception {
-        GradeRecord request = GradeRecord.builder()
-                .student(Student.builder().id(student.getId()).build())
-                .subject(Subject.builder().id(subject.getId()).build())
-                .semester(Semester.builder().id(hk1.getId()).build())
-                .componentType(GradeComponentType.MIENG)
-                .score(10.5)
-                .teacher(Staff.builder().id(teacher.getId()).build())
-                .build();
-
         mockMvc.perform(post("/v1/grade-records")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(gradePayload(student, subject, hk1, teacher, 10.5)))
+                        .with(asUser(teacherUser, "TEACHER")))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     @WithMockUser(roles = "STUDENT")
     void createGradeRecord_asStudent_returns403() throws Exception {
-        GradeRecord request = GradeRecord.builder()
-                .student(Student.builder().id(student.getId()).build())
-                .subject(Subject.builder().id(subject.getId()).build())
-                .semester(Semester.builder().id(hk1.getId()).build())
-                .componentType(GradeComponentType.MIENG)
-                .score(8.0)
-                .teacher(Staff.builder().id(teacher.getId()).build())
-                .build();
+        mockMvc.perform(post("/v1/grade-records")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(gradePayload(student, subject, hk1, teacher, 8.0))))
+                .andExpect(status().isForbidden());
+    }
+
+    // ---- H.3.1 (GVBM) - a TEACHER may only record a grade for a class/subject/semester they hold a TeachingAssignment for ----
+
+    @Test
+    void createGradeRecord_asTeacherWithoutAssignment_returns403() throws Exception {
+        mockMvc.perform(post("/v1/grade-records")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(gradePayload(student, subject, hk1, otherTeacher, 8.0)))
+                        .with(asUser(otherTeacherUser, "TEACHER")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void createGradeRecord_asAdmin_bypassesAssignmentCheck_returns201() throws Exception {
+        User adminUser = userRepository.save(User.builder()
+                .username("itest.gr.admin").email("itest.gr.admin@school.com")
+                .password(passwordEncoder.encode("Str0ngPassw0rd!"))
+                .firstName("Integration").lastName("Admin").role(Role.ADMIN).enabled(true).build());
 
         mockMvc.perform(post("/v1/grade-records")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(gradePayload(student, subject, hk1, otherTeacher, 8.0)))
+                        .with(asUser(adminUser, "ADMIN")))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void updateGradeRecord_asTeacherWithoutAssignment_returns403() throws Exception {
+        GradeRecord existing = gradeRecordRepository.save(GradeRecord.builder()
+                .student(student).subject(subject).semester(hk1)
+                .componentType(GradeComponentType.MIENG).score(7.0).teacher(teacher).build());
+
+        mockMvc.perform(put("/v1/grade-records/{id}", existing.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(gradePayload(student, subject, hk1, teacher, 9.0)))
+                        .with(asUser(otherTeacherUser, "TEACHER")))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void updateGradeRecord_reassigningToUnassignedSubject_returns403AndLeavesUnchanged() throws Exception {
+        // teacher has an assignment for `subject`, but not for `otherSubject`.
+        GradeRecord existing = gradeRecordRepository.save(GradeRecord.builder()
+                .student(student).subject(subject).semester(hk1)
+                .componentType(GradeComponentType.MIENG).score(7.0).teacher(teacher).build());
+
+        mockMvc.perform(put("/v1/grade-records/{id}", existing.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(gradePayload(student, otherSubject, hk1, teacher, 9.0)))
+                        .with(asUser(teacherUser, "TEACHER")))
+                .andExpect(status().isForbidden());
+
+        GradeRecord stillUnchanged = gradeRecordRepository.findById(existing.getId()).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(subject.getId(), stillUnchanged.getSubject().getId());
+        org.junit.jupiter.api.Assertions.assertEquals(7.0, stillUnchanged.getScore());
+    }
+
+    @Test
+    void deleteGradeRecord_asTeacherWithoutAssignment_returns403() throws Exception {
+        GradeRecord existing = gradeRecordRepository.save(GradeRecord.builder()
+                .student(student).subject(subject).semester(hk1)
+                .componentType(GradeComponentType.MIENG).score(7.0).teacher(teacher).build());
+
+        mockMvc.perform(delete("/v1/grade-records/{id}", existing.getId())
+                        .with(asUser(otherTeacherUser, "TEACHER")))
+                .andExpect(status().isForbidden());
+
+        org.junit.jupiter.api.Assertions.assertTrue(gradeRecordRepository.findById(existing.getId()).isPresent());
     }
 
     @Test
