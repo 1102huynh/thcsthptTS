@@ -21,6 +21,7 @@ import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
@@ -119,5 +120,37 @@ class TeacherAssignmentGuardTest {
 
         assertThrows(AccessDeniedException.class,
                 () -> guard.enforceHasAssignment(student, subject, semester, teacherUser));
+    }
+
+    // ---- hasAssignmentForClass (subject-agnostic, non-throwing - used by AttendanceService) ----
+
+    @Test
+    void hasAssignmentForClass_teacherHasAssignmentForClass_returnsTrue() {
+        when(schoolClassRepository.findByClassNameAndSectionAndAcademicYear("10", "A1", "2025-2026"))
+                .thenReturn(Optional.of(schoolClass));
+        when(staffRepository.findByUserId(2L)).thenReturn(Optional.of(teacherStaff));
+        when(teachingAssignmentRepository.existsByTeacherAndSchoolClassAndSemester(teacherStaff, schoolClass, semester))
+                .thenReturn(true);
+
+        assertThat(guard.hasAssignmentForClass("10", "A1", semester, teacherUser)).isTrue();
+    }
+
+    @Test
+    void hasAssignmentForClass_teacherHasNoAssignmentForClass_returnsFalse() {
+        when(schoolClassRepository.findByClassNameAndSectionAndAcademicYear("10", "A1", "2025-2026"))
+                .thenReturn(Optional.of(schoolClass));
+        when(staffRepository.findByUserId(2L)).thenReturn(Optional.of(teacherStaff));
+        when(teachingAssignmentRepository.existsByTeacherAndSchoolClassAndSemester(teacherStaff, schoolClass, semester))
+                .thenReturn(false);
+
+        assertThat(guard.hasAssignmentForClass("10", "A1", semester, teacherUser)).isFalse();
+    }
+
+    @Test
+    void hasAssignmentForClass_noMatchingSchoolClass_returnsFalse() {
+        when(schoolClassRepository.findByClassNameAndSectionAndAcademicYear("10", "A1", "2025-2026"))
+                .thenReturn(Optional.empty());
+
+        assertThat(guard.hasAssignmentForClass("10", "A1", semester, teacherUser)).isFalse();
     }
 }

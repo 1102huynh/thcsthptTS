@@ -57,6 +57,26 @@ public class TeacherAssignmentGuard {
      * section, or no matching {@code SchoolClass} for this semester's
      * academic year) is treated the same as "no assignment" — deny.
      */
+    /**
+     * Non-throwing, subject-agnostic variant: does this TEACHER hold a
+     * {@code TeachingAssignment} for (className, section) in {@code
+     * semester}, for ANY subject? Used by {@code AttendanceService} - unlike
+     * grades, an attendance record has no subject of its own (it's per-day,
+     * not per-period), so "does this teacher teach this class at all this
+     * semester" is the closest available match to how sổ đầu bài attendance
+     * is actually recorded (per period, by whichever teacher is teaching -
+     * not just GVCN). {@code semester} is resolved by the caller (e.g. from
+     * the attendance date), not looked up here.
+     */
+    public boolean hasAssignmentForClass(String className, String section, Semester semester, User requester) {
+        return schoolClassRepository.findByClassNameAndSectionAndAcademicYear(
+                        className, section, semester.getAcademicYear().getName())
+                .flatMap(schoolClass -> staffRepository.findByUserId(requester.getId())
+                        .map(staff -> teachingAssignmentRepository
+                                .existsByTeacherAndSchoolClassAndSemester(staff, schoolClass, semester)))
+                .orElse(false);
+    }
+
     public void enforceHasAssignment(Student student, Subject subject, Semester semester, User requester) {
         if (requester == null || requester.getRole() != Role.TEACHER) {
             return;

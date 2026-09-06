@@ -3,14 +3,18 @@ package com.schoolmanagement.service;
 import com.schoolmanagement.dto.AttendanceDTO;
 import com.schoolmanagement.entity.Attendance;
 import com.schoolmanagement.entity.AttendanceStatus;
+import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.Student;
 import com.schoolmanagement.entity.User;
 import com.schoolmanagement.exception.ResourceNotFoundException;
 import com.schoolmanagement.repository.AttendanceRepository;
+import com.schoolmanagement.repository.SemesterRepository;
 import com.schoolmanagement.repository.StudentRepository;
 import com.schoolmanagement.security.StudentAccessGuard;
+import com.schoolmanagement.security.TeacherAssignmentGuard;
 import com.schoolmanagement.security.TeacherHomeroomGuard;
 import lombok.AllArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,24 +28,49 @@ public class AttendanceService {
 
     private AttendanceRepository attendanceRepository;
     private StudentRepository studentRepository;
+    private SemesterRepository semesterRepository;
     private StudentAccessGuard studentAccessGuard;
     private TeacherHomeroomGuard teacherHomeroomGuard;
+    private TeacherAssignmentGuard teacherAssignmentGuard;
 
     /**
-     * GVCN scoping (H.3.1): a TEACHER may only mark attendance for students in
-     * the class(es) they are homeroom teacher of; ADMIN is unrestricted.
+     * H.3.1, mở rộng theo cách ghi "sổ đầu bài" thực tế: a TEACHER may mark
+     * attendance for a class if they are GVCN (homeroom teacher) of it, OR
+     * hold a TeachingAssignment for it in the semester covering {@code date}
+     * (GVBM - real sổ đầu bài attendance is recorded per period by whichever
+     * teacher is teaching, not only GVCN). ADMIN is unrestricted.
      */
+    private void enforceCanTouchAttendance(String className, String section, LocalDate date, User requester) {
+        if (requester == null || requester.getRole() != Role.TEACHER) {
+            return;
+        }
+        if (teacherHomeroomGuard.isHomeroomClassNameSection(className, section, requester)) {
+            return;
+        }
+        // Nothing guarantees semester date ranges never overlap (different
+        // academic years, or plain data overlap), so a date can match more
+        // than one semester - any one of them having the assignment is enough.
+        boolean hasAssignment = semesterRepository
+                .findByStartDateLessThanEqualAndEndDateGreaterThanEqual(date, date)
+                .stream()
+                .anyMatch(semester -> teacherAssignmentGuard.hasAssignmentForClass(className, section, semester, requester));
+        if (!hasAssignment) {
+            throw new AccessDeniedException(
+                    "Only the class's GVCN or a teacher with a TeachingAssignment for this class may mark attendance");
+        }
+    }
+
     public Attendance markAttendance(Attendance attendance, User requester) {
         Student student = studentRepository.findById(attendance.getStudent().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-        teacherHomeroomGuard.enforceHomeroomClassNameSection(student.getClassName(), student.getSection(), requester);
+        enforceCanTouchAttendance(student.getClassName(), student.getSection(), attendance.getAttendanceDate(), requester);
 
         return attendanceRepository.save(attendance);
     }
 
     public void markAttendanceForClass(String className, String section, LocalDate date, List<Long> presentStudentIds,
                                         AttendanceStatus status, User marker) {
-        teacherHomeroomGuard.enforceHomeroomClassNameSection(className, section, marker);
+        enforceCanTouchAttendance(className, section, date, marker);
         List<Student> students = studentRepository.findByClassNameAndSection(className, section);
 
         // Re-marking the same class+date used to just insert a second batch
@@ -71,7 +100,7 @@ public class AttendanceService {
         Attendance attendance = attendanceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
         Student student = attendance.getStudent();
-        teacherHomeroomGuard.enforceHomeroomClassNameSection(student.getClassName(), student.getSection(), requester);
+        enforceCanTouchAttendance(student.getClassName(), student.getSection(), attendance.getAttendanceDate(), requester);
 
         attendance.setStatus(attendanceDetails.getStatus());
         attendance.setRemarks(attendanceDetails.getRemarks());
@@ -151,7 +180,7 @@ public class AttendanceService {
         Attendance attendance = attendanceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance record not found"));
         Student student = attendance.getStudent();
-        teacherHomeroomGuard.enforceHomeroomClassNameSection(student.getClassName(), student.getSection(), requester);
+        enforceCanTouchAttendance(student.getClassName(), student.getSection(), attendance.getAttendanceDate(), requester);
         attendanceRepository.delete(attendance);
     }
 

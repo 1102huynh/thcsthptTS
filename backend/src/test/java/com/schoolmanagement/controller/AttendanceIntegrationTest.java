@@ -3,20 +3,31 @@ package com.schoolmanagement.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.schoolmanagement.entity.AcademicYear;
+import com.schoolmanagement.entity.AcademicYearStatus;
 import com.schoolmanagement.entity.Attendance;
 import com.schoolmanagement.entity.AttendanceStatus;
 import com.schoolmanagement.entity.EmploymentStatus;
 import com.schoolmanagement.entity.Role;
 import com.schoolmanagement.entity.SchoolClass;
+import com.schoolmanagement.entity.Semester;
+import com.schoolmanagement.entity.SemesterName;
 import com.schoolmanagement.entity.Staff;
 import com.schoolmanagement.entity.StaffPosition;
 import com.schoolmanagement.entity.Student;
 import com.schoolmanagement.entity.StudentStatus;
+import com.schoolmanagement.entity.Subject;
+import com.schoolmanagement.entity.SubjectCategory;
+import com.schoolmanagement.entity.TeachingAssignment;
 import com.schoolmanagement.entity.User;
+import com.schoolmanagement.repository.AcademicYearRepository;
 import com.schoolmanagement.repository.AttendanceRepository;
 import com.schoolmanagement.repository.SchoolClassRepository;
+import com.schoolmanagement.repository.SemesterRepository;
 import com.schoolmanagement.repository.StaffRepository;
 import com.schoolmanagement.repository.StudentRepository;
+import com.schoolmanagement.repository.SubjectRepository;
+import com.schoolmanagement.repository.TeachingAssignmentRepository;
 import com.schoolmanagement.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,11 +79,21 @@ class AttendanceIntegrationTest {
     @Autowired
     private AttendanceRepository attendanceRepository;
     @Autowired
+    private AcademicYearRepository academicYearRepository;
+    @Autowired
+    private SemesterRepository semesterRepository;
+    @Autowired
+    private SubjectRepository subjectRepository;
+    @Autowired
+    private TeachingAssignmentRepository teachingAssignmentRepository;
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private User teacherUser;
     private Student studentA;
     private Student studentB;
+    private SchoolClass schoolClass;
+    private Semester semester;
     private static final String CLASS_NAME = "ITEST-CLS";
     private static final String SECTION = "X";
     private static final LocalDate DATE = LocalDate.of(2025, 3, 10);
@@ -84,13 +105,29 @@ class AttendanceIntegrationTest {
                 .password(passwordEncoder.encode("Str0ngPassw0rd!"))
                 .firstName("Integration").lastName("Teacher").role(Role.TEACHER).enabled(true).build());
         // teacherUser is made GVCN of CLASS_NAME/SECTION below - H.3.1 scopes
-        // every write here (mark/update/delete) to the caller's homeroom class.
+        // every write here (mark/update/delete) to the caller's homeroom class,
+        // OR to a GVBM with a TeachingAssignment for it (see below) - matches
+        // how sổ đầu bài attendance is actually recorded per period.
         Staff teacherStaff = staffRepository.save(Staff.builder()
                 .employeeId("ITEST-ATT-EMP").user(teacherUser)
                 .position(StaffPosition.TEACHER).status(EmploymentStatus.ACTIVE).build());
-        schoolClassRepository.save(SchoolClass.builder()
+        schoolClass = schoolClassRepository.save(SchoolClass.builder()
                 .className(CLASS_NAME).section(SECTION).academicYear("2099-2100")
                 .classTeacher(teacherStaff).build());
+
+        // AcademicYear name is the far-future "2099-2100" placeholder this
+        // suite always uses (collision-proof against seed data), but the
+        // Semester's own startDate/endDate are set to bracket the fixed
+        // `DATE` constant (2025-03-10) instead - only those two fields are
+        // ever compared against `DATE` by TeacherAssignmentGuard.hasAssignmentForClass.
+        AcademicYear academicYear = academicYearRepository.save(AcademicYear.builder()
+                .name("2099-2100")
+                .startDate(LocalDate.of(2025, 1, 1)).endDate(LocalDate.of(2025, 12, 31))
+                .status(AcademicYearStatus.ACTIVE).build());
+        semester = semesterRepository.save(Semester.builder()
+                .academicYear(academicYear).name(SemesterName.HK1)
+                .startDate(LocalDate.of(2025, 1, 1)).endDate(LocalDate.of(2025, 6, 30))
+                .build());
 
         User userA = userRepository.save(User.builder()
                 .username("itest.att.studentA").email("itest.att.studentA@school.com")
@@ -177,6 +214,25 @@ class AttendanceIntegrationTest {
         // 403 outcome as a TEACHER with a Staff profile but no homeroom class.
     }
 
+    // GVBM (subject teacher) - NOT GVCN of CLASS_NAME/SECTION, but holds a
+    // TeachingAssignment for it in `semester` - the H.3.1 extension this
+    // suite tests: sổ đầu bài attendance is recorded per period by whichever
+    // teacher is teaching, not only GVCN.
+    private User gvbmTeacher() {
+        User user = userRepository.save(User.builder()
+                .username("itest.att.gvbm").email("itest.att.gvbm@school.com")
+                .password(passwordEncoder.encode("Str0ngPassw0rd!"))
+                .firstName("Integration").lastName("Gvbm").role(Role.TEACHER).enabled(true).build());
+        Staff staff = staffRepository.save(Staff.builder()
+                .employeeId("ITEST-ATT-GVBM-EMP").user(user)
+                .position(StaffPosition.TEACHER).status(EmploymentStatus.ACTIVE).build());
+        Subject subject = subjectRepository.save(Subject.builder()
+                .code("ITEST-ATT-SUBJ").name("ITEST Subject").category(SubjectCategory.BAT_BUOC).build());
+        teachingAssignmentRepository.save(TeachingAssignment.builder()
+                .schoolClass(schoolClass).subject(subject).teacher(staff).semester(semester).build());
+        return user;
+    }
+
     @Test
     void markAttendance_asHomeroomTeacher_returns201() throws Exception {
         Attendance attendance = Attendance.builder()
@@ -237,4 +293,32 @@ class AttendanceIntegrationTest {
                         .with(asUser(nonHomeroomTeacher(), "TEACHER")))
                 .andExpect(status().isForbidden());
     }
+
+    // ---- H.3.1 mở rộng - a TEACHER may also mark/update/delete attendance
+    // for a class they hold a TeachingAssignment for (GVBM), not only their
+    // homeroom class (GVCN) - matches how sổ đầu bài attendance is actually
+    // recorded per period ----
+
+    @Test
+    void markClassAttendance_asGvbmWithAssignmentButNotHomeroom_returns200() throws Exception {
+        mockMvc.perform(post("/v1/attendance/class")
+                        .param("className", CLASS_NAME).param("section", SECTION).param("date", DATE.toString())
+                        .param("presentStudentIds", studentA.getId().toString())
+                        .with(asUser(gvbmTeacher(), "TEACHER")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void markAttendance_asGvbmWithAssignmentButNotHomeroom_returns201() throws Exception {
+        Attendance attendance = Attendance.builder()
+                .student(Student.builder().id(studentA.getId()).build())
+                .attendanceDate(DATE).status(AttendanceStatus.PRESENT).build();
+
+        mockMvc.perform(post("/v1/attendance")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(attendance))
+                        .with(asUser(gvbmTeacher(), "TEACHER")))
+                .andExpect(status().isCreated());
+    }
+
 }

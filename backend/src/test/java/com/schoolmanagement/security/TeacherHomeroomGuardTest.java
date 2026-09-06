@@ -104,6 +104,34 @@ class TeacherHomeroomGuardTest {
     }
 
     @Test
+    void isHomeroomClassNameSection_nullOrNonTeacher_returnsFalse() {
+        assertThat(guard.isHomeroomClassNameSection("10", "A1", null)).isFalse();
+        assertThat(guard.isHomeroomClassNameSection("10", "A1", adminUser)).isFalse();
+    }
+
+    @Test
+    void isHomeroomClassNameSection_teacherWithNoStaffProfile_returnsFalse() {
+        when(staffRepository.findByUserId(2L)).thenReturn(Optional.empty());
+        assertThat(guard.isHomeroomClassNameSection("10", "A1", teacherUser)).isFalse();
+    }
+
+    @Test
+    void isHomeroomClassNameSection_teacherIsHomeroom_returnsTrue() {
+        when(staffRepository.findByUserId(2L)).thenReturn(Optional.of(teacherStaff));
+        when(schoolClassRepository.findByClassTeacher(teacherStaff)).thenReturn(List.of(homeroomClass));
+
+        assertThat(guard.isHomeroomClassNameSection("10", "A1", teacherUser)).isTrue();
+    }
+
+    @Test
+    void isHomeroomClassNameSection_teacherIsNotHomeroom_returnsFalse() {
+        when(staffRepository.findByUserId(2L)).thenReturn(Optional.of(teacherStaff));
+        when(schoolClassRepository.findByClassTeacher(teacherStaff)).thenReturn(List.of(homeroomClass));
+
+        assertThat(guard.isHomeroomClassNameSection("10", "A2", teacherUser)).isFalse();
+    }
+
+    @Test
     void filterToHomeroom_nonTeacher_returnsListUnchanged() {
         List<Student> students = List.of(
                 Student.builder().id(1L).className("10").section("A1").build(),
