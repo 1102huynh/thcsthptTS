@@ -110,16 +110,19 @@ public class StudentController {
         return new ResponseEntity<>(students, HttpStatus.OK);
     }
 
+    // Deliberately not homeroom-scoped for TEACHER - see
+    // StudentService.getStudentsByClassAndSection's own comment: this is the
+    // shared roster lookup both AttendanceManagement.jsx (homeroom-only,
+    // enforced separately at the write endpoint) and GradeManagement.jsx
+    // (any TeachingAssignment, enforced separately at the write endpoint)
+    // call, and they need different write-side rules for the same class.
     @GetMapping("/class/{className}/section/{section}")
     @PreAuthorize("hasAnyRole('ADMIN', 'PRINCIPAL', 'TEACHER')")
-    @Operation(summary = "Get students by class and section",
-            description = "A TEACHER may only fetch a class/section they are GVCN (homeroom teacher) of (403 otherwise).")
+    @Operation(summary = "Get students by class and section")
     public ResponseEntity<List<StudentDTO>> getStudentsByClassAndSection(
             @PathVariable String className,
-            @PathVariable String section,
-            Authentication authentication) {
-        User requester = (User) authentication.getPrincipal();
-        List<StudentDTO> students = studentService.getStudentsByClassAndSection(className, section, requester);
+            @PathVariable String section) {
+        List<StudentDTO> students = studentService.getStudentsByClassAndSection(className, section);
         return new ResponseEntity<>(students, HttpStatus.OK);
     }
 

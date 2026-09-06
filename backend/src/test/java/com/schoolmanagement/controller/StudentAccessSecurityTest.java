@@ -245,27 +245,29 @@ class StudentAccessSecurityTest {
                 .andExpect(jsonPath("$[0].rollNumber").value("ITEST-SAS-ROLL"));
     }
 
+    // GET /v1/students/class/{className}/section/{section} is deliberately
+    // NOT homeroom-scoped for TEACHER (unlike GET /v1/students above) - it's
+    // the shared roster lookup AttendanceManagement.jsx and
+    // GradeManagement.jsx both call, and they need opposite scoping rules
+    // for the same class (homeroom-only for marking attendance vs. any
+    // TeachingAssignment for entering grades) - each enforces its own rule
+    // independently at its own write endpoint. See
+    // StudentService.getStudentsByClassAndSection's doc comment; this was
+    // homeroom-gated briefly and broke the GVBM (H.3.1) grading flow, found
+    // via live testing.
     @Test
-    void teacher_getStudentsByClassAndSection_asHomeroom_returns200() throws Exception {
-        SchoolClass homeroomClass = schoolClassRepository.save(SchoolClass.builder()
-                .className("ITEST-SAS-11").section("A").academicYear("2099-2100")
-                .classTeacher(teacherStaff).build());
-        student.setClassName(homeroomClass.getClassName());
-        student.setSection(homeroomClass.getSection());
+    void teacher_getStudentsByClassAndSection_anyClass_returns200() throws Exception {
+        SchoolClass otherClass = schoolClassRepository.save(SchoolClass.builder()
+                .className("ITEST-SAS-11").section("A").academicYear("2099-2100").build());
+        // teacherStaff is GVCN of nothing - not this class, not any class.
+        student.setClassName(otherClass.getClassName());
+        student.setSection(otherClass.getSection());
         studentRepository.save(student);
 
         mockMvc.perform(get("/v1/students/class/{className}/section/{section}",
-                        homeroomClass.getClassName(), homeroomClass.getSection())
+                        otherClass.getClassName(), otherClass.getSection())
                         .with(asUser(teacherUser, "TEACHER")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].rollNumber").value("ITEST-SAS-ROLL"));
-    }
-
-    @Test
-    void teacher_getStudentsByClassAndSection_asNonHomeroom_returns403() throws Exception {
-        // teacherStaff is GVCN of nothing here.
-        mockMvc.perform(get("/v1/students/class/{className}/section/{section}", "ITEST-SAS-12", "A")
-                        .with(asUser(teacherUser, "TEACHER")))
-                .andExpect(status().isForbidden());
     }
 }

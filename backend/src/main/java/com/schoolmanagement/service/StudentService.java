@@ -162,8 +162,24 @@ public class StudentService {
         return students.stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
-    public List<StudentDTO> getStudentsByClassAndSection(String className, String section, User requester) {
-        teacherHomeroomGuard.enforceHomeroomClassNameSection(className, section, requester);
+    /**
+     * Deliberately NOT homeroom-scoped (unlike {@link #getAllStudents(User)}
+     * and {@link #getStudentsByClass(String, User)}): this is the shared
+     * "roster for a class" lookup both AttendanceManagement.jsx and
+     * GradeManagement.jsx call to render their score/checkbox tables, and
+     * those two pages need opposite scoping rules for the SAME class - a
+     * TEACHER may only *mark attendance* for their own homeroom class
+     * (enforced independently and specifically in
+     * AttendanceService.markAttendanceForClass), but may *enter grades* for
+     * any class they hold a TeachingAssignment for, homeroom or not
+     * (enforced independently in GradeRecordService via
+     * TeacherAssignmentGuard). Homeroom-gating this shared read endpoint
+     * broke the GVBM (H.3.1) grading flow for exactly that reason - found
+     * live testing the merged feature, not by inspection. Nothing else
+     * calls this endpoint (StudentManagement.jsx's own "Quản lý học sinh"
+     * list uses GET /v1/students, which stays correctly homeroom-filtered).
+     */
+    public List<StudentDTO> getStudentsByClassAndSection(String className, String section) {
         return studentRepository.findByClassNameAndSection(className, section)
                 .stream()
                 .map(this::mapToDTO)
