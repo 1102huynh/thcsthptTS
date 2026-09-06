@@ -126,9 +126,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleAccessDeniedException(
             AccessDeniedException ex,
             HttpServletRequest request) {
+        // Hard-coded, not ex.getMessage(): same reasoning as
+        // handleBadCredentialsException below - every guard throughout the
+        // app (TeacherHomeroomGuard, TeacherAssignmentGuard, StudentAccessGuard,
+        // ConductRecordService, ...) writes its AccessDeniedException message
+        // in English for developers reading the code/logs, not for display -
+        // translating every one of those individually isn't worth it when a
+        // single generic Vietnamese message covers the same ground. Found
+        // live while testing H.3.1 (v4.23): a TEACHER blocked by the new
+        // Attendance GVBM check saw this exact hard-coded English string.
         ApiError error = ApiError.builder()
                 .status("FORBIDDEN")
-                .message("You do not have permission to perform this action")
+                .message("Bạn không có quyền thực hiện thao tác này.")
                 .code(403)
                 .path(request.getRequestURI())
                 .timestamp(LocalDateTime.now())
